@@ -42,6 +42,17 @@ interface NavigationEngine {
 
 Use strongly typed wrappers for nanoseconds, metres, radians, metres/second, geographic coordinates, and frames. Avoid bare `Double` across package boundaries where units can be confused.
 
+## Mount alignment (FR-02)
+
+`in.driftzero.core` ships a causal phone-to-vehicle alignment helper (`MountAlignment.kt`) that does not depend on Android:
+
+- `StationaryCapture` estimates gravity (m/s^2) and gyro bias (rad/s) while still, or returns `Insufficient` / `Moving` with a reason.
+- `YawFromMotion` resolves yaw from straight accel/brake events. A 180-degree flip is resolved only with a GNSS speed-delta sign; otherwise the result stays `Pending`.
+- `MountProfile` is the persisted rotation plus quality (`STATIONARY_ONLY`, `ALIGNED`, `ALIGNED_HIGH`).
+- `MisalignmentMonitor` emits `Remount` after a held gravity-direction change (default 8 degrees for 3 s) and ignores short spikes.
+
+The dead-reckoning filter should consume `MountProfile.toVehicleAccel` / `toVehicleGyro` and map `MisalignmentUpdate.Remount` to `ResetReason.REMOUNT`. See `docs/adr/007-mount-alignment.md`.
+
 ## Determinism contract
 
 Given the same ordered sensor frames, map/model/config artifacts, and initial state, replay emits the same state sequence within declared floating-point tolerance. UI frame rate and asynchronous logging must not change core output.

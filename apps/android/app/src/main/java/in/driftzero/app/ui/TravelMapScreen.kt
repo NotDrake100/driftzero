@@ -65,7 +65,13 @@ fun TravelMapScreen(
     p95GapMs: Double? = null,
     recording: Boolean = false,
     judgeOpen: Boolean = false,
+    rawTrail: List<TravelLatLng> = emptyList(),
+    fusedTrail: List<TravelLatLng> = emptyList(),
+    modeStrip: List<NavigationMode> = emptyList(),
+    holdElapsedS: Double? = null,
+    holdDistanceM: Double? = null,
     onOpenJudge: () -> Unit = {},
+    onCloseJudge: () -> Unit = {},
     onOpenTrips: () -> Unit = {},
     onOpenOffline: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
@@ -107,6 +113,7 @@ fun TravelMapScreen(
 
     val lamp = lampFor(pose, locationPermission)
     val lampNow by rememberUpdatedState(lamp)
+    val poseNow by rememberUpdatedState(pose)
     val interpolator = remember { PuckInterpolator() }
     interpolator.reduceMotion = reduceMotion
     LaunchedEffect(pose) {
@@ -122,6 +129,15 @@ fun TravelMapScreen(
     }
     LaunchedEffect(matchedRoad) {
         controller.setMatchedRoad(matchedRoad)
+    }
+    LaunchedEffect(judgeOpen, rawTrail, fusedTrail) {
+        if (judgeOpen) {
+            controller.setRawTrail(rawTrail)
+            controller.setFusedTrail(fusedTrail)
+        } else {
+            controller.setRawTrail(emptyList())
+            controller.setFusedTrail(emptyList())
+        }
     }
 
     val routeActive = route != null
@@ -215,8 +231,8 @@ fun TravelMapScreen(
         routeJob?.cancel()
         routeJob = scope.launch {
             val origin = controller.originOrNull()
-            val coasting = pose?.mode == NavigationMode.DEAD_RECKONING ||
-                pose?.mode == NavigationMode.LOW_CONFIDENCE
+            val coasting = poseNow?.mode == NavigationMode.DEAD_RECKONING ||
+                poseNow?.mode == NavigationMode.LOW_CONFIDENCE
             if (origin == null || coasting) {
                 route = null
                 flyToPlace(place)
@@ -285,8 +301,10 @@ fun TravelMapScreen(
         val bottom = sheetHeightPx + with(density) { 16.dp.roundToPx() }
         controller.setChromePadding(side, top, side, bottom)
     }
-    if (judgeOpen && sheetExpanded) {
-        sheetExpanded = false
+    LaunchedEffect(judgeOpen) {
+        if (judgeOpen) {
+            sheetExpanded = false
+        }
     }
     val radiusText = pose?.let { StatusCopy.radius95(it.uncertainty.horizontal95.value) }
     val reason = pose?.let { modeReason(it) }
@@ -348,7 +366,7 @@ fun TravelMapScreen(
             searchNote = searchNote,
             reduceMotion = reduceMotion,
             lamp = lamp,
-            onLampClick = {},
+            onLampClick = { sheetExpanded = !sheetExpanded },
             onLampLongPress = if (holdAllowed) onToggleHold else null,
             modifier = Modifier.align(Alignment.TopStart),
         )
@@ -359,26 +377,62 @@ fun TravelMapScreen(
             onLocateClick = { controller.locateOwnVehicle() },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .then(
-                    if (dockVisible) {
-                        Modifier.padding(end = 16.dp, bottom = 144.dp)
-                    } else {
-                        Modifier
-                            .navigationBarsPadding()
-                            .padding(16.dp)
-                    },
-                ),
+                .padding(end = 16.dp, bottom = (sheetHeightPx / density.density + 16f).dp),
         )
-        RouteDock(
-            destinationName = destination?.name.orEmpty(),
-            distanceText = route?.let { InstrumentFormat.formatDistance(it.distanceM) }.orEmpty(),
-            etaText = route?.let { InstrumentFormat.formatEta(it.durationS) }.orEmpty(),
-            speedText = if (dockVisible) speedText else null,
-            onStop = { stopRoute() },
-            visible = dockVisible,
-            reduceMotion = reduceMotion,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
+        if (judgeOpen) {
+            JudgeOverlay(
+                held = gnssHeld,
+                holdElapsedS = holdElapsedS,
+                holdDistanceM = holdDistanceM,
+                p95GapMs = p95GapMs,
+                modes = modeStrip,
+                onToggleHold = onToggleHold,
+                onClose = onCloseJudge,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+        }
+        if (confirmStop) {
+            ConfirmPanel(
+                title = stringResource(R.string.stop_route_title),
+                confirmLabel = stringResource(R.string.action_stop),
+                cancelLabel = stringResource(R.string.action_cancel),
+                onConfirm = {
+                    confirmStop = false
+                    stopRoute()
+                },
+                onCancel = { confirmStop = false },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(16.dp),
+            )
+        } else if (!judgeOpen) {
+            BottomInstrument(
+                lamp = lamp,
+                speedText = speedText,
+                radiusText = radiusText,
+                reason = reason,
+                rows = sheetRows,
+                routeName = if (dockVisible) destination?.name else null,
+                routeSummary = if (dockVisible && route != null) {
+                    "${InstrumentFormat.formatDistance(route!!.distanceM)}, ${InstrumentFormat.formatEta(route!!.durationS)}"
+                } else {
+                    null
+                },
+                recording = recording,
+                expanded = sheetExpanded,
+                onToggle = { sheetExpanded = !sheetExpanded },
+                onOpenJudge = onOpenJudge,
+                onStopRoute = if (dockVisible) ({ confirmStop = true }) else null,
+                onOpenTrips = onOpenTrips,
+                onOpenOffline = onOpenOffline,
+                onOpenSettings = onOpenSettings,
+                onOpenAbout = onOpenAbout,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .onSizeChanged { sheetHeightPx = it.height },
+            )
+        }
     }
 }
 
@@ -441,14 +495,23 @@ private fun TravelMapNavigatingPreview() {
                     .align(Alignment.BottomEnd)
                     .padding(end = 16.dp, bottom = 144.dp),
             )
-            RouteDock(
-                destinationName = "Station",
-                distanceText = "12.4 km",
-                etaText = "18 min",
+            BottomInstrument(
+                lamp = LampDisplay(LampTone.CAUTION, LampWord.DEAD_RECKONING, 14.0, dashed = true, coasting = true),
                 speedText = "34 km/h",
-                onStop = {},
-                visible = true,
-                reduceMotion = true,
+                radiusText = "12 m 95%",
+                reason = ModeReason.NoFix(14.0),
+                rows = emptyList(),
+                routeName = "Station",
+                routeSummary = "12.4 km, 18 min",
+                recording = false,
+                expanded = false,
+                onToggle = {},
+                onOpenJudge = {},
+                onStopRoute = {},
+                onOpenTrips = {},
+                onOpenOffline = {},
+                onOpenSettings = {},
+                onOpenAbout = {},
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }

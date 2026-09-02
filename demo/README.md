@@ -6,10 +6,9 @@ Before recording, place a generated, non-secret result bundle under an ignored l
 
 Read:
 
-- `docs/07_DEMO_VIDEO_SCRIPT.md` for narration and timing;
-- `demo/shot-list.md` for capture assets;
+- `PRODUCT.md` for the five-step phone test;
+- `demo/TESTER_SIDELLOAD.md` for install;
 - `docs/01_SIH_REQUIREMENTS_TRACEABILITY.md` for claims;
 - `docs/SOURCES.md` for citation cards.
 
 Do not replace missing metrics with estimates. Use a visible placeholder during editing until the locked evaluator produces the value.
-

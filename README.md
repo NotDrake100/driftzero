@@ -4,7 +4,7 @@
 
 DriftZero is an Android-first, software-only vehicle navigation engine for the SIH 2026 problem statement **SIH26168: AI-ML based Intelligent Dead Reckoning system for seamless navigation**. It keeps estimating a vehicle's position when GNSS is blocked, degraded, jammed, or inconsistent, using only the phone's accelerometer, gyroscope, magnetometer, GNSS, offline road data, and lightweight on-device inference.
 
-This repository is a build-ready product and engineering blueprint. It includes the PRD, official requirement traceability, system architecture, TimesFM 3 research strategy, datasets, offline map plan, evaluation protocol, demo screenplay, Cursor rules, machine-readable contracts, experiment configuration, and tested metric utilities.
+This repository is a build-ready product and engineering blueprint. It includes the PRD, official requirement traceability, system architecture, TimesFM 3 research strategy, datasets, offline map plan, evaluation protocol, Cursor rules, machine-readable contracts, experiment configuration, and tested metric utilities.
 
 ## Product promise
 
@@ -38,7 +38,7 @@ flowchart TD
 1. Read [PRD.md](PRD.md).
 2. Check [official requirement traceability](docs/01_SIH_REQUIREMENTS_TRACEABILITY.md).
 3. Review [architecture](docs/02_ARCHITECTURE.md) and [TimesFM 3 strategy](docs/03_TIMESFM3_STRATEGY.md).
-4. Give Cursor [the master build prompt](tasks/CURSOR_MASTER_BUILD_PROMPT.md), then execute phase prompts in order.
+4. Run the five-step phone test in [PRODUCT.md](PRODUCT.md).
 5. Run the research utilities:
 
 ```bash
@@ -50,6 +50,7 @@ PYTHONPATH=ml/src python -m unittest discover -s ml/tests -v
 | Path | Purpose |
 |---|---|
 | `PRD.md` | Product scope, users, requirements, acceptance criteria, and launch plan |
+| `PRODUCT.md` | Five-step phone test |
 | `docs/` | Traceability, architecture, research decisions, data, maps, evaluation, safety, and sources |
 | `.cursor/rules/` | Persistent rules for Android, navigation, ML, and evidence integrity |
 | `tasks/` | Master and phased Cursor implementation prompts |
@@ -58,7 +59,7 @@ PYTHONPATH=ml/src python -m unittest discover -s ml/tests -v
 | `ml/` | Tested research utilities and optional TimesFM adapter |
 | `apps/android/` | Android implementation specification and project scaffold target |
 | `packages/navigation-core/` | Platform-neutral navigation engine contract |
-| `demo/` | Reproducible demo runbook, video narration, and shot list |
+| `demo/` | Sideload notes for testers |
 
 ## Non-negotiable validation rule
 
@@ -66,4 +67,4 @@ Ground-truth GNSS may be retained to score an artificial outage, but it must nev
 
 ## Status
 
-This initial repository is a specification plus research harness, not a claim that the complete Android product has already been implemented. Milestones and definitions of done are in [the roadmap](docs/08_ROADMAP_AND_BACKLOG.md).
+This initial repository is a specification plus research harness, not a claim that the complete Android product has already been implemented.

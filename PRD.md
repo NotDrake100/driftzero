@@ -335,7 +335,7 @@ Offline diagnostic events include sensor availability, state transitions, reject
 
 The final video begins with a real Indian navigation problem, demonstrates an ordinary marker degrading at a tunnel or simulated blackout, then shows DriftZero continuing with visible confidence. The audience sees no external hardware and airplane mode remains enabled. Judge mode reveals the sensor pipeline, outage state, road hypotheses, and metrics. A recovery sequence shows gradual GNSS re-entry without a jump. The close explains the TimesFM teacher/student experiment, offline privacy, external IMU interface, India data plan, and honest limitations.
 
-The exact narration and shot timing are in `docs/07_DEMO_VIDEO_SCRIPT.md`.
+The five-step phone test is in `PRODUCT.md`.
 
 ## 17. Open decisions that must be settled with evidence
 

@@ -552,11 +552,12 @@ data class MountProfile(
             if (qualityName is ContractMaps.Required.Invalid) {
                 return ProfileParse.Invalid(qualityName.reason)
             }
+            val qualityRaw = (qualityName as ContractMaps.Required.Ok).value
             val quality =
                 try {
-                    ProfileQuality.valueOf((qualityName as ContractMaps.Required.Ok).value)
+                    ProfileQuality.valueOf(qualityRaw)
                 } catch (error: IllegalArgumentException) {
-                    return ProfileParse.Invalid("unknown quality '${qualityName.value}'")
+                    return ProfileParse.Invalid("unknown quality '$qualityRaw'")
                 }
             val conf = (confidence as ContractMaps.Required.Ok).value
             if (conf < 0.0 || conf > 1.0) {

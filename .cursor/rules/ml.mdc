@@ -1,0 +1,26 @@
+---
+description: ML research, TimesFM, splitting, evaluation, and export rules
+globs:
+  - "ml/**"
+  - "configs/**"
+  - "data/**"
+  - "models/**"
+  - "results/**"
+alwaysApply: false
+---
+
+# ML rules
+
+- Split complete trips first, then create windows. Group route/driver/vehicle/phone when metadata permits.
+- Fit feature normalization and calibration on training data only.
+- TimesFM 3 is an optional desktop zero-shot baseline and teacher. No runtime package may import it.
+- Always compare TimesFM with persistence, constant-velocity/turn-rate, filter prediction, TCN, and GRU baselines.
+- Do not claim a TimesFM benefit without held-out effect size, tail metrics, calibration, and multiple trips/seeds.
+- Teacher outputs for student training may be generated only inside training folds.
+- Use causal feature windows. Any centered filter, backward fill, bidirectional network, or future-known covariate is prohibited in live metrics.
+- Artificial blackout truth may exist only in the evaluator after inference.
+- Record data hashes, splits, feature schema, configuration, seed, code commit, model hash, and hardware.
+- Report per-trip rows, p50/p90/p95/worst case, and failure traces, not only global mean.
+- Quantization needs accuracy and uncertainty-calibration revalidation.
+- Export a compact independent ONNX student plus normalization metadata and schema hash.
+

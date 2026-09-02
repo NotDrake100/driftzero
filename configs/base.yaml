@@ -1,0 +1,41 @@
+schema_version: "1.0.0"
+product:
+  name: DriftZero
+  output_rate_hz: 10
+frames:
+  vehicle: FLU
+  navigation: ENU
+  geographic: WGS84
+sensor:
+  preferred_raw_rate_hz: 100
+  minimum_raw_rate_hz: 50
+  max_interpolation_gap_ms: 40
+  missing_gap_ms: 200
+filter:
+  implementation: ESKF
+  use_non_holonomic_constraint: true
+  use_stop_update: true
+  use_magnetometer: gated
+  learned_update_fallback: disabled
+gnss_health:
+  fused_to_degraded_consecutive: 3
+  degraded_to_dr_timeout_s: 2.0
+  reacquiring_required_fixes: 5
+  innovation_gate_probability: 0.99
+recovery:
+  blend_duration_s: 3.0
+  max_instant_display_correction_m: 2.0
+map_matching:
+  enabled: true
+  beam_width: 8
+  max_candidates_per_epoch: 12
+  min_search_radius_m: 15
+  max_search_radius_m: 250
+  soft_filter_feedback: true
+confidence:
+  low_confidence_horizontal_95_m: 100
+  suppress_lane_precision_horizontal_95_m: 8
+runtime:
+  deterministic_replay: true
+  network_required: false
+

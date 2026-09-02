@@ -1,0 +1,46 @@
+schema_version: "1.0.0"
+experiment_id: timesfm3_zero_shot_motion_v1
+research_only: true
+model:
+  provider: google
+  checkpoint: google/timesfm-3.0-pytorch
+  revision: PIN_BEFORE_RUN
+  runtime: pytorch
+data:
+  sampling_rate_hz: 10
+  split_manifest: data/manifests/splits.yaml
+  training_only_normalization: true
+features:
+  schema_id: motion_features_v1
+  include:
+    - accel_vehicle_xyz
+    - gyro_vehicle_xyz
+    - vibration_energy
+    - causal_speed_estimate
+    - causal_yaw_rate
+    - stop_probability
+    - accepted_gnss_innovation_history
+    - gnss_health
+    - map_curvature_candidates
+  mask_gnss_after_outage: true
+forecast:
+  context_lengths: [128, 256, 512]
+  horizon_lengths: [8, 16, 32]
+  targets: [forward_speed_mps, yaw_rate_radps]
+  quantiles: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+baselines:
+  - persistence
+  - constant_turn_rate_velocity
+  - filter_prediction
+  - ridge_autoregression
+  - causal_tcn
+  - causal_gru
+gate:
+  primary_metric: held_out_speed_mae
+  require_multiple_trips: true
+  require_three_training_seeds_for_distillation: true
+  require_calibration_no_regression: true
+  require_mobile_student: true
+production:
+  timesfm_dependency_allowed: false
+

@@ -1,0 +1,20 @@
+---
+description: DriftZero system-wide correctness, causality, and evidence rules
+alwaysApply: true
+---
+
+# Core rules
+
+- Read `PRD.md`, `AGENTS.md`, and the relevant ADR before changing architecture.
+- The consumer system is Android-first, phone-only, offline-first, and emits navigation at 10 Hz.
+- No OBD-II, vehicle speedometer, cloud inference, LiDAR, or custom vehicle hardware dependency.
+- Keep raw sensor timestamps as integer nanoseconds and document every unit and coordinate frame.
+- Algorithms in the live path are causal. Future-aware smoothing is evaluation-only and labeled.
+- Hidden ground-truth GNSS is score-only during a blackout. It must not influence features, alignment, model, filter, map hypotheses, or recovery before it becomes available.
+- Use explicit status/result types for missing or invalid data. Never convert failures into zeros silently.
+- Preserve deterministic replay. Any randomness requires a recorded seed.
+- Add tests for numerical limits, timing gaps, transitions, and fallbacks.
+- Never invent benchmark values, logs, screenshots, dataset fields, or citations.
+- User-facing estimates include confidence and a reason for degradation.
+- Keep the project functional without TimesFM and without a learned checkpoint.
+

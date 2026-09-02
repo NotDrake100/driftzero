@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://driftzero.in/schemas/sensor-frame-1.0.0.json",
+  "title": "DriftZero SensorFrame",
+  "description": "One timestamped sensor or GNSS measurement. Runtime binary representations must preserve these semantics.",
+  "type": "object",
+  "required": ["schema_version", "source_id", "sequence", "timestamp_ns", "clock_domain", "kind", "quality", "payload"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "source_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "sequence": {"type": "integer", "minimum": 0},
+    "timestamp_ns": {"type": "integer", "minimum": 0},
+    "clock_domain": {
+      "type": "string",
+      "enum": ["android_elapsed_realtime", "external_monotonic", "dataset_declared"]
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["accelerometer", "gyroscope", "magnetometer", "gnss_fix", "gnss_status", "raw_gnss"]
+    },
+    "quality": {
+      "type": "object",
+      "required": ["available", "accuracy_code", "flags"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "accuracy_code": {"type": "integer", "minimum": -1, "maximum": 3},
+        "flags": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+      },
+      "additionalProperties": false
+    },
+    "payload": {
+      "oneOf": [
+        {"$ref": "#/$defs/vector3"},
+        {"$ref": "#/$defs/gnssFix"},
+        {"$ref": "#/$defs/gnssStatus"},
+        {"$ref": "#/$defs/rawGnss"}
+      ]
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "sensor_name": {"type": "string"},
+        "vendor": {"type": "string"},
+        "frame": {"type": "string", "enum": ["android_device", "vehicle_flu", "antenna", "unspecified"]},
+        "temperature_c": {"type": "number"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "finiteNumber": {"type": "number"},
+    "vector3": {
+      "type": "object",
+      "required": ["x", "y", "z", "unit", "frame"],
+      "properties": {
+        "x": {"$ref": "#/$defs/finiteNumber"},
+        "y": {"$ref": "#/$defs/finiteNumber"},
+        "z": {"$ref": "#/$defs/finiteNumber"},
+        "bias_x": {"$ref": "#/$defs/finiteNumber"},
+        "bias_y": {"$ref": "#/$defs/finiteNumber"},
+        "bias_z": {"$ref": "#/$defs/finiteNumber"},
+        "unit": {"type": "string", "enum": ["m/s^2", "rad/s", "uT"]},
+        "frame": {"type": "string", "enum": ["android_device", "vehicle_flu", "unspecified"]}
+      },
+      "additionalProperties": false
+    },
+    "gnssFix": {
+      "type": "object",
+      "required": ["latitude_deg", "longitude_deg", "horizontal_accuracy_m", "provider_time_ms"],
+      "properties": {
+        "latitude_deg": {"type": "number", "minimum": -90, "maximum": 90},
+        "longitude_deg": {"type": "number", "minimum": -180, "maximum": 180},
+        "altitude_m": {"type": "number"},
+        "horizontal_accuracy_m": {"type": "number", "minimum": 0},
+        "vertical_accuracy_m": {"type": "number", "minimum": 0},
+        "speed_mps": {"type": "number", "minimum": 0},
+        "speed_accuracy_mps": {"type": "number", "minimum": 0},
+        "bearing_rad": {"type": "number", "minimum": 0, "exclusiveMaximum": 6.283185307179586},
+        "bearing_accuracy_rad": {"type": "number", "minimum": 0},
+        "provider_time_ms": {"type": "integer", "minimum": 0},
+        "is_mock": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "gnssStatus": {
+      "type": "object",
+      "required": ["satellites_visible", "satellites_used"],
+      "properties": {
+        "satellites_visible": {"type": "integer", "minimum": 0},
+        "satellites_used": {"type": "integer", "minimum": 0},
+        "constellations": {
+          "type": "array",
+          "items": {"type": "string", "enum": ["GPS", "SBAS", "GLONASS", "QZSS", "BEIDOU", "GALILEO", "IRNSS", "UNKNOWN"]},
+          "uniqueItems": true
+        },
+        "mean_cn0_dbhz": {"type": "number"}
+      },
+      "additionalProperties": false
+    },
+    "rawGnss": {
+      "type": "object",
+      "required": ["constellation", "svid"],
+      "properties": {
+        "constellation": {"type": "string"},
+        "svid": {"type": "integer", "minimum": 1},
+        "cn0_dbhz": {"type": "number"},
+        "pseudorange_rate_mps": {"type": "number"},
+        "accumulated_delta_range_m": {"type": "number"},
+        "state_flags": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
+

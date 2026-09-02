@@ -1,0 +1,25 @@
+---
+description: Android sensor, runtime, offline-map, and UX rules
+globs:
+  - "apps/android/**"
+  - "packages/navigation-core/**"
+alwaysApply: false
+---
+
+# Android rules
+
+- Prefer Kotlin, coroutines/Flow with bounded buffering, and immutable domain values.
+- Keep Android APIs in adapters. The navigation core must run in JVM/native tests and replay without Android services.
+- Use `SensorEvent.timestamp` and the monotonic clock relationship. Do not use callback arrival wall time for fusion.
+- Sensor callbacks only enqueue/copy samples. No model inference, map query, disk write, or UI work in the callback.
+- Declare phone frame, vehicle frame x-forward/y-left/z-up, ENU, and WGS84 conversions in code and tests.
+- Capture sensor accuracy, gaps, uncalibrated bias fields, saturation, and availability.
+- Request only foreground precise location unless a documented product feature requires more.
+- The core works in airplane mode after a bounded area package is installed.
+- Use MapLibre Native local PMTiles for rendering and a separate compact graph for topology.
+- Never download offline tiles from the public OpenStreetMap tile server.
+- UI consumes `NavigationState`; visual interpolation must not modify logged estimator outputs.
+- Show `LOW_CONFIDENCE` when thresholds are exceeded. Do not present lane-level precision without evidence.
+- Benchmark CPU/XNNPACK before NNAPI and test each device path.
+- Keep app secrets, raw datasets, private routes, and model binaries out of Git.
+

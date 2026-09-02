@@ -204,4 +204,5 @@ No Android package may depend on the TimesFM Python environment or checkpoint.
 - [Hybrid learned filter](adr/001-hybrid-filter.md)
 - [TimesFM as teacher](adr/002-timesfm-teacher.md)
 - [Offline map package](adr/003-offline-maps.md)
+- [Phone-to-vehicle mount alignment](adr/007-mount-alignment.md)
 

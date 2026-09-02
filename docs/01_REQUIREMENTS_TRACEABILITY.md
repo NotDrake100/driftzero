@@ -14,7 +14,7 @@ This document converts the IDR problem framing into testable product requirement
 | REQ-06 | Standalone phone and instant transition to inertial tracking | Explicit fused, degraded, DR, reacquiring, low-confidence state machine | Scripted degradation/recovery integration test |
 | REQ-07 | Aim for lane-level accuracy and seamless return | Covariance-aware HMM matcher, topology/layer constraints, gradual recovery blend | Parallel-road/flyover fixtures and recovery-jump metric |
 | REQ-08 | Estimate speed and acceleration from noisy accelerometer and gyroscope | Learned causal speed/yaw pseudo-measurement model, filter fallback | Held-out speed MAE and ablation versus filter-only |
-| REQ-09 | Filter idling, potholes, bumps, and phone misalignment | Stop detector, transient-impact feature, alignment monitor, uncertainty inflation | Tagged scenario tests and misalignment-trigger test |
+| REQ-09 | Filter idling, potholes, bumps, and phone misalignment | Stop detector, transient-impact feature, alignment monitor, uncertainty inflation | `MisalignmentMonitor` tests: 3 s hold triggers remount; 0.3 s spike does not |
 | REQ-10 | Smart offline OpenStreetMap matching using road and non-holonomic constraints | Local PMTiles plus compact OSM road graph; online HMM/Viterbi; NHC in filter | Airplane-mode map test and road-hypothesis test suite |
 | REQ-11 | AI-based GNSS and INS fusion to mitigate drift | Learned noise/pseudo-measurement adapter inside auditable state estimator | AI-plus-filter ablation and covariance calibration |
 | REQ-12 | Models must also accept external IMU data | `SensorFrame` contract and Android/file/external adapters | 200 Hz recorded-stream adapter test |
@@ -22,7 +22,7 @@ This document converts the IDR problem framing into testable product requirement
 | REQ-14 | Baseline evaluation needs a preliminary AI model and inferred position plot on an IO-VNBD subset | M0 deliverable generates baseline and learned-model plot from a named subset | Script, configuration, plot, and per-trip CSV |
 | REQ-15 | Complex model training can run on cloud or desktop, inference on phone | TimesFM 3 desktop teacher, compact independent student on phone | Research ablation plus ONNX mobile benchmark |
 | REQ-16 | Inputs include phone accelerometer, gyro, magnetometer/compass, GNSS | Canonical schema includes each sensor and quality/availability flags | Capture-contract tests on reference devices |
-| REQ-17 | Alignment and calibration module | Guided stationary calibration, gravity/bias estimate, vehicle-frame transform | Calibration report and transform fixtures |
+| REQ-17 | Alignment and calibration module | Guided stationary calibration, gravity/bias estimate, vehicle-frame transform | `StationaryCapture` / `YawFromMotion` / `MountProfile` tests; ADR 007 |
 | REQ-18 | AI speed and vibration-filtering module | Causal TCN/GRU candidate with uncertainty head and robust preprocessing | Per-event and per-device held-out results |
 | REQ-19 | Advanced map matching plus kinematic constraints, example UKF and HMM | ESKF/InEKF candidate with NHC plus HMM road matcher | ADR, filter tests, and map test cases |
 | REQ-20 | Innovative AI GNSS and INS fusion | Dynamic measurement/noise adapter and learned pseudo-measurements, experimentally gated | Controlled ablations and rejection criteria |

@@ -1,5 +1,7 @@
 # Android application specification
 
+The `apps/android/app` module ships the travel map chrome plus a MapLibre Native street map (`AndroidView` `MapView`, OpenFreeMap liberty, bright fallback). Live pose comes from `PoseStore` / `DeadReckoningFilter` (strapdown INS plus ESKF). `PhoneImuSource` copies accel/gyro only. The 10 Hz tick runs `ZuptAccelMotionModel` into `ingestMotionPseudo`. Assemble packs `motion_student_v1/linear.json` into assets when that file exists. `learned_imu_v1/linear_dp.json` may also pack; Δp stays χ²-gated and is not a screening claim. No TimesFM and no ONNX Runtime in the APK. The hosted style is a stand-in until an installed PMTiles area package owns rendering. No Google Maps SDK.
+
 ## Proposed identity
 
 - Application name: DriftZero
@@ -57,22 +59,23 @@ The platform-neutral filter and map-matching logic belongs under `packages/`, no
 ## UI hierarchy
 
 ```text
-NavigationScreen
-  OfflineMap
-    PositionMarker
+TravelMapScreen
+  StreetMap
+    OwnVehiclePuck
     HeadingCone
-    ConfidenceHalo
     RoutePolyline
-  TopModeChip
-  SpeedAndInstructionCard
-  StatusBottomSheet
-    Confidence
-    GNSSHealth
-    LastTrustedFix
-    SensorAndMountHealth
-    MapPackage
-  EngineeringOverlay (judge build or explicit mode)
+    DestinationPoint
+  WhereToSearch
+  GpsChip          (GPS on / No GPS, estimating)
+  NavicChip        (NavIC N, only if IRNSS used in the current fix)
+  LocateControl    (long-press queues the visible bbox for an area pack)
+  RouteDock        (speed, distance, ETA, Stop; only while routing)
 ```
+
+Idle: map, search, GPS chip, locate. No empty speed, DIST, or ETA slab.
+Navigating: the same, plus a route line and a bottom dock with real distance, ETA, and speed.
+
+Search uses Photon, then Nominatim, biased to fused pose/GPS or the camera. Routing uses public OSRM. Tiles are hosted OpenFreeMap until an installed area pack owns rendering. Long-press Locate queues the visible bbox for an offline pack.
 
 ## Android acceptance tests
 
@@ -89,5 +92,13 @@ NavigationScreen
 
 ## NavIC integration
 
-Where supported, log constellation membership using Android `GnssStatus`, including `CONSTELLATION_IRNSS`. This is useful for visibility and coverage analysis. Do not imply that seeing an IRNSS satellite proves a trustworthy fix or that missing it means NavIC failed.
+`GnssLocationSource` registers `GnssStatus.Callback` and copies each satellite into `NavicMonitor`. When Android reports `CONSTELLATION_IRNSS`, logcat tag `DriftZeroNavIC` prints `IRNSS visible=… used=… GPS used=… Galileo used=…` on change. If any IRNSS SV is used in the fix, a small `NavIC N` chip appears next to GPS. Idle without that count stays map, search, GPS chip. Counts do not enter the filter. Do not imply that seeing IRNSS proves a trustworthy fix, anti-jam, or safety-of-life. Missing IRNSS does not mean NavIC failed. Details: `docs/refs/NAVIC.md`.
+
+Tester:
+
+```text
+adb logcat -s DriftZeroNavIC
+```
+
+Outdoors, precise location on, India coverage, NavIC-capable chipset. Cross-check constellation counts in a GNSS status app. Hold GPS chip to clear NavIC during a simulated outage.
 

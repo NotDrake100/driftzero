@@ -1,12 +1,22 @@
-.PHONY: test lint validate
+.PHONY: test lint validate jvm android
+
+PYTHON ?= python3
 
 test:
-	PYTHONPATH=ml/src python -m unittest discover -s ml/tests -v
+	PYTHONPATH=ml/src $(PYTHON) -m unittest discover -s ml/tests -v
 
 lint:
-	python -m ruff check ml
+	$(PYTHON) -m ruff check ml
 
 validate:
-	python -m json.tool contracts/sensor_frame.schema.json >/dev/null
-	python -m json.tool contracts/navigation_state.schema.json >/dev/null
-	PYTHONPATH=ml/src python -m unittest discover -s ml/tests -v
+	$(PYTHON) -m json.tool contracts/sensor_frame.schema.json >/dev/null
+	$(PYTHON) -m json.tool contracts/navigation_state.schema.json >/dev/null
+	$(PYTHON) -m json.tool contracts/examples/sensor_frame.accelerometer.json >/dev/null
+	$(PYTHON) -m json.tool contracts/examples/navigation_state.sample.json >/dev/null
+	PYTHONPATH=ml/src $(PYTHON) -m unittest discover -s ml/tests -v
+
+jvm:
+	./gradlew :navigation-core:test --no-daemon
+
+android:
+	./gradlew :android-app:testDebugUnitTest :android-app:lintDebug :android-app:assembleDebug --no-daemon

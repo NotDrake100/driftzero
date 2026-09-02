@@ -1,0 +1,51 @@
+---
+description: Ban AI-generic UI. DriftZero looks like a field instrument, not a SaaS landing page.
+alwaysApply: true
+---
+
+# Anti-vibecoded UI
+
+DriftZero is an ISRO/SIH vehicle navigator. The screen is a survey console on a phone, not a marketing site. These 20 tells are forbidden in Compose, XML, map chrome, judge mode, and copy.
+
+## Forbidden
+
+1. Purple-to-blue gradients. No Material You purple, indigo splash, or aurora wash on map, splash, or buttons.
+2. Gradient-filled title or hero text.
+3. Emojis in titles, app bars, mode chips, or section labels.
+4. Inter (or Roboto left as the whole type system).
+5. Cards whose main identity is a colored stroke.
+6. Glassmorphism. No blur, frosting, or translucent panels over the map.
+7. Low-contrast dark mode. Grey-on-charcoal labels fail. Body text vs chassis contrast must be at least 7:1.
+8. Three equal icon tiles in a row (SaaS feature-row).
+9. Marketing pill/badge parked above a headline.
+10. Lucide or generic outline-icon soup. No Material icon dump.
+11. Untouched Material 3 / default Compose theme (purple primary, 28 dp candy cards).
+12. Decorative fade-in on scroll or staggered enter as the visual idea.
+13. Finger-following glow, beam, or spotlight.
+14. Buttons that fade opacity on press. Use a solid pressed/inset state.
+15. Random spacing. 8 dp grid only (8 / 16 / 24 / 32).
+16. Em dashes in UI or user-facing docs. Periods or commas.
+17. Buzzword copy: seamless, intelligent, next-gen, AI-powered, robust, cutting-edge, unlock, elevate.
+18. Italic serif accent words in titles.
+19. Space Grotesk, Instrument Serif, or that pairing.
+20. Grain or noise over a gradient (or over any branded wash).
+
+## Use this instead
+
+- Chassis near-black olive (`#0B0D0A`), panel `#161A14`, paper ink `#F4F1E8`. Status lamps: phosphor green ok, amber caution, red low-confidence. Own-vehicle marker is a solid PRD blue (`#1E6BFF`), not a brand gradient.
+- Type: IBM Plex Sans (or `sans-serif-condensed` until Plex is bundled) for labels. IBM Plex Mono (or `monospace`) for speed, heading, uncertainty, timestamps. Do not introduce Inter, Space Grotesk, or Instrument Serif.
+- Map is the product. Opaque instrument strip or solid sheet. No glass overlay.
+- Mode chip is a status lamp on the map (GNSS, Assisted, Dead reckoning, Reacquiring, Low confidence), not a badge above a title.
+- Few filled navigation marks (heading, satellite lock, mount). Same stroke. No 3-up icon row.
+- Copy is nouns and numbers: `34 km/h`, `12 m 95%`, `GNSS age 0.4 s`.
+- Dark map: pale roads on a dark olive landmass. Not washed grey.
+- Touch targets at least 48 dp. Pressed controls get darker fill or an inset, never opacity fade.
+
+```kotlin
+// BAD: default M3 purple + fade + emoji title
+Text("🚀 Seamless AI Nav", style = MaterialTheme.typography.displayLarge)
+
+// GOOD: instrument label + mono readout
+Text("SPEED", color = InkDim, fontFamily = PlexSans)
+Text("34.2 km/h", color = Ink, fontFamily = PlexMono)
+```

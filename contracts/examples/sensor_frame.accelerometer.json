@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0.0",
+  "source_id": "phone-imu",
+  "sequence": 0,
+  "timestamp_ns": 1000000,
+  "clock_domain": "android_elapsed_realtime",
+  "kind": "accelerometer",
+  "quality": {
+    "available": true,
+    "accuracy_code": 3,
+    "flags": []
+  },
+  "payload": {
+    "x": 0.12,
+    "y": -0.04,
+    "z": 9.81,
+    "unit": "m/s^2",
+    "frame": "android_device"
+  },
+  "metadata": {
+    "frame": "android_device"
+  }
+}

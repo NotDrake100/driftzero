@@ -17,4 +17,6 @@ alwaysApply: true
 - Never invent benchmark values, logs, screenshots, dataset fields, or citations.
 - User-facing estimates include confidence and a reason for degradation.
 - Keep the project functional without TimesFM and without a learned checkpoint.
+- Follow `code-quality.mdc` on every change. Delete dead code instead of leaving it for later.
+- Follow `design-anti-vibecode.mdc` for any user-visible surface, including judge mode.
 

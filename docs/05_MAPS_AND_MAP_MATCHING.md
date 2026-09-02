@@ -11,12 +11,12 @@ This avoids reverse-engineering topology from rendered tiles and lets each artif
 
 ## 2. Source and build pipeline
 
-- Download a pinned OpenStreetMap PBF extract, for example from [Geofabrik India](https://download.geofabrik.de/asia/india.html), or create a bounded extract from a documented provider.
-- Select a corridor or city bounding polygon for the demo.
-- Build vector tiles and style into PMTiles. [Protomaps](https://docs.protomaps.com/guide/getting-started) documents PMTiles extracts and basemap tooling.
+- Download a pinned OpenStreetMap PBF extract, for example from [Geofabrik](https://download.geofabrik.de/), or create a bounded extract from a documented provider. An India extract is a valid sample, not a product lock.
+- Select any corridor bounding box. Address packs by bbox and opaque id. Do not hard-code one city as the world.
+- Build vector tiles and style into PMTiles. [Protomaps](https://docs.protomaps.com/guide/getting-started) documents PMTiles extracts and basemap tooling. `tools/maps/pack_bbox.py` writes the generic manifest for that bbox.
 - Build the road graph from the same OSM snapshot.
 - Package metadata: bounding region, build time, OSM replication timestamp, schema version, style version, hashes, size, and supported app version.
-- Copy bundled PMTiles from Android assets to app storage before opening. MapLibre's [Android PMTiles example](https://www.maplibre.org/maplibre-native/android/examples/data/PMTiles/) documents local file use.
+- Copy bundled PMTiles from Android assets to app storage before opening. MapLibre's [Android PMTiles example](https://www.maplibre.org/maplibre-native/android/examples/data/PMTiles/) documents local file use. Until a Ready pack with `style.json` is installed, the app uses hosted OpenFreeMap.
 
 Do not bulk-download `tile.openstreetmap.org`. The [OSM tile usage policy](https://operations.osmfoundation.org/policies/tiles/) prohibits offline or bulk use of that public service. Self-host or use a provider that explicitly permits the required workflow.
 
@@ -38,7 +38,7 @@ Use spatial indexing such as an R-tree, packed Hilbert index, or fixed grid chos
 
 ## 4. Online HMM design
 
-The approach follows the robust probabilistic pattern established by [Newson and Krumm](https://www.microsoft.com/en-us/research/publication/hidden-markov-map-matching-noise-sparseness/), adapted for dense phone output and an uncertain inertial trace.
+The approach follows the robust probabilistic pattern established by [Newson and Krumm](https://www.microsoft.com/en-us/research/publication/hidden-markov-map-matching-noise-sparseness/), adapted for dense phone output and an uncertain inertial trace. Paper formulas, Quddus integrity notes, and the implemented delta live in [docs/refs/MAP_MATCHING.md](refs/MAP_MATCHING.md). Kotlin: `HmmRoadMatcher` plus `OsmGraphLoader` in `packages/navigation-core`.
 
 ### Candidate generation
 
@@ -105,7 +105,8 @@ Use a compact custom matcher on Android for bounded offline operation. Validate 
 ## 8. Storage strategy
 
 - Ship only a tiny sample corridor in the development build.
-- Let the user install one or more city/corridor packages.
+- Let the user install one or more city/corridor packages, including an India extract as an example.
+- Queue from the visible camera bbox (`AreaPackStore.queue`) or sideload a built directory (`installSideload`).
 - Display exact download and installed sizes.
 - Use resumable download, checksum, atomic activation, and rollback.
 - Store visual and graph packages under versioned area IDs.

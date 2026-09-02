@@ -1,0 +1,18 @@
+{
+  "model_id": "learned_imu_v1",
+  "status": "desktop_linear_on_io_vnbd_categorised_sync",
+  "production_path": "Assemble copies linear_dp.json into assets when present. Not a screening claim. No TimesFM.",
+  "timesfm_on_device": false,
+  "onnx_in_apk": false,
+  "source": "io_vnbd:72 smartphone tables (categorised synchronised S-*.csv, phone GNSS as pose labels only)",
+  "screening_tree": "Synchronised V abd S datasets/Categorised IOVNB Dataset",
+  "data_manifest": "data/manifests/io_vnbd_screening_v1.yaml",
+  "train": "PYTHONPATH=ml/src python -m driftzero_ml.learned_imu --out models/learned_imu_v1",
+  "weights": "models/learned_imu_v1/linear_dp.json",
+  "train_windows": 54889,
+  "window_stride": 10,
+  "seed": "26168",
+  "torch": "skipped: torch not installed",
+  "apk": false,
+  "held_out_note": "Linear Δp MAE is worse than freeze on these splits. Phone GNSS is a metre-scale label. Do not treat as a screening claim. Speed MAE beats freeze."
+}

@@ -1,0 +1,39 @@
+---
+description: Standing quality law. Remove dead weight as you build. Do not leave demo junk.
+alwaysApply: true
+---
+
+# Code quality and maintainability
+
+Act as a senior engineer on every change. This repo is a spec plus research harness becoming a real Android product. Do not add demo-only junk. Do not "review once" and move on. Leave the tree cleaner than you found it.
+
+## Find and avoid
+
+1. Dead code: unused functions, files, components, routes, APIs, variables, imports, dependencies.
+2. Duplicate logic that should live in one place.
+3. Unused UI components or preview-only widgets with no product path.
+4. Overly complex implementations that a smaller function can replace.
+5. Legacy code that no current phase or ADR needs.
+6. Redundant database queries or API calls (including repeat sensor or map work on the same epoch).
+7. Files that are abandoned or disconnected from the running app, core, or `ml/` tests.
+8. Easy technical-debt cuts: untyped maps at a contract boundary, silent zero-fill, copy-pasted fixtures.
+
+## When you find an issue
+
+Write, then act if safe:
+
+- Why it is unnecessary.
+- Impact of removing it (build time, risk, readability).
+- Risks before deletion (replay, leakage tests, schema, callers).
+- Cleanup plan (delete, merge, or gate behind a real phase).
+
+Be aggressive but safe. Prefer delete over comment-out. Prefer one function over two twins. Do not weaken a test to retire code.
+
+## While implementing
+
+- No unused Gradle modules, empty feature shells, or placeholder networking.
+- No second copy of `SensorFrame` / `NavigationState` field names. Map to `contracts/`.
+- No silent fallback to `0.0` for missing sensors. Use explicit quality flags.
+- No TimesFM, OBD, or cloud client on the phone path.
+- Python research stays in `ml/`. Kotlin algorithms stay in `packages/navigation-core`.
+- If a file is only "for later," do not add it.

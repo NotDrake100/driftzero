@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DriftZero</string>
+    <string name="destination_hint">Where to?</string>
+    <string name="destination_field">Destination</string>
+    <string name="action_locate">My location</string>
+    <string name="action_compass">North</string>
+    <string name="action_stop">Stop</string>
+    <string name="action_clear">Clear</string>
+    <string name="search_empty">No places found.</string>
+    <string name="route_fail">Can\'t make a route from here.</string>
+    <string name="search_network">Search needs a network connection.</string>
+</resources>

@@ -129,7 +129,7 @@ GNSS health combines:
 - disagreement with inertial and road hypotheses;
 - persistent rather than single-sample evidence.
 
-This is an integrity-risk score, not a certified spoofing detector.
+This is an integrity-risk score, not a certified spoofing detector. NavIC/IRNSS membership is logged from Android `GnssStatus` (`docs/refs/NAVIC.md`). Those counts are not a filter measurement and are not integrity.
 
 ### 4.7 State machine
 
@@ -204,4 +204,5 @@ No Android package may depend on the TimesFM Python environment or checkpoint.
 - [Hybrid learned filter](adr/001-hybrid-filter.md)
 - [TimesFM as teacher](adr/002-timesfm-teacher.md)
 - [Offline map package](adr/003-offline-maps.md)
+- [Motion pseudo-measurement hook](adr/005-motion-pseudo-measurement.md)
 

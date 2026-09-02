@@ -1,0 +1,21 @@
+{
+  "model_id": "motion_student_v1",
+  "status": "desktop_linear_on_io_vnbd_categorised_sync",
+  "production_path": "ZuptAccelMotionModel on device. Linear weights are desktop. Not in the APK.",
+  "timesfm_on_device": false,
+  "onnx_in_apk": false,
+  "source": "io_vnbd:72 smartphone tables",
+  "screening_tree": "Synchronised V abd S datasets/Categorised IOVNB Dataset",
+  "data_manifest": "data/manifests/io_vnbd_screening_v1.yaml",
+  "train": "PYTHONPATH=ml/src python -m driftzero_ml.student.train --out models/motion_student_v1",
+  "weights": "models/motion_student_v1/linear.json",
+  "train_windows": 54889,
+  "window_stride": 10,
+  "seed": "26168",
+  "torch": "skipped: torch not installed",
+  "held_out_metrics": {
+    "public_test": {"count": 7808, "linear_speed_mae": 1.1067198022398643, "freeze_speed_mae": 2.4759000739981785},
+    "locked_test": {"count": 7195, "linear_speed_mae": 1.2031767322150486, "freeze_speed_mae": 2.32420508068875},
+    "validation": {"count": 27823, "linear_speed_mae": 1.622494701351644, "freeze_speed_mae": 3.9249098467694594}
+  }
+}

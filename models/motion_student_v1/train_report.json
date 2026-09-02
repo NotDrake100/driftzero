@@ -1,0 +1,44 @@
+{
+  "seed": "26168",
+  "train_windows": 54889,
+  "splits": {
+    "validation": {
+      "count": 27823,
+      "freeze_speed_mae": 3.9249098467694594,
+      "heuristic_speed_mae": 4.60061637244351,
+      "linear_speed_mae": 1.622494701351644
+    },
+    "public_test": {
+      "count": 7808,
+      "freeze_speed_mae": 2.4759000739981785,
+      "heuristic_speed_mae": 2.9497220439225913,
+      "linear_speed_mae": 1.1067198022398643
+    },
+    "locked_test": {
+      "count": 7195,
+      "freeze_speed_mae": 2.32420508068875,
+      "heuristic_speed_mae": 1.729935198571662,
+      "linear_speed_mae": 1.2031767322150486
+    }
+  },
+  "torch_available": false,
+  "source": "io_vnbd:72 smartphone tables",
+  "window_stride": 10,
+  "feature_names": [
+    "accel_mag_mean",
+    "accel_mag_std",
+    "accel_energy",
+    "gyro_energy",
+    "vibration_energy",
+    "specific_force_rms",
+    "jerk_rms",
+    "idle_flag",
+    "bump_flag",
+    "gyro_z_mean",
+    "dt_mean_s",
+    "n_norm"
+  ],
+  "window_ns": 1000000000,
+  "gru": "skipped: torch not installed",
+  "learned_imu": "RoNIN/TLIO heads live in driftzero_ml.learned_imu. This script still fits the speed-only linear student. Run python -m driftzero_ml.learned_imu for \u0394p + log \u03c3."
+}

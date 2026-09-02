@@ -36,7 +36,7 @@ Allowed product terms:
 - signal-integrity risk;
 - dead-reckoning fallback.
 
-Do not claim certified spoofing detection, jamming immunity, or military-grade navigation from phone-only evidence. Android exposes NavIC/IRNSS constellation identification through `GnssStatus.CONSTELLATION_IRNSS` on supported API levels, but constellation visibility is not itself proof of integrity. See the [Android GnssStatus reference](https://developer.android.com/reference/android/location/GnssStatus).
+Do not claim certified spoofing detection, jamming immunity, or military-grade navigation from phone-only evidence. Android exposes NavIC/IRNSS constellation identification through `GnssStatus.CONSTELLATION_IRNSS` on supported API levels, but constellation visibility is not itself proof of integrity. See [docs/refs/NAVIC.md](refs/NAVIC.md) and the [Android GnssStatus reference](https://developer.android.com/reference/android/location/GnssStatus).
 
 ## 5. Safety behavior
 

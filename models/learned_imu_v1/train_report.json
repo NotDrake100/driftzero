@@ -1,0 +1,77 @@
+{
+  "seed": "26168",
+  "train_windows": 54889,
+  "heads": {
+    "ronin_dp_xy": "Herath et al. ICRA 2020 (RoNIN HACF \u0394p)",
+    "tlio_dz_log_sigma": "Liu et al. RA-L 2020 (TLIO displacement + log \u03c3)",
+    "ionet_polar": "Chen et al. AAAI 2018 (\u0394l derived, \u0394\u03c8 head)",
+    "speed_stop_logvar": "existing ESKF MotionPseudoMeasurement"
+  },
+  "splits": {
+    "validation": {
+      "count": 27823,
+      "ronin_dp_xy_mae_m": 35.06179541440811,
+      "tlio_nll": 1011780939.7534577,
+      "ionet_polar_loss": 11887.881900743292,
+      "speed_mae_mps": 1.6277303245733468,
+      "freeze_dp_xy_mae_m": 15.457184508248725
+    },
+    "public_test": {
+      "count": 7808,
+      "ronin_dp_xy_mae_m": 15.911067327808405,
+      "tlio_nll": 3419342.029599572,
+      "ionet_polar_loss": 3296.3683382847476,
+      "speed_mae_mps": 1.1168707623547702,
+      "freeze_dp_xy_mae_m": 9.039641730088285
+    },
+    "locked_test": {
+      "count": 7195,
+      "ronin_dp_xy_mae_m": 15.20440614713027,
+      "tlio_nll": 274135.153250657,
+      "ionet_polar_loss": 844.1973897517743,
+      "speed_mae_mps": 1.1887676960224152,
+      "freeze_dp_xy_mae_m": 6.760467465514361
+    }
+  },
+  "source": "io_vnbd:72 smartphone tables",
+  "window_stride": 10,
+  "datasets": [
+    {
+      "name": "ronin",
+      "present": false,
+      "path": null,
+      "url": "https://doi.org/10.20383/102.0543"
+    },
+    {
+      "name": "oxiod",
+      "present": false,
+      "path": null,
+      "url": "http://deepio.cs.ox.ac.uk/"
+    },
+    {
+      "name": "io_vnbd",
+      "present": true,
+      "path": "/Users/architavinashthorat/Downloads/driftzero-sih26168/data/raw/io_vnbd",
+      "url": "https://github.com/onyekpeu/IO-VNBD"
+    },
+    {
+      "name": "ridi",
+      "present": false,
+      "path": null,
+      "url": "https://github.com/higerra/ridi_imu"
+    }
+  ],
+  "imu_channels": [
+    "ax_hacf",
+    "ay_hacf",
+    "az_hacf",
+    "gx_hacf",
+    "gy_hacf",
+    "gz_hacf"
+  ],
+  "window_ns": 1000000000,
+  "magnetometer_in_features": false,
+  "timesfm": false,
+  "apk": false,
+  "torch": "skipped: torch not installed"
+}

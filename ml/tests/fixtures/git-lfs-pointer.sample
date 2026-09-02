@@ -1,0 +1,8 @@
+This file is documentation of the Git LFS pointer format. It is not payload data and not a Git LFS object.
+
+Example pointer shape:
+  version https://git-lfs.github.com/spec/v1
+  oid sha256:<hex>
+  size <bytes>
+
+See README.md in this folder.

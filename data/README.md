@@ -16,7 +16,7 @@ Create `data/manifests/io_vnbd_screening_v1.yaml` containing:
 - fixed blackout interval IDs;
 - known data-quality exclusions with reasons.
 
-The screening plot is invalid without this manifest.
+The screening plot is invalid without this manifest. Fetch commands: `scripts/fetch_datasets.md`. License table: `docs/refs/DATASETS.md`.
 
 ## Sensitive data
 

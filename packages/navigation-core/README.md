@@ -2,6 +2,8 @@
 
 The navigation core is platform-neutral and contains no Android UI, `SensorManager`, filesystem, network, or TimesFM dependency.
 
+It implements a strapdown INS in the local-tangent n-frame (ENU) and a 15-state error-state Kalman filter (δp, δv, δθ, ba, bg) with Joseph covariance updates. Gravity is WGS84 Somigliana plus the Groves height term. Earth rotation is omitted at phone scale. Equation map: `docs/refs/INS_ESKF.md`. GNSS position and velocity updates run when the fix is healthy. When GNSS age exceeds 2 s, the filter propagates only (dead reckoning). ZUPT and NHC are applied from IMU statistics. `MotionPseudoRuntime` infers a causal IMU student (`linear.json` speed weights when loaded, else the ZUPT/vibration heuristic) and injects `MotionPseudoMeasurement` via `ingestMotionPseudo` and optional `DisplacementPseudoMeasurement` via `ingestDisplacementPseudo`. TimesFM is not in this package.
+
 ## Input
 
 `SensorSource` produces ordered measurements conforming semantically to `contracts/sensor_frame.schema.json`. Concrete adapters:
@@ -26,7 +28,11 @@ interface SensorSource {
 }
 
 interface MotionModel {
-    fun infer(window: CausalFeatureWindow): MotionPseudoMeasurement
+    fun infer(window: CausalImuWindow): MotionPseudoMeasurement
+}
+
+fun interface DisplacementModel {
+    fun infer(window: CausalImuWindow): DisplacementPseudoMeasurement?
 }
 
 interface RoadMatcher {
@@ -39,6 +45,8 @@ interface NavigationEngine {
     fun reset(reason: ResetReason)
 }
 ```
+
+`DeadReckoningFilter` is the live estimator. `DeadReckoningEngine` implements `NavigationEngine` on top of it. `MotionPseudoRuntime` calls `infer` on the 10 Hz emit path and `ingestMotionPseudo` applies ZUPT or a gated forward-speed update. `ingestDisplacementPseudo` applies a gated HACF Δp update when a `DisplacementModel` is present. The Δp χ² gate is 11.345. Do not treat `linear_dp.json` as beating freeze. `HmmRoadMatcher` is Newson-Krumm Viterbi on a directed OSM graph. It writes `mapMatch` and a display pose only. It does not replace the ESKF lat/lon. `OsmGraphLoader` reads OSM XML or PBF for any WGS84 bbox. Do not put TimesFM in this package.
 
 Use strongly typed wrappers for nanoseconds, metres, radians, metres/second, geographic coordinates, and frames. Avoid bare `Double` across package boundaries where units can be confused.
 
@@ -65,4 +73,3 @@ Given the same ordered sensor frames, map/model/config artifacts, and initial st
 4. Recorded trip regression tests.
 5. Cross-language parity against Python reference.
 6. Android soak and performance tests.
-

@@ -4,7 +4,7 @@ These rules apply to every coding agent working in this repository.
 
 ## Mission
 
-Build a reproducible Android-first resilient navigation product for SIH26168. Preserve the product constraints in `PRD.md` and the official traceability in `docs/01_SIH_REQUIREMENTS_TRACEABILITY.md`.
+Build a reproducible Android-first resilient navigation product named DriftZero. Preserve the product constraints in `PRD.md` and the requirement traceability in `docs/01_REQUIREMENTS_TRACEABILITY.md`.
 
 ## Non-negotiable engineering rules
 
@@ -18,6 +18,8 @@ Build a reproducible Android-first resilient navigation product for SIH26168. Pr
 8. Do not aggressively snap to a road when hypotheses are ambiguous. Emit uncertainty.
 9. The consumer flow must not depend on OBD-II, vehicle speedometer, network, LiDAR, or custom hardware.
 10. Treat privacy, confidence, and failure behavior as core product features.
+11. Follow `.cursor/rules/design-anti-vibecode.mdc`. The UI is a field instrument, not a SaaS landing page.
+12. Follow `.cursor/rules/code-quality.mdc`. Remove dead code as you go. Do not add demo-only junk.
 
 ## Change protocol
 

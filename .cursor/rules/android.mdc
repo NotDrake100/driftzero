@@ -19,6 +19,7 @@ alwaysApply: false
 - Use MapLibre Native local PMTiles for rendering and a separate compact graph for topology.
 - Never download offline tiles from the public OpenStreetMap tile server.
 - UI consumes `NavigationState`; visual interpolation must not modify logged estimator outputs.
+- Follow `design-anti-vibecode.mdc`. Do not ship default Material purple, glass overlays, or marketing-card layouts.
 - Show `LOW_CONFIDENCE` when thresholds are exceeded. Do not present lane-level precision without evidence.
 - Benchmark CPU/XNNPACK before NNAPI and test each device path.
 - Keep app secrets, raw datasets, private routes, and model binaries out of Git.

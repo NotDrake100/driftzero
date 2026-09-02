@@ -1,5 +1,13 @@
 # Android application specification
 
+The `app` module is a Kotlin/Compose scaffold: MapLibre Native 13.0.2 renders OpenFreeMap liberty, and a high-contrast location puck is always drawn at the camera target (Koregaon Park until GNSS). OpenFreeMap is a prototype online style until local PMTiles (ADR 003). The puck is production-path UI.
+
+```bash
+cd apps/android
+./gradlew :app:assembleDebug
+```
+
+
 ## Proposed identity
 
 - Application name: DriftZero

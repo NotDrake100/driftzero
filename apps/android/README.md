@@ -26,7 +26,7 @@ apps/android/
   app/                 activity, navigation, permissions, DI
   feature-map/         MapLibre surface and NavigationState rendering
   feature-calibrate/   guided mount calibration flow
-  feature-replay/      judge mode, blackout controls, result viewer
+  feature-replay/      engineering replay, blackout controls, result viewer
   sensor-android/      SensorManager, LocationManager, GNSS adapters
   runtime-onnx/        student model loading and inference
   area-packages/       PMTiles/graph package install and validation
@@ -71,7 +71,7 @@ NavigationScreen
     LastTrustedFix
     SensorAndMountHealth
     MapPackage
-  EngineeringOverlay (judge build or explicit mode)
+  EngineeringOverlay (engineering build or explicit mode)
 ```
 
 ## Android acceptance tests

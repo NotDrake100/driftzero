@@ -4,7 +4,7 @@ These rules apply to every coding agent working in this repository.
 
 ## Mission
 
-Build a reproducible Android-first resilient navigation product for SIH26168. Preserve the product constraints in `PRD.md` and the official traceability in `docs/01_SIH_REQUIREMENTS_TRACEABILITY.md`.
+Build a reproducible Android-first resilient navigation product named DriftZero. Preserve the product constraints in `PRD.md` and the requirement traceability in `docs/01_REQUIREMENTS_TRACEABILITY.md`.
 
 ## Non-negotiable engineering rules
 

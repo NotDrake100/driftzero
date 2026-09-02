@@ -1,6 +1,6 @@
 # Roadmap and implementation backlog
 
-The SIH deadline shown on the official page is 20 September 2026. The schedule below is ordered by evidence risk. Complete the screening proof before spending time on decorative UI.
+The schedule below is ordered by evidence risk. Complete the baseline evaluation proof before spending time on decorative UI.
 
 ## Critical path
 
@@ -14,7 +14,7 @@ The SIH deadline shown on the official page is 20 September 2026. The schedule b
 | P5 Android product | Sensor service, engine binding, map UI, logger, status modes | 10 Hz airplane-mode run on reference phone |
 | P6 TimesFM research | Zero-shot suite and teacher/student ablation | Decision report with keep/reject evidence |
 | P7 India pilot | Multi-phone/route/vehicle collection and locked test | Per-slice report plus failure taxonomy |
-| P8 Submission | Video, pitch, result bundle, backup | Fresh-install rehearsal and checksum archive |
+| P8 Release evidence | Video, pitch, result bundle, backup | Fresh-install rehearsal and checksum archive |
 
 ## Priority backlog
 
@@ -24,7 +24,7 @@ The SIH deadline shown on the official page is 20 September 2026. The schedule b
 - [ ] Implement schema-aware importer and unit checks.
 - [ ] Assign complete-trip split groups.
 - [ ] Implement deterministic blackout masking and leakage tests.
-- [ ] Produce SIH screening plot and baseline table.
+- [ ] Produce the baseline evaluation plot and table.
 - [ ] Implement coordinate frames and synthetic IMU generator.
 - [ ] Implement calibration and vehicle-frame alignment quality.
 - [ ] Implement ESKF/InEKF propagation and GNSS updates.
@@ -83,13 +83,13 @@ The SIH deadline shown on the official page is 20 September 2026. The schedule b
 | Navigation | frames, filter, constraints, state machine, numerical tests |
 | ML/research | data pipeline, student, TimesFM, evaluation, manifests |
 | Android/maps | capture, runtime, PMTiles, graph, HMM, UI, performance |
-| Product/evidence | requirements, India collection, judge mode, video, pitch |
+| Product/evidence | requirements, India collection, engineering replay, video, pitch |
 
 Pair-review every cross-boundary contract. No one should be the sole reviewer of benchmark leakage or safety behavior.
 
-## Final submission checklist
+## Final release checklist
 
-- [ ] Official requirement matrix updated.
+- [ ] Requirement matrix updated.
 - [ ] Mandatory dataset evidence reproducible.
 - [ ] Under-10-percent target reported honestly with tail metrics.
 - [ ] No external-hardware dependency in consumer demo.

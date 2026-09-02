@@ -1,6 +1,6 @@
 schema_version: "1.0.0"
 protocol_id: ioh_vnbd_blackouts_v1
-seed: 26168
+seed: 20260902
 selection:
   operate_on_complete_trips: true
   minimum_truth_quality: valid

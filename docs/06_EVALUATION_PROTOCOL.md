@@ -44,7 +44,7 @@ r_{drift} = \frac{d(\hat{p}_{t_1}, p_{t_1})}{\max(L_{truth}(t_0,t_1), \epsilon)}
 
 where \(d\) is horizontal geodesic endpoint error and \(L_{truth}\) is the ground-truth path length during the blackout. Report as both a fraction and percentage. Very short or stationary intervals require a separate absolute-error view because the ratio can be unstable.
 
-The SIH target is below 10 percent. Report every interval and aggregate p50, p90, p95, maximum, bootstrap confidence intervals, and count. Never remove failures from the denominator without a predeclared data-quality reason.
+The product target is below 10 percent. Report every interval and aggregate p50, p90, p95, maximum, bootstrap confidence intervals, and count. Never remove failures from the denominator without a predeclared data-quality reason.
 
 ## 5. Secondary metrics
 
@@ -138,5 +138,5 @@ Plots must label interpolation, smoothing, and score-only truth. A demo screensh
 
 ## 12. Release decision
 
-Release only when the primary SIH drift gate, leakage checks, mobile timing, deterministic replay, offline behavior, and safety fallback pass. A visually attractive trace cannot override a failed integrity check.
+Release only when the primary drift gate, leakage checks, mobile timing, deterministic replay, offline behavior, and safety fallback pass. A visually attractive trace cannot override a failed integrity check.
 

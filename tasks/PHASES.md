@@ -18,7 +18,7 @@ Acceptance: reproducible setup, no large binaries/data, contracts validate, CI h
 Implement a schema-inspecting IO-VNBD importer. Do not assume columns before inspecting a pinned sample. Produce a data manifest, unit/timestamp QA report, complete-trip split assignment, deterministic GNSS blackout masker, and freeze/constant-velocity baselines. Add leakage tests. Generate a position plot and per-blackout CSV from a named synchronized subset. Ground truth must be score-only after inference.
 ```
 
-Acceptance: satisfies SIH-13 and SIH-14; rerun is deterministic; per-trip split and no-label assertions pass.
+Acceptance: satisfies REQ-13 and REQ-14; rerun is deterministic; per-trip split and no-label assertions pass.
 
 ## Phase 2: navigation core
 
@@ -75,12 +75,12 @@ Acceptance: airplane-mode assets, package hashes, bounded runtime, fixture suite
 **Prompt:**
 
 ```text
-Implement Android foreground navigation, sensor and GNSS adapters, bounded queues, calibration flow, area package manager, ONNX runtime adapter, MapLibre PMTiles UI, NavigationState presentation, local trip logger, and replay/judge mode. Default UI is a map with blue dot, heading cone, route, mode chip, confidence halo, and expandable status sheet. Technical controls must not distract a driver.
+Implement Android foreground navigation, sensor and GNSS adapters, bounded queues, calibration flow, area package manager, ONNX runtime adapter, MapLibre PMTiles UI, NavigationState presentation, local trip logger, and replay/engineering mode. Default UI is a map with blue dot, heading cone, route, mode chip, confidence halo, and expandable status sheet. Technical controls must not distract a driver.
 ```
 
 Acceptance: fresh install, area install, airplane-mode live/replay, 10 Hz trace, permissions review, no TimesFM runtime.
 
-## Phase 8: performance and submission
+## Phase 8: performance and release evidence
 
 **Prompt:**
 
@@ -88,5 +88,5 @@ Acceptance: fresh install, area install, airplane-mode live/replay, 10 Hz trace,
 Run the locked evaluation protocol, on-device latency/memory/battery/soak tests, India pilot slices, and failure review. Produce the result bundle and populate the demo video with measured values only. Rehearse fresh install and all contingency paths. Update the requirement matrix and README status honestly.
 ```
 
-Acceptance: official drift target evaluated, tail metrics and worst cases included, video values verified, clean repository.
+Acceptance: product drift target evaluated, tail metrics and worst cases included, video values verified, clean repository.
 

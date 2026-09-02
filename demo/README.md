@@ -8,7 +8,7 @@ Read:
 
 - `docs/07_DEMO_VIDEO_SCRIPT.md` for narration and timing;
 - `demo/shot-list.md` for capture assets;
-- `docs/01_SIH_REQUIREMENTS_TRACEABILITY.md` for claims;
+- `docs/01_REQUIREMENTS_TRACEABILITY.md` for claims;
 - `docs/SOURCES.md` for citation cards.
 
 Do not replace missing metrics with estimates. Use a visible placeholder during editing until the locked evaluator produces the value.

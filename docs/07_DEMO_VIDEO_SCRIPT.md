@@ -2,7 +2,7 @@
 
 ## Recommended format
 
-- Duration: 3 minutes 30 seconds to 4 minutes 30 seconds unless SIH specifies another limit.
+- Duration: 3 minutes 30 seconds to 4 minutes 30 seconds unless a later product brief specifies another limit.
 - Capture: 1080p landscape master, readable phone close-ups, separate clean voiceover.
 - Evidence: one real field sequence plus one deterministic replay that exposes metrics.
 - Safety: passenger operates the device or use a fixed mount. Never film a driver handling the phone.
@@ -42,7 +42,7 @@
 
 “A guided calibration aligns the phone with the vehicle. A lightweight causal model separates real motion from engine vibration, braking, potholes, and phone misalignment. A probabilistic navigation filter combines that estimate with vehicle constraints. An offline HMM road matcher uses OpenStreetMap topology without forcing the vehicle onto an uncertain road.”
 
-### 1:40 to 2:15: judge replay and evidence
+### 1:40 to 2:15: engineering replay and evidence
 
 **Visual:** Choose a named IO-VNBD trip. Mask GNSS for a fixed interval. Show hidden truth only on the evaluation side, never in the input. Compare freeze, filter-only, and full DriftZero. Show endpoint error, blackout distance, drift ratio, and confidence coverage.
 
@@ -86,7 +86,7 @@
 
 ## On-screen evidence checklist
 
-- SIH26168 and ISRO sponsor naming exactly as official.
+- Product name DriftZero and the resilient-navigation tagline.
 - Standalone phone, no vehicle connection.
 - Airplane mode after offline area install.
 - Visible transition state and confidence.
@@ -109,7 +109,7 @@
 7. Record clean architecture visuals and voiceover.
 8. Edit with labels large enough for a laptop projector.
 9. Review every number against the result bundle.
-10. Export a master and a compressed submission version, then watch both end to end.
+10. Export a master and a compressed archive, then watch both end to end.
 
 ## Demo contingency ladder
 

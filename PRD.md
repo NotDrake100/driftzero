@@ -3,15 +3,15 @@
 | Field | Value |
 |---|---|
 | Product | DriftZero |
-| Tagline | AI-Assisted Resilient Navigation Beyond GNSS |
-| Problem statement | SIH26168 |
+| Tagline | Phone navigation that keeps a pose when GNSS fails |
+| Problem | ISRO intelligent dead reckoning for phone navigation |
 | Sponsor | Indian Space Research Organisation, Department of Space |
 | Category | Software |
 | Theme | Smart Vehicles |
 | Primary platform | Android |
 | PRD version | 1.0 |
 | Date | 2026-09-02 |
-| SIH deadline | 2026-09-20 |
+| Milestone date | 2026-09-20 |
 
 ## 1. Executive summary
 
@@ -71,7 +71,7 @@ Product principles:
 | Emergency responder | Maintain situational awareness in a covered or damaged area | Rapid start, confidence warning, privacy |
 | Government field team | Use resilient local navigation without data connectivity | Local maps, secure export, deterministic behavior |
 | Navigation engineer | Integrate the engine with a different IMU | Stable sensor and output contracts, configurable rates |
-| SIH judge | Verify the result and innovation | Replay, blackout toggle, metrics, ablations, source traceability |
+| Evaluator | Verify the result and method | Replay, blackout toggle, metrics, ablations, source traceability |
 
 ## 5. Product scope
 
@@ -103,7 +103,7 @@ Product principles:
 - Accessibility-grade voice and haptic status cues.
 - Operations dashboard for consented, anonymized fleet health statistics.
 
-### 5.3 Explicit non-goals for the SIH demo
+### 5.3 Explicit non-goals for the demo
 
 - Replacing GNSS, NavIC, certified INS, or automotive safety systems.
 - Autonomous lane keeping or collision avoidance.

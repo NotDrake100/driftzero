@@ -10,12 +10,16 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -23,6 +27,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import `in`.driftzero.app.R
+import `in`.driftzero.app.maps.AreaPack
+import `in`.driftzero.app.pose.NavicSnapshot
+import `in`.driftzero.app.settings.SpeedUnit
+import `in`.driftzero.core.NavigationMode
 import `in`.driftzero.core.NavigationState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -31,21 +39,43 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
+/** PRD 13: Hold GNSS is a stopped-vehicle control outside Judge mode. */
+internal const val HOLD_MAX_SPEED_MPS = 8.0
+
 /**
- * Travel map. The map fills the phone. Chrome is a Where to? pill, a locate
- * control, and a small route sheet after a destination is chosen.
+ * Travel map. The map fills the phone. Chrome is a Where to? pill, the mode
+ * lamp, a locate control, and a route dock after a destination is chosen.
+ * The own-vehicle mark is fed once per frame from [PuckInterpolator].
  */
 @Composable
 fun TravelMapScreen(
     controller: StreetMapController = remember { StreetMapController() },
     search: TravelSearchClient = remember { TravelSearchClient() },
     pose: NavigationState? = null,
-    mapContent: @Composable BoxScope.() -> Unit = { StreetMap(controller = controller, pose = pose) },
+    gnssHeld: Boolean = false,
+    onToggleHold: () -> Unit = {},
+    matchedRoad: List<TravelLatLng>? = null,
+    speedUnit: SpeedUnit = SpeedUnit.KMH,
+    lastGnssSeenNs: Long? = null,
+    nowNs: Long = System.nanoTime(),
+    studentLoaded: Boolean = false,
+    navic: NavicSnapshot = NavicSnapshot.NONE,
+    areaPack: AreaPack? = null,
+    packBytes: Long? = null,
+    p95GapMs: Double? = null,
+    recording: Boolean = false,
+    judgeOpen: Boolean = false,
+    onOpenJudge: () -> Unit = {},
+    onOpenTrips: () -> Unit = {},
+    onOpenOffline: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+    onOpenAbout: () -> Unit = {},
+    mapContent: @Composable BoxScope.() -> Unit = { StreetMap(controller = controller) },
 ) {
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
-    val reduceMotion = rememberReduceMotion()
+    val reduceMotion = InstrumentTheme.reduceMotion
     val density = LocalDensity.current
 
     var query by remember { mutableStateOf("") }
@@ -53,10 +83,13 @@ fun TravelMapScreen(
     var searchNote by remember { mutableStateOf<String?>(null) }
     var route by remember { mutableStateOf<TravelRoute?>(null) }
     var destination by remember { mutableStateOf<TravelPlace?>(null) }
-    var fix by remember { mutableStateOf<TravelFix?>(null) }
+    var locationPermission by remember { mutableStateOf(true) }
     var cameraBearingDeg by remember { mutableFloatStateOf(0f) }
     var suppressSearch by remember { mutableStateOf(false) }
     var speedShown by remember { mutableStateOf(false) }
+    var sheetExpanded by remember { mutableStateOf(false) }
+    var confirmStop by remember { mutableStateOf(false) }
+    var sheetHeightPx by remember { mutableIntStateOf(0) }
     var routeJob by remember { mutableStateOf<Job?>(null) }
 
     val emptyNote = stringResource(R.string.search_empty)
@@ -64,33 +97,51 @@ fun TravelMapScreen(
     val routeFailNote = stringResource(R.string.route_fail)
 
     DisposableEffect(controller) {
-        controller.onFix = { incoming -> fix = incoming }
+        controller.onPermission = { locationPermission = it }
         controller.onBearing = { cameraBearingDeg = it }
         onDispose {
-            if (controller.onFix != null) {
-                controller.onFix = null
-                controller.onBearing = null
-            }
+            controller.onPermission = null
+            controller.onBearing = null
         }
     }
 
-    val routeActive = route != null
-    val hudFix = pose?.toTravelFix(providerEnabled = fix?.gpsProviderOn != false) ?: fix
-    LaunchedEffect(hudFix?.speedMps, routeActive) {
-        speedShown = TravelHud.shouldShowSpeed(hudFix?.speedMps, routeActive, speedShown)
+    val lamp = lampFor(pose, locationPermission)
+    val lampNow by rememberUpdatedState(lamp)
+    val interpolator = remember { PuckInterpolator() }
+    interpolator.reduceMotion = reduceMotion
+    LaunchedEffect(pose) {
+        pose?.let { interpolator.target(it, System.nanoTime()) }
     }
-    val speedText = if (routeActive && speedShown) {
-        hudFix?.speedMps?.let(TravelHud::formatSpeedKmh)
+    LaunchedEffect(controller) {
+        while (true) {
+            withFrameNanos { frameNs ->
+                val puck = interpolator.sample(frameNs) ?: return@withFrameNanos
+                controller.applyDisplayPose(puck, lampNow, frameNs)
+            }
+        }
+    }
+    LaunchedEffect(matchedRoad) {
+        controller.setMatchedRoad(matchedRoad)
+    }
+
+    val routeActive = route != null
+    val speedMps = pose?.motion?.speed?.value
+    LaunchedEffect(speedMps) {
+        speedShown = InstrumentFormat.shouldShowSpeed(speedMps, speedShown)
+    }
+    val speedText = if (speedShown && speedMps != null) {
+        InstrumentFormat.formatSpeed(speedMps, speedUnit)
     } else {
         null
     }
+    val holdAllowed = (speedMps ?: 0.0) < HOLD_MAX_SPEED_MPS || gnssHeld
 
     fun searchNear(): Pair<Double, Double>? {
         val origin = controller.originOrNull()
         val camera = controller.cameraOrNull()
         return searchBiasLatLon(
-            hudFix?.latitudeDeg ?: origin?.latitudeDeg,
-            hudFix?.longitudeDeg ?: origin?.longitudeDeg,
+            origin?.latitudeDeg,
+            origin?.longitudeDeg,
             camera?.latitudeDeg,
             camera?.longitudeDeg,
             controller.cameraZoomOrNull(),
@@ -163,12 +214,10 @@ fun TravelMapScreen(
         dismissKeyboard()
         routeJob?.cancel()
         routeJob = scope.launch {
-            val origin = routeOrigin(
-                hudFix?.latitudeDeg,
-                hudFix?.longitudeDeg,
-                controller.originOrNull(),
-            )
-            if (origin == null) {
+            val origin = controller.originOrNull()
+            val coasting = pose?.mode == NavigationMode.DEAD_RECKONING ||
+                pose?.mode == NavigationMode.LOW_CONFIDENCE
+            if (origin == null || coasting) {
                 route = null
                 flyToPlace(place)
                 return@launch
@@ -230,13 +279,49 @@ fun TravelMapScreen(
     }
 
     val dockVisible = route != null && destination != null
-    LaunchedEffect(dockVisible, speedShown) {
+    LaunchedEffect(sheetHeightPx) {
         val top = with(density) { 88.dp.roundToPx() }
-        val bottom = with(density) {
-            if (dockVisible) 128.dp.roundToPx() else 72.dp.roundToPx()
-        }
         val side = with(density) { 16.dp.roundToPx() }
+        val bottom = sheetHeightPx + with(density) { 16.dp.roundToPx() }
         controller.setChromePadding(side, top, side, bottom)
+    }
+    if (judgeOpen && sheetExpanded) {
+        sheetExpanded = false
+    }
+    val radiusText = pose?.let { StatusCopy.radius95(it.uncertainty.horizontal95.value) }
+    val reason = pose?.let { modeReason(it) }
+    val rowGnss = stringResource(R.string.row_gnss_age)
+    val rowTrusted = stringResource(R.string.row_last_trusted)
+    val rowRadius = stringResource(R.string.row_radius)
+    val rowHeading = stringResource(R.string.row_heading)
+    val rowMatch = stringResource(R.string.row_map_match)
+    val rowSensors = stringResource(R.string.row_sensors)
+    val rowModel = stringResource(R.string.row_model)
+    val rowNavic = stringResource(R.string.row_navic)
+    val rowPack = stringResource(R.string.row_area_pack)
+    val rowRate = stringResource(R.string.row_output_rate)
+    val sheetRows = remember(
+        pose, lastGnssSeenNs, nowNs, studentLoaded, navic, areaPack, packBytes, p95GapMs,
+        rowGnss, rowTrusted, rowRadius, rowHeading, rowMatch, rowSensors, rowModel, rowNavic, rowPack, rowRate,
+    ) {
+        if (pose == null) {
+            emptyList()
+        } else {
+            val rows = ArrayList<Pair<String, String>>(10)
+            StatusCopy.gnssAgeS(lastGnssSeenNs, nowNs)?.let {
+                rows += rowGnss to InstrumentFormat.formatSeconds(it)
+            }
+            rows += rowTrusted to StatusCopy.lastTrustedAgo(pose.gnssHealth.lastTrustedFixAgeS)
+            rows += rowRadius to StatusCopy.radius95(pose.uncertainty.horizontal95.value)
+            rows += rowHeading to StatusCopy.heading(pose.motion.heading.value, pose.uncertainty.heading95Rad)
+            rows += rowMatch to StatusCopy.mapMatch(pose.mapMatch.status, pose.mapMatch.confidence)
+            rows += rowSensors to StatusCopy.sensors(pose.health.flags)
+            rows += rowModel to StatusCopy.model(pose.health.flags, studentLoaded)
+            rows += rowNavic to StatusCopy.navic(navic)
+            rows += rowPack to StatusCopy.areaPack(areaPack, packBytes)
+            StatusCopy.outputRate(p95GapMs)?.let { rows += rowRate to it }
+            rows
+        }
     }
 
     val bearing = ((cameraBearingDeg % 360f) + 360f) % 360f
@@ -262,6 +347,9 @@ fun TravelMapScreen(
             onPick = { pickPlace(it) },
             searchNote = searchNote,
             reduceMotion = reduceMotion,
+            lamp = lamp,
+            onLampClick = {},
+            onLampLongPress = if (holdAllowed) onToggleHold else null,
             modifier = Modifier.align(Alignment.TopStart),
         )
         MapControls(
@@ -283,8 +371,8 @@ fun TravelMapScreen(
         )
         RouteDock(
             destinationName = destination?.name.orEmpty(),
-            distanceText = route?.let { TravelHud.formatDistance(it.distanceM) }.orEmpty(),
-            etaText = route?.let { TravelHud.formatEta(it.durationS) }.orEmpty(),
+            distanceText = route?.let { InstrumentFormat.formatDistance(it.distanceM) }.orEmpty(),
+            etaText = route?.let { InstrumentFormat.formatEta(it.durationS) }.orEmpty(),
             speedText = if (dockVisible) speedText else null,
             onStop = { stopRoute() },
             visible = dockVisible,
@@ -297,7 +385,7 @@ fun TravelMapScreen(
 @Preview(name = "idle", widthDp = 412, heightDp = 915, showBackground = true, backgroundColor = 0xFFF2EFE9)
 @Composable
 private fun TravelMapIdlePreview() {
-    DriftZeroTheme {
+    DriftZeroTheme(night = false, reduceMotion = true) {
         Box(modifier = Modifier.fillMaxSize()) {
             TravelTopChrome(
                 query = "",
@@ -308,6 +396,9 @@ private fun TravelMapIdlePreview() {
                 onPick = {},
                 searchNote = null,
                 reduceMotion = true,
+                lamp = LampDisplay(LampTone.OK, LampWord.GNSS, 0.4, dashed = false, coasting = false),
+                onLampClick = {},
+                onLampLongPress = null,
             )
             MapControls(
                 showCompass = false,
@@ -323,10 +414,10 @@ private fun TravelMapIdlePreview() {
     }
 }
 
-@Preview(name = "navigating", widthDp = 412, heightDp = 915, showBackground = true, backgroundColor = 0xFFF2EFE9)
+@Preview(name = "night", widthDp = 412, heightDp = 915, showBackground = true, backgroundColor = 0xFF0B0D0A)
 @Composable
 private fun TravelMapNavigatingPreview() {
-    DriftZeroTheme {
+    DriftZeroTheme(night = true, reduceMotion = true) {
         Box(modifier = Modifier.fillMaxSize()) {
             TravelTopChrome(
                 query = "Station",
@@ -337,6 +428,9 @@ private fun TravelMapNavigatingPreview() {
                 onPick = {},
                 searchNote = null,
                 reduceMotion = true,
+                lamp = LampDisplay(LampTone.CAUTION, LampWord.DEAD_RECKONING, 14.0, dashed = true, coasting = true),
+                onLampClick = {},
+                onLampLongPress = null,
             )
             MapControls(
                 showCompass = true,

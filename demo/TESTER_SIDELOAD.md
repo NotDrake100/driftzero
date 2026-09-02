@@ -16,10 +16,10 @@ Use one of these. Send the `.apk` file itself, not a screenshot and not a rename
 2. WhatsApp: attach `DriftZero-testers.apk` as a document. On the phone, tap the file, then tap Open or Install.
 3. Email: attach the same file. On the phone, open the attachment from the mail app.
 
-Builder copies of the same file:
+Builder copies of the same file (local, gitignored):
 
-- `/Users/architavinashthorat/Downloads/driftzero-sih26168/results/DriftZero-testers.apk`
-- `/Users/architavinashthorat/Downloads/DriftZero-testers.apk`
+- `results/DriftZero-testers.apk`
+- `apps/android/app/build/outputs/apk/debug/` after `assembleDebug`
 
 ## Allow install from that app
 
@@ -72,4 +72,4 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 ./gradlew :android-app:assembleDebug
 ```
 
-Copy `apps/android/app/build/outputs/apk/debug/*-debug.apk` to the two paths above. Package id is `in.driftzero.app`. Version name is `0.1.0`.
+Copy `apps/android/app/build/outputs/apk/debug/*-debug.apk` to `results/DriftZero-testers.apk` if you want a shareable name. Package id is `in.driftzero.app`. Version name is `0.1.0`.

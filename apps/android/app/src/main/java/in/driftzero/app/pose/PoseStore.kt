@@ -4,9 +4,13 @@ import `in`.driftzero.core.CoastFix
 import `in`.driftzero.core.DeadReckoningFilter
 import `in`.driftzero.core.DisplacementModel
 import `in`.driftzero.core.FilterSnapshot
+import `in`.driftzero.core.GeoPoint
+import `in`.driftzero.core.GraphEdge
 import `in`.driftzero.core.HmmRoadMatcher
+import `in`.driftzero.core.MapMatchStatus
 import `in`.driftzero.core.MotionPseudoRuntime
 import `in`.driftzero.core.Nanoseconds
+import `in`.driftzero.core.NavigationMode
 import `in`.driftzero.core.NavigationState
 import `in`.driftzero.core.RoadGraph
 import `in`.driftzero.core.RoadMatcher
@@ -37,9 +41,16 @@ class PoseStore(
 ) {
     private val _state = MutableStateFlow<NavigationState?>(null)
     val state: StateFlow<NavigationState?> = _state.asStateFlow()
+    private var edgesById: Map<String, GraphEdge> = graph?.edges?.associateBy { it.id } ?: emptyMap()
 
     private val _simulateGpsOff = MutableStateFlow(false)
     val simulateGpsOff: StateFlow<Boolean> = _simulateGpsOff.asStateFlow()
+    private val _lastGnssSeenNs = MutableStateFlow<Long?>(null)
+    val lastGnssSeenNs: StateFlow<Long?> = _lastGnssSeenNs.asStateFlow()
+    private val ticks = TickIntervals()
+    private val rawTrailBuf = RingBuffer<PosePoint>(TRAIL_CAP)
+    private val fusedTrailBuf = RingBuffer<PosePoint>(TRAIL_CAP)
+    private val modeStripBuf = RingBuffer<NavigationMode>(TRAIL_CAP)
 
     fun ingestGnss(fix: CoastFix) {
         if (_simulateGpsOff.value) {
@@ -52,6 +63,8 @@ class PoseStore(
         } else {
             fix
         }
+        _lastGnssSeenNs.value = now.value
+        rawTrailBuf.add(PosePoint(stamped.latitudeDeg, stamped.longitudeDeg))
         filter.ingestGnss(stamped)
         publish()
     }
@@ -86,13 +99,23 @@ class PoseStore(
 
     fun tick() {
         val now = nowNs()
+        ticks.record(now.value)
         motion.inferAt(now)?.let { filter.ingestMotionPseudo(it, now) }
         motion.inferDisplacementAt(now)?.let { filter.ingestDisplacementPseudo(it, now) }
         publish()
     }
 
+    fun p95GapMs(): Double? = ticks.p95Ms()
+
+    fun rawTrail(): List<PosePoint> = rawTrailBuf.toList()
+
+    fun fusedTrail(): List<PosePoint> = fusedTrailBuf.toList()
+
+    fun modeStrip(): List<NavigationMode> = modeStripBuf.toList()
+
     fun setRoadGraph(next: RoadGraph?) {
         graph = next
+        edgesById = next?.edges?.associateBy { it.id } ?: emptyMap()
         matcher = if (next == null || next.isEmpty()) {
             null
         } else {
@@ -100,6 +123,15 @@ class PoseStore(
         }
         matcher?.reset()
         publish()
+    }
+
+    /** Centreline of the matched edge for the map overlay. Null unless the matcher is decided. */
+    fun matchedRoad(state: NavigationState?): List<GeoPoint>? {
+        if (state == null || state.mapMatch.status != MapMatchStatus.MATCHED) {
+            return null
+        }
+        val id = state.mapMatch.roadSegmentId ?: return null
+        return edgesById[id]?.points
     }
 
     private fun publish() {
@@ -116,6 +148,11 @@ class PoseStore(
         } else {
             raw
         }
+        val pose = _state.value
+        if (pose != null) {
+            fusedTrailBuf.add(PosePoint(pose.position.latitude.value, pose.position.longitude.value))
+            modeStripBuf.add(pose.mode)
+        }
     }
 
     private fun nowNs(): Nanoseconds = Nanoseconds(clockNs().coerceAtLeast(0L))
@@ -123,5 +160,11 @@ class PoseStore(
     companion object {
         private const val NS_PER_S: Double = 1_000_000_000.0
         private const val RESTAMP_AFTER_S: Double = 5.0
+        const val TRAIL_CAP: Int = 600
     }
 }
+
+data class PosePoint(
+    val latitudeDeg: Double,
+    val longitudeDeg: Double,
+)

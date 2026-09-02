@@ -7,7 +7,7 @@ Before recording, place a generated, non-secret result bundle under an ignored l
 Read:
 
 - `PRODUCT.md` for the five-step phone test;
-- `demo/TESTER_SIDELLOAD.md` for install;
+- `demo/TESTER_SIDELOAD.md` for install;
 - `docs/01_SIH_REQUIREMENTS_TRACEABILITY.md` for claims;
 - `docs/SOURCES.md` for citation cards.
 

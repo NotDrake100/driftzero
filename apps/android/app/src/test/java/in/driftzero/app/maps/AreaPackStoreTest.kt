@@ -51,6 +51,10 @@ class AreaPackStoreTest {
                 "https://tiles.openfreemap.org/styles/liberty",
                 store.styleUri(store.active()),
             )
+            assertEquals(
+                "https://tiles.openfreemap.org/styles/dark",
+                store.styleUri(store.active(), night = true),
+            )
         } finally {
             root.deleteRecursively()
         }

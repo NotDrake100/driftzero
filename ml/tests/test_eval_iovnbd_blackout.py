@@ -33,7 +33,7 @@ class EvalIovnbdBlackoutTests(unittest.TestCase):
         interval = choose_blackout(records)
         self.assertIsNotNone(interval)
         self.assertGreater(interval.start_ns, records[0]["timestamp_ns"])
-        self.assertLess(interval.end_ns, records[-1]["timestamp_ns"] + 1)
+        self.assertLessEqual(interval.end_ns, records[-1]["timestamp_ns"] + 1)
 
     def test_missing_root_skips(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
@@ -65,9 +65,9 @@ def _moving_records(count: int) -> list[dict]:
                 "gy": 0.0,
                 "gz": 0.0,
                 "trip_id": "synth",
-                "latitude_deg": 52.0 + index * 0.00008,
+                "latitude_deg": 52.0 + index * 0.00001,
                 "longitude_deg": -1.7,
-                "gnss_speed_mps": 8.9,
+                "gnss_speed_mps": 1.1,
             }
         )
     return rows

@@ -1,6 +1,8 @@
 # NavIC / IRNSS on the phone
 
-Retrieved 2026-09-02. Product decisions are DriftZero's. ISRO and Android do not endorse the app.
+Retrieved 2026-09-03. Independent fetch log: [SIH26168_EVIDENCE.md](SIH26168_EVIDENCE.md) section E. Product decisions are DriftZero's. ISRO and Android do not endorse the app.
+
+Visibility is not integrity. Android can log IRNSS space vehicles when the chipset HAL reports constellation 7. `usedInFix` and `getCn0DbHz` are OS reports. They are not an integrity service. ISRO states NavIC does not provide integrity and does not support safety-of-life. GAGAN is the GPS SBAS integrity path. L1 from NVS-01 (29 May 2023) onward is the consumer-band addition. Many phones still never surface IRNSS.
 
 This is the claim boundary for constellation logging. The live filter does not treat NavIC counts as integrity, anti-jam, or a safe-lock flag.
 
@@ -45,7 +47,7 @@ Hold the GPS chip to simulate GPS off. The NavIC chip and the log snapshot clear
 
 ## ISRO FAQ limits (do not talk past these)
 
-Source: [ISRO Navigation FAQ](https://www.isro.gov.in/FAQ_Navigation.html), retrieved 2026-09-02. Services page: [Satellite Navigation Services](https://www.isro.gov.in/SatelliteNavigationServices.html).
+Source: [ISRO Navigation FAQ](https://www.isro.gov.in/FAQ_Navigation.html), fetched 2026-09-03. Services page: [Satellite Navigation Services](https://www.isro.gov.in/SatelliteNavigationServices.html). NVS-01: [GSLV-F12 / NVS-01](https://www.isro.gov.in/GSLV_F12_Landingpage.html) (29 May 2023). A gazetted DoT mandate that all phones must support NavIC is not independently verified on 2026-09-03. A primary MediaTek NavIC announcement page is not independently verified on 2026-09-03.
 
 Names (FAQ Q1): NavIC (Navigation with Indian Constellation) is the operational name. IRNSS was the earlier name. Android's constant is still `IRNSS`. We log `IRNSS` and label the chip `NavIC`.
 

@@ -1,16 +1,34 @@
 # DriftZero research package
 
-This package begins with the components that must be correct before training: distance/drift metrics, deterministic blackout masking, and an optional dependency boundary for TimesFM 3.
+Python lives here. The phone does not import this package. Unit tests use the standard library only.
 
-## Install and test
+## Research versus the phone
+
+| Here (`ml/`) | On the phone |
+|---|---|
+| Train linear or optional GRU students | `ZuptAccelMotionModel`, or packed `linear.json` |
+| Fit `linear_dp.json` (RoNIN/TLIO-shaped Δp) | Optional χ²-gated `ingestDisplacementPseudo` |
+| TimesFM 3 adapter (optional extra) | Never. No TimesFM, no PyTorch, no ONNX Runtime |
+| IO-VNBD / OxIOD / RoNIN loaders | Not present. Filter consumes `SensorFrame` |
+| Blackout metrics and eval scripts | Score-only after a desktop run |
+
+Export to the APK is a JSON weight file under `models/`, copied at assemble when the file exists. Missing weights leave the heuristic filter.
+
+## Tests
+
+Same command as the root README and `pytest.ini`:
 
 ```bash
 PYTHONPATH=ml/src python -m unittest discover -s ml/tests -v
 ```
 
-The starter tests use only Python's standard library. Installing `./ml[dev]` additionally provides pytest and Ruff for the growing implementation.
+`make validate` at repo root also checks `contracts/` JSON. `./ml[dev]` adds pytest and Ruff. `./ml[research]` adds numpy, pandas, torch, and TimesFM. Do not add those to the default test path.
 
-Train the compact motion student (synthetic if IO-VNBD LFS is missing):
+## IO-VNBD
+
+Official SIH dataset. Raw trees go in gitignored `data/raw/io_vnbd/`. Git LFS is pending on a clean clone. Fetch: [scripts/fetch_datasets.md](../scripts/fetch_datasets.md). Scorecard: [docs/refs/DATASETS.md](../docs/refs/DATASETS.md).
+
+The only CSV in Git is `ml/tests/fixtures/io_vnbd_s_vta9_head.csv` (3 rows). Loaders raise `DatasetLfsMissing` if they see a Git LFS pointer.
 
 ```bash
 PYTHONPATH=ml/src python -m driftzero_ml.student.train --seed 26168
@@ -18,9 +36,9 @@ PYTHONPATH=ml/src python -m driftzero_ml.learned_imu --out models/learned_imu_v1
 PYTHONPATH=ml/src python -m driftzero_ml.eval_iovnbd_blackout --out results/io_vnbd_blackout_eval.md
 ```
 
-PyTorch is optional (`./ml[research]`). The GRU/TCN never ships in the APK. TimesFM stays a separate optional extra. Paper heads, dataset URLs, and TLIO gaps: `docs/refs/LEARNED_IMU.md`.
+Synthetic IMU is used when LFS is missing. Synthetic numbers are not product scores.
 
-## Intended modules to add
+## Layout
 
 ```text
 driftzero_ml/
@@ -28,18 +46,14 @@ driftzero_ml/
   io_vnbd/       schema discovery, local-root gate, trip splits
   features/      causal IMU windows (no GNSS, no future samples)
   learned_imu.py RoNIN Δp / TLIO log-σ / IONet polar student (desktop)
-  student/       heuristic, linear, optional RoNIN/TLIO-aligned GRU, train script
+  student/       heuristic, linear, optional GRU, train script
   baselines.py   freeze and constant-velocity screening baselines
   contracts.py   SensorFrame / NavigationState instance checks
-  navigation/    Python reference filter and replay
-  timesfm/       optional zero-shot and distillation experiments
-  evaluation/    manifests, per-trip reports, plots
-  export/        ONNX student, schema and parity checks
+  timesfm_adapter.py  optional zero-shot boundary (fails if extra missing)
+  eval_iovnbd_blackout.py  desktop blackout script
 ```
 
-`io_vnbd` inspects a local table. `datasets/` loaders fail if Git LFS pointers are still on disk. Fetch commands: `scripts/fetch_datasets.md`. Scorecard: `docs/refs/DATASETS.md`.
-
-Do not add TimesFM to the default dependencies. Research code must fail with an actionable message when the optional environment is missing, while all core tests remain usable.
+Paper heads, dataset URLs, and TLIO gaps: [docs/refs/LEARNED_IMU.md](../docs/refs/LEARNED_IMU.md).
 
 ## Metric convention
 

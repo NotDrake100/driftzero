@@ -23,98 +23,132 @@ data class InstrumentColors(
     val lampCaution: Color,
     val lampAlert: Color,
     val marker: Color,
-)
+    val routeFill: Color,
+    val routeCasing: Color,
+    val paper: Color,
+    val haloFillAlpha: Float,
+) {
+    companion object {
+        fun from(set: InstrumentPaletteSet): InstrumentColors = InstrumentColors(
+            chassis = Color(set.chassis),
+            panel = Color(set.panel),
+            well = Color(set.well),
+            panelPressed = Color(set.panelPressed),
+            hairline = Color(set.hairline),
+            ink = Color(set.ink),
+            inkDim = Color(set.inkDim),
+            lampOk = Color(set.lampOk),
+            lampCaution = Color(set.lampCaution),
+            lampAlert = Color(set.lampAlert),
+            marker = Color(set.marker),
+            routeFill = Color(set.routeFill),
+            routeCasing = Color(set.routeCasing),
+            paper = Color(set.paper),
+            haloFillAlpha = set.haloFillAlpha,
+        )
+    }
+}
 
+/**
+ * Six type roles. Mono carries every number the driver reads (speed, age,
+ * radius, heading, timestamps). Sans carries words.
+ */
 data class InstrumentType(
-    val search: TextStyle,
-    val chip: TextStyle,
-    val place: TextStyle,
-    val detail: TextStyle,
+    val readoutLarge: TextStyle,
     val readout: TextStyle,
-    val note: TextStyle,
+    val title: TextStyle,
+    val body: TextStyle,
+    val label: TextStyle,
+    val caption: TextStyle,
 )
 
-private val PlexSans = FontFamily(
+val PlexSans = FontFamily(
     Font(R.font.ibm_plex_sans_regular, FontWeight.Normal),
     Font(R.font.ibm_plex_sans_medium, FontWeight.Medium),
     Font(R.font.ibm_plex_sans_semibold, FontWeight.SemiBold),
 )
 
-private val PlexMono = FontFamily(
+val PlexMono = FontFamily(
     Font(R.font.ibm_plex_mono_regular, FontWeight.Normal),
     Font(R.font.ibm_plex_mono_medium, FontWeight.Medium),
     Font(R.font.ibm_plex_mono_semibold, FontWeight.SemiBold),
 )
 
-private val Colors = InstrumentColors(
-    chassis = Color(InstrumentPalette.CHASSIS),
-    panel = Color(InstrumentPalette.PANEL),
-    well = Color(InstrumentPalette.WELL),
-    panelPressed = Color(InstrumentPalette.PANEL_PRESSED),
-    hairline = Color(InstrumentPalette.HAIRLINE),
-    ink = Color(InstrumentPalette.INK),
-    inkDim = Color(InstrumentPalette.INK_DIM),
-    lampOk = Color(InstrumentPalette.LAMP_OK),
-    lampCaution = Color(InstrumentPalette.LAMP_CAUTION),
-    lampAlert = Color(InstrumentPalette.LAMP_ALERT),
-    marker = Color(InstrumentPalette.MARKER_BLUE),
-)
+private const val TABULAR = "tnum, lnum"
 
-private val Type = InstrumentType(
-    search = TextStyle(
-        fontFamily = PlexSans,
-        fontWeight = FontWeight.Medium,
-        fontSize = 16.sp,
-        color = Colors.ink,
-    ),
-    chip = TextStyle(
-        fontFamily = PlexSans,
-        fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
-        color = Colors.ink,
-    ),
-    place = TextStyle(
-        fontFamily = PlexSans,
-        fontWeight = FontWeight.Medium,
-        fontSize = 16.sp,
-        color = Colors.ink,
-    ),
-    detail = TextStyle(
-        fontFamily = PlexSans,
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        color = Colors.inkDim,
-    ),
-    readout = TextStyle(
+private fun typeFor(colors: InstrumentColors): InstrumentType = InstrumentType(
+    readoutLarge = TextStyle(
         fontFamily = PlexMono,
         fontWeight = FontWeight.SemiBold,
         fontSize = 20.sp,
-        fontFeatureSettings = "tnum, lnum",
-        color = Colors.ink,
+        fontFeatureSettings = TABULAR,
+        color = colors.ink,
     ),
-    note = TextStyle(
+    readout = TextStyle(
+        fontFamily = PlexMono,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        fontFeatureSettings = TABULAR,
+        color = colors.ink,
+    ),
+    title = TextStyle(
+        fontFamily = PlexSans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 24.sp,
+        color = colors.ink,
+    ),
+    body = TextStyle(
+        fontFamily = PlexSans,
+        fontWeight = FontWeight.Normal,
+        fontSize = 16.sp,
+        color = colors.ink,
+    ),
+    label = TextStyle(
         fontFamily = PlexSans,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
-        color = Colors.ink,
+        color = colors.ink,
+    ),
+    caption = TextStyle(
+        fontFamily = PlexSans,
+        fontWeight = FontWeight.Normal,
+        fontSize = 12.sp,
+        color = colors.inkDim,
     ),
 )
 
-internal val LocalInstrumentColors = staticCompositionLocalOf { Colors }
-internal val LocalInstrumentType = staticCompositionLocalOf { Type }
+private val DayColors = InstrumentColors.from(InstrumentPalette.DAY)
+private val NightColors = InstrumentColors.from(InstrumentPalette.NIGHT)
+private val DayType = typeFor(DayColors)
+private val NightType = typeFor(NightColors)
+
+internal val LocalInstrumentColors = staticCompositionLocalOf { DayColors }
+internal val LocalInstrumentType = staticCompositionLocalOf { DayType }
+internal val LocalInstrumentNight = staticCompositionLocalOf { false }
+internal val LocalReduceMotion = staticCompositionLocalOf { false }
 
 object InstrumentTheme {
     val colors: InstrumentColors
         @Composable get() = LocalInstrumentColors.current
     val type: InstrumentType
         @Composable get() = LocalInstrumentType.current
+    val night: Boolean
+        @Composable get() = LocalInstrumentNight.current
+    val reduceMotion: Boolean
+        @Composable get() = LocalReduceMotion.current
 }
 
 @Composable
-fun DriftZeroTheme(content: @Composable () -> Unit) {
+fun DriftZeroTheme(
+    night: Boolean,
+    reduceMotion: Boolean,
+    content: @Composable () -> Unit,
+) {
     CompositionLocalProvider(
-        LocalInstrumentColors provides Colors,
-        LocalInstrumentType provides Type,
+        LocalInstrumentColors provides if (night) NightColors else DayColors,
+        LocalInstrumentType provides if (night) NightType else DayType,
+        LocalInstrumentNight provides night,
+        LocalReduceMotion provides reduceMotion,
         content = content,
     )
 }

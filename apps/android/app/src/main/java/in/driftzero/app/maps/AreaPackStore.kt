@@ -54,6 +54,19 @@ class AreaPackStore(private val root: File) {
         return AreaPack(parsed, AreaPackState.Ready, TILES, graph.name)
     }
 
+    fun bytesOnDisk(pack: AreaPack?): Long? {
+        if (pack == null) {
+            return null
+        }
+        pack.manifest.bytes?.let { return it }
+        val dir = File(installedRoot(), pack.manifest.id.value)
+        if (!dir.isDirectory) {
+            return null
+        }
+        val sum = dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+        return sum.takeIf { it > 0L }
+    }
+
     fun graphFile(pack: AreaPack?): File? {
         if (pack == null || pack.state != AreaPackState.Ready) {
             return null
@@ -61,14 +74,15 @@ class AreaPackStore(private val root: File) {
         return findGraph(File(installedRoot(), pack.manifest.id.value))
     }
 
-    fun styleUri(pack: AreaPack?): String {
+    /** A Ready pack with its own style.json owns rendering; otherwise the hosted day or night sheet. */
+    fun styleUri(pack: AreaPack?, night: Boolean = false): String {
         if (pack != null && pack.state == AreaPackState.Ready) {
             val style = File(File(installedRoot(), pack.manifest.id.value), STYLE)
             if (style.isFile) {
                 return "file://${style.absolutePath}"
             }
         }
-        return StreetMapConfig.STYLE_LIBERTY
+        return StreetMapConfig.hostedStyle(night)
     }
 
     private fun queuedRoot(): File = File(root, "queued")

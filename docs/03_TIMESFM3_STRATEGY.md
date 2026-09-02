@@ -27,7 +27,7 @@ Start with synchronized 10 Hz channels. Do not feed raw latitude and longitude a
 | Group | Candidate past-only channel |
 |---|---|
 | Inertial | vehicle-frame accel x/y/z, gyro x/y/z, norms, jerk |
-| Vibration | band energy, robust rolling dispersion, bump probability |
+| Vibration | band energy, rolling dispersion, bump probability |
 | State | prior causal speed, yaw rate, stop probability, covariance summary |
 | GNSS | accepted speed/heading, accuracy, innovation, fix age, health score |
 | Map | road curvature candidates, heading disagreement, junction distance |
@@ -123,5 +123,7 @@ Each run records:
 
 ## Production boundary
 
-The TimesFM source and weights have separate terms. Source availability does not make every checkpoint a production dependency. DriftZero keeps the checkpoint out of the product and exports only an independently trained compact student after the team has reviewed all applicable terms. This is also the correct engineering boundary for app size, latency, and reliability.
+As of 2026-09-03, TimesFM 3.0 is the current public release (Hugging Face `google/timesfm-3.0-pytorch`). TimesFM 3.0 weights use `timesfm-non-commercial-license-v1.0` (non-commercial, non-production). TimesFM 2.5 weights remain Apache-2.0. This does not change the decision that TimesFM is not on the phone.
+
+The TimesFM source and weights have separate terms. Source availability does not make every checkpoint a production dependency. DriftZero keeps the checkpoint out of the product and exports only an independently trained compact student after the team has reviewed all applicable terms. This is also the correct engineering boundary for app size, latency, and reliability. If a desktop experiment is ever run, it is research-only and cannot ship 3.0 weights.
 

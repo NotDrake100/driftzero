@@ -76,6 +76,9 @@ class DeadReckoningFilter(
     private var lastStopProbability: Double = 0.0
     private var lastBump: Boolean = false
     private val clones: ArrayDeque<PoseClone> = ArrayDeque()
+    private var coastedSinceFix: Boolean = false
+    private var reacquiredFixes: Int = 0
+    private var lastGatedGnssNs: Long = -1L
 
     fun setGnssHeld(held: Boolean) {
         synchronized(lock) {
@@ -237,6 +240,9 @@ class DeadReckoningFilter(
             lastStopProbability = 0.0
             lastBump = false
             clones.clear()
+            coastedSinceFix = false
+            reacquiredFixes = 0
+            lastGatedGnssNs = -1L
             p.zero()
             if (reason == ResetReason.USER) {
                 gnssHeld = false
@@ -272,10 +278,25 @@ class DeadReckoningFilter(
                 northM,
                 upM,
             )
+            if (coasting) {
+                coastedSinceFix = true
+                reacquiredFixes = 0
+            }
+            val gatedRecently = lastGatedGnssNs >= 0L &&
+                (now.value - lastGatedGnssNs) / NS_PER_S < config.gatedRecentS
+            val degraded = lastHorizAccM > config.degradedAccuracyM || gatedRecently
             val mode = when {
                 horizontal95 > config.lowConfidenceRadiusM -> NavigationMode.LOW_CONFIDENCE
                 coasting -> NavigationMode.DEAD_RECKONING
+                coastedSinceFix -> NavigationMode.REACQUIRING
+                degraded -> NavigationMode.GNSS_DEGRADED
                 else -> NavigationMode.GNSS_FUSED
+            }
+            val riskFlags = buildSet {
+                if (coasting) add(RISK_STALE_GNSS)
+                if (lastHorizAccM > config.degradedAccuracyM && !coasting) add(RISK_POOR_ACCURACY)
+                if (gatedRecently) add(RISK_GATED_FIX)
+                if (mode == NavigationMode.REACQUIRING) add(RISK_REACQUIRING)
             }
             val imuAgeS = if (lastImuNs < 0L) Double.POSITIVE_INFINITY else {
                 (now.value - lastImuNs).coerceAtLeast(0L) / NS_PER_S
@@ -318,7 +339,7 @@ class DeadReckoningFilter(
                 gnssHealth = GnssHealth(
                     score = score,
                     lastTrustedFixAgeS = ageS,
-                    riskFlags = if (coasting) setOf("stale_gnss") else emptySet(),
+                    riskFlags = riskFlags,
                 ),
                 mapMatch = MapMatch(MapMatchStatus.NO_MAP, 0.0),
                 health = ComponentHealth(
@@ -565,6 +586,10 @@ class DeadReckoningFilter(
         val horizInnov = hypot(residual[0], residual[1])
         val gate = 6.0 * (sigma + sqrt(max(p[0, 0] + p[1, 1], 0.0)))
         if (horizInnov > gate) {
+            lastGatedGnssNs = fix.timestamp.value
+            if (coastedSinceFix) {
+                reacquiredFixes = 0
+            }
             return
         }
         fillPosH()
@@ -583,8 +608,20 @@ class DeadReckoningFilter(
             return
         }
         inject()
+        val gapS = if (lastTrustedGnssNs < 0L) 0.0 else (fix.timestamp.value - lastTrustedGnssNs) / NS_PER_S
+        if (gapS > STALE_AFTER_S) {
+            coastedSinceFix = true
+            reacquiredFixes = 0
+        }
         lastTrustedGnssNs = fix.timestamp.value
         lastHorizAccM = fix.horizontalAccuracyM
+        if (coastedSinceFix) {
+            reacquiredFixes += 1
+            if (reacquiredFixes >= config.reacquireFixes) {
+                coastedSinceFix = false
+                reacquiredFixes = 0
+            }
+        }
         lastAltM = fix.altitudeM ?: lastAltM
         fix.headingRad?.let { lastHeadingRad = wrapHeadingRad(it) }
         val speed = fix.speedMps
@@ -952,8 +989,12 @@ class DeadReckoningFilter(
         const val FLAG_DISPLACEMENT_GATED: String = "displacement_gated"
         const val FLAG_IMU_GAP: String = "imu_gap"
         const val FLAG_NO_IMU: String = "no_imu"
+        const val RISK_STALE_GNSS: String = "stale_gnss"
+        const val RISK_POOR_ACCURACY: String = "poor_accuracy"
+        const val RISK_GATED_FIX: String = "gated_fix"
+        const val RISK_REACQUIRING: String = "reacquiring"
         const val CONFIG_ID: String =
-            "eskf.v1.stale_s=2.output_hz=10.wgs84.somigliana_2_139.nframe_enu.phi_2_139.q_pv.zupt.nhc.joseph.tlio_dp_chi2_11.345"
+            "eskf.v1.stale_s=2.output_hz=10.wgs84.somigliana_2_139.nframe_enu.phi_2_139.q_pv.zupt.nhc.joseph.tlio_dp_chi2_11.345.modes_v2_degraded_30m_reacquire_3"
         val CONFIG_HASH: String = sha256Hex(CONFIG_ID)
         private const val NS_PER_S: Double = 1_000_000_000.0
         private const val ACCEL_HIST: Int = 32
@@ -995,6 +1036,12 @@ data class InsConfig(
     val reanchorM: Double = 25_000.0,
     val coastPosGrowMps: Double = 2.5,
     val lowConfidenceRadiusM: Double = 120.0,
+    /** Accepted fix accuracy above this reports GNSS_DEGRADED (ADR 006). */
+    val degradedAccuracyM: Double = 30.0,
+    /** A fix rejected by the innovation gate keeps GNSS_DEGRADED for this long. */
+    val gatedRecentS: Double = 5.0,
+    /** Consecutive accepted fixes after a coast before REACQUIRING returns to GNSS_FUSED. */
+    val reacquireFixes: Int = 3,
     val displacementChi2Gate: Double = LinearDpConstants.CHI2_99_3DOF,
     val displacementOverlapRScale: Double = LinearDpConstants.OVERLAP_R_SCALE,
     val displacementGateGrowM: Double = 1.0,

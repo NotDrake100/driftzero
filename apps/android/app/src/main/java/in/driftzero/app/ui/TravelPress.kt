@@ -24,8 +24,9 @@ import androidx.compose.ui.platform.LocalContext
 internal val TravelEaseOut = CubicBezierEasing(0.23f, 1f, 0.32f, 1f)
 internal const val TRAVEL_MOTION_MS = 120
 
+/** System animator scale at zero. The Settings toggle is merged in by [DriftZeroTheme]. */
 @Composable
-internal fun rememberReduceMotion(): Boolean {
+fun rememberSystemReduceMotion(): Boolean {
     val context = LocalContext.current
     return remember(context) {
         Settings.Global.getFloat(
@@ -48,7 +49,7 @@ internal fun Modifier.travelClickable(
 ): Modifier {
     val source = remember { MutableInteractionSource() }
     val isPressed by source.collectIsPressedAsState()
-    val reduceMotion = rememberReduceMotion()
+    val reduceMotion = InstrumentTheme.reduceMotion
     val scale by animateFloatAsState(
         targetValue = if (isPressed && !reduceMotion) 0.97f else 1f,
         animationSpec = tween(durationMillis = TRAVEL_MOTION_MS, easing = TravelEaseOut),

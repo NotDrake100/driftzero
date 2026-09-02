@@ -38,7 +38,7 @@ Use spatial indexing such as an R-tree, packed Hilbert index, or fixed grid chos
 
 ## 4. Online HMM design
 
-The approach follows the robust probabilistic pattern established by [Newson and Krumm](https://www.microsoft.com/en-us/research/publication/hidden-markov-map-matching-noise-sparseness/), adapted for dense phone output and an uncertain inertial trace. Paper formulas, Quddus integrity notes, and the implemented delta live in [docs/refs/MAP_MATCHING.md](refs/MAP_MATCHING.md). Kotlin: `HmmRoadMatcher` plus `OsmGraphLoader` in `packages/navigation-core`.
+The approach follows the probabilistic pattern established by [Newson and Krumm](https://www.microsoft.com/en-us/research/publication/hidden-markov-map-matching-noise-sparseness/), adapted for dense phone output and an uncertain inertial trace. Paper formulas, Quddus integrity notes, and the implemented delta live in [docs/refs/MAP_MATCHING.md](refs/MAP_MATCHING.md). Kotlin: `HmmRoadMatcher` plus `OsmGraphLoader` in `packages/navigation-core`.
 
 ### Candidate generation
 

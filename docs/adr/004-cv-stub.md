@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-09-02
+- Filename: `004-cv-stub.md` is historical. The decision is the pose store, not a computer-vision stub.
 
 ## Context
 

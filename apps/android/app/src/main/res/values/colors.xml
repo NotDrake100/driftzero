@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mirrors InstrumentPalette.DAY. Keep in sync; InstrumentContrastTest owns the numbers. -->
+    <color name="chassis">#F2EFE9</color>
+    <color name="ink">#1A1C19</color>
+    <color name="marker">#1E6BFF</color>
+    <color name="icon_background">#0B0D0A</color>
+</resources>

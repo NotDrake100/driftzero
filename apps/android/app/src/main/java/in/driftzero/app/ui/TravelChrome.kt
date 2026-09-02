@@ -1,6 +1,7 @@
 package `in`.driftzero.app.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -29,6 +30,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +46,7 @@ import `in`.driftzero.app.R
 
 private val SheetCorner = RoundedCornerShape(8.dp)
 private val SearchPill = RoundedCornerShape(24.dp)
+private val LampCorner = RoundedCornerShape(4.dp)
 
 @Composable
 internal fun TravelSearchBar(
@@ -76,7 +79,7 @@ internal fun TravelSearchBar(
             modifier = Modifier
                 .weight(1f)
                 .padding(vertical = 8.dp),
-            textStyle = type.search,
+            textStyle = type.body,
             singleLine = true,
             cursorBrush = SolidColor(colors.ink),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -86,7 +89,7 @@ internal fun TravelSearchBar(
                     if (query.isEmpty()) {
                         BasicText(
                             text = stringResource(R.string.destination_hint),
-                            style = type.search.copy(color = colors.inkDim),
+                            style = type.body.copy(color = colors.inkDim),
                         )
                     }
                     inner()
@@ -173,12 +176,63 @@ internal fun TravelSuggestionList(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    BasicText(text = place.name, style = type.place)
+                    BasicText(text = place.name, style = type.body)
                     if (place.detail.isNotEmpty()) {
-                        BasicText(text = place.detail, style = type.detail)
+                        BasicText(text = place.detail, style = type.caption)
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Status lamp on the map. Dot colour is the tone, the word is the TalkBack
+ * label, the mono readout is fix age. Tap opens the sheet; long-press holds
+ * GNSS when [onLongPress] is set (the caller decides when that is allowed).
+ */
+@Composable
+internal fun ModeLamp(
+    lamp: LampDisplay,
+    onClick: () -> Unit,
+    onLongPress: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    val colors = InstrumentTheme.colors
+    val type = InstrumentTheme.type
+    val word = lampWordText(lamp.word)
+    val readout = lampReadoutText(lamp)
+    val dot = lampColor(lamp.tone)
+    val tone by animateColorAsState(
+        targetValue = dot,
+        animationSpec = tween(TRAVEL_MOTION_MS, easing = TravelEaseOut),
+        label = "lamp",
+    )
+    val description = if (readout == null) word else "$word, $readout"
+    Row(
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .shadow(2.dp, LampCorner)
+            .travelClickable(
+                onClick = onClick,
+                onLongClick = onLongPress,
+                idle = colors.panel,
+                pressed = colors.panelPressed,
+                shape = LampCorner,
+            )
+            .semantics { contentDescription = description }
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(if (InstrumentTheme.reduceMotion) dot else tone, CircleShape),
+        )
+        BasicText(text = word, style = type.label)
+        if (readout != null) {
+            BasicText(text = readout, style = type.readout.copy(color = colors.inkDim))
         }
     }
 }
@@ -286,10 +340,10 @@ internal fun RouteDock(
             ) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (speedText != null) {
-                        BasicText(text = speedText, style = type.readout)
+                        BasicText(text = speedText, style = type.readoutLarge)
                     }
-                    BasicText(text = "$distanceText, $etaText", style = type.note)
-                    BasicText(text = destinationName, style = type.detail)
+                    BasicText(text = "$distanceText, $etaText", style = type.label)
+                    BasicText(text = destinationName, style = type.caption)
                 }
                 Spacer(Modifier.width(16.dp))
                 Box(
@@ -305,7 +359,7 @@ internal fun RouteDock(
                         .semantics { contentDescription = stopLabel },
                     contentAlignment = Alignment.Center,
                 ) {
-                    BasicText(text = stopLabel, style = type.note)
+                    BasicText(text = stopLabel, style = type.label)
                 }
             }
         }
@@ -322,6 +376,9 @@ internal fun TravelTopChrome(
     onPick: (TravelPlace) -> Unit,
     searchNote: String?,
     reduceMotion: Boolean,
+    lamp: LampDisplay,
+    onLampClick: () -> Unit,
+    onLampLongPress: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -337,6 +394,9 @@ internal fun TravelTopChrome(
             onSubmit = onSubmit,
             onClear = onClear,
         )
+        if (places.isEmpty()) {
+            ModeLamp(lamp = lamp, onClick = onLampClick, onLongPress = onLampLongPress)
+        }
         TravelSuggestionList(
             places = places,
             onPick = onPick,
@@ -351,7 +411,7 @@ internal fun TravelTopChrome(
                     .shadow(2.dp, SheetCorner)
                     .background(InstrumentTheme.colors.panel, SheetCorner)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                style = InstrumentTheme.type.detail,
+                style = InstrumentTheme.type.caption,
             )
         }
     }

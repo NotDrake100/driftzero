@@ -18,6 +18,8 @@ Create `data/manifests/io_vnbd_screening_v1.yaml` containing:
 
 The screening plot is invalid without this manifest. Fetch commands: `scripts/fetch_datasets.md`. License table: `docs/refs/DATASETS.md`.
 
+Local inventory (no raw CSVs opened in an editor): `results/io_vnbd_screening_v1/data_inventory.md`. `GPS SPEED (Kmh)` is metres per second on this checkout. Session-grouped splits live in `ml/src/driftzero_ml/io_vnbd/splits.py`.
+
 ## Sensitive data
 
 Indian pilot routes can expose home, work, or operational locations. Store them encrypted outside Git, restrict access, keep consent metadata, and export only with deliberate redaction.

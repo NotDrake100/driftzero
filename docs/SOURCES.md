@@ -1,13 +1,13 @@
 # Authoritative sources and reading list
 
-Retrieved and checked on 2026-09-02 unless noted. Product decisions are interpretations by the DriftZero team; sources do not endorse the product.
+Retrieved and checked on 2026-09-02 unless noted. Independent fetch log for official SIH26168 text and literature opened on 2026-09-03: [docs/refs/SIH26168_EVIDENCE.md](refs/SIH26168_EVIDENCE.md). Product decisions are interpretations by the DriftZero team; sources do not endorse the product.
 
 ## Problem statement
 
 - [SIH 2026 official problem statements](https://www.sih.gov.in/sih2026PS), search for ID 26168. Source of record for title, sponsor, constraints, required modules, dataset, output rates, and drift target.
 - [IO-VNBD repository](https://github.com/onyekpeu/IO-VNBD), official mandatory dataset link from the problem statement.
 - [IO-VNBD Data in Brief paper](https://doi.org/10.1016/j.dib.2021.106885), dataset scale, geography, sensors, and collection description.
-- [IO-VNBD inertial speed-estimation research](https://arxiv.org/abs/2005.01701).
+- [IO-VNBD dataset paper on arXiv](https://arxiv.org/abs/2005.01701) (Onyekpe, Palade, Kanarachos, Szkolnik). This is the dataset paper, not a separate speed-estimation paper. Related article: Onyekpe, Palade, Kanarachos, Applied Sciences 2021, 11(3), 1270.
 
 ## Foundation model and edge inference
 

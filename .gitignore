@@ -20,6 +20,7 @@ local.properties
 *.pmtiles
 *.pbf
 data/raw/
+data/interim/
 data/processed/
 data/area-packs/**
 !data/area-packs/README.md
@@ -27,4 +28,5 @@ results/*
 !results/.gitkeep
 secrets.properties
 .DS_Store
+.cursor/skills/
 

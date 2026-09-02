@@ -4,6 +4,7 @@ kotlin = "2.0.21"
 coroutines = "1.9.0"
 composeBom = "2024.12.01"
 activityCompose = "1.9.3"
+coreSplashscreen = "1.0.1"
 junit = "4.13.2"
 maplibre = "13.0.2"
 
@@ -11,6 +12,7 @@ maplibre = "13.0.2"
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
 androidx-compose-animation = { group = "androidx.compose.animation", name = "animation" }

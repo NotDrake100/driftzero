@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from math import cos, pi, radians, sin
 from typing import Sequence
 
-from .metrics import LatLon
+from .metrics import EARTH_MEAN_RADIUS_M, LatLon
 
 LatLonTime = tuple[float, float, int]
 
@@ -53,6 +54,41 @@ def constant_velocity_baseline(
         delta = stamp - last_t
         points.append((last_lat + dlat * delta, last_lon + dlon * delta))
     return points
+
+
+def persist_course_baseline(
+    last_fix: LatLon,
+    heading_rad: float,
+    speed_mps: float,
+    horizon_dt_s: Sequence[float],
+) -> list[LatLon]:
+    """Hold last speed and heading. No gyro update. Persistence, not CV."""
+
+    if speed_mps < 0.0:
+        raise ValueError("speed_mps must be non-negative")
+    _validate_fix(last_fix)
+    lat, lon = last_fix
+    out: list[LatLon] = []
+    for dt in horizon_dt_s:
+        if dt < 0.0:
+            raise ValueError("horizon dt must be non-negative")
+        east = speed_mps * sin(heading_rad) * dt
+        north = speed_mps * cos(heading_rad) * dt
+        lat, lon = _offset_m(lat, lon, north, east)
+        out.append((lat, lon))
+    if not out:
+        raise ValueError("horizon_dt_s must not be empty")
+    return out
+
+
+def _offset_m(lat: float, lon: float, north: float, east: float) -> LatLon:
+    dlat = (north / EARTH_MEAN_RADIUS_M) * (180.0 / pi)
+    coslat = cos(radians(lat))
+    denom = EARTH_MEAN_RADIUS_M * (1e-12 if abs(coslat) < 1e-12 else coslat)
+    dlon = (east / denom) * (180.0 / pi)
+    nlat = min(90.0, max(-90.0, lat + dlat))
+    nlon = ((lon + dlon + 180.0) % 360.0) - 180.0
+    return nlat, nlon
 
 
 def _validate_fix(point: LatLon) -> None:

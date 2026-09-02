@@ -1,22 +1,71 @@
 package `in`.driftzero.app.ui
 
 /**
- * Travel-map colors. Packed ARGB. Paper sheet on a liberty landmass.
- * Contrast of ink on chassis, panel, and well is checked in
- * [InstrumentContrastTest]. No grain, wash, or translucent overlay.
+ * One set of packed ARGB colour roles. Day is the paper sheet on the liberty
+ * landmass. Night is olive chassis with paper ink on the OpenFreeMap dark sheet.
+ * Contrast of every ink-on-surface pair is asserted in [InstrumentContrastTest].
+ * No grain, wash, gradient, or translucent overlay. `haloFillAlpha` is the only
+ * transparency and it sits on the map, never on chrome.
  */
+data class InstrumentPaletteSet(
+    val chassis: Long,
+    val panel: Long,
+    val well: Long,
+    val panelPressed: Long,
+    val hairline: Long,
+    val ink: Long,
+    val inkDim: Long,
+    val lampOk: Long,
+    val lampCaution: Long,
+    val lampAlert: Long,
+    val marker: Long,
+    val routeFill: Long,
+    val routeCasing: Long,
+    val paper: Long,
+    val haloFillAlpha: Float,
+)
+
 object InstrumentPalette {
-    const val CHASSIS = 0xFFF2EFE9L
-    const val PANEL = 0xFFFFFFFFL
-    const val WELL = 0xFFEBE7DFL
-    const val PANEL_PRESSED = 0xFFE8E6DCL
-    const val HAIRLINE = 0xFFD4D0C8L
-    const val INK = 0xFF1A1C19L
-    const val INK_DIM = 0xFF3D413AL
-    const val LAMP_OK = 0xFF2E7D32L
-    const val LAMP_CAUTION = 0xFFB86A00L
-    const val LAMP_ALERT = 0xFFC62828L
     const val MARKER_BLUE = 0xFF1E6BFFL
+    const val ROUTE_CASING = 0xFF0E3E9CL
+    const val NIGHT_CHASSIS = 0xFF0B0D0AL
+    const val NIGHT_INK = 0xFFF4F1E8L
+
+    val DAY = InstrumentPaletteSet(
+        chassis = 0xFFF2EFE9L,
+        panel = 0xFFFFFFFFL,
+        well = 0xFFEBE7DFL,
+        panelPressed = 0xFFE8E6DCL,
+        hairline = 0xFFD4D0C8L,
+        ink = 0xFF1A1C19L,
+        inkDim = 0xFF3D413AL,
+        lampOk = 0xFF2E7D32L,
+        lampCaution = 0xFFB86A00L,
+        lampAlert = 0xFFC62828L,
+        marker = MARKER_BLUE,
+        routeFill = MARKER_BLUE,
+        routeCasing = ROUTE_CASING,
+        paper = 0xFFFFFFFFL,
+        haloFillAlpha = 0.14f,
+    )
+
+    val NIGHT = InstrumentPaletteSet(
+        chassis = NIGHT_CHASSIS,
+        panel = 0xFF161A14L,
+        well = 0xFF1F241DL,
+        panelPressed = 0xFF0F120EL,
+        hairline = 0xFF2E342BL,
+        ink = NIGHT_INK,
+        inkDim = 0xFFB8B4A8L,
+        lampOk = 0xFF4CCB5AL,
+        lampCaution = 0xFFE6A317L,
+        lampAlert = 0xFFFF5A4EL,
+        marker = MARKER_BLUE,
+        routeFill = MARKER_BLUE,
+        routeCasing = ROUTE_CASING,
+        paper = NIGHT_INK,
+        haloFillAlpha = 0.18f,
+    )
 
     fun red(color: Long): Int = ((color shr 16) and 0xFFL).toInt()
 

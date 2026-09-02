@@ -6,9 +6,9 @@ import java.io.FileNotFoundException
 
 /**
  * Optional on-device linear Δp student. Copied from
- * `models/learned_imu_v1/linear_dp.json` at assemble time when that file
- * exists. Missing or invalid JSON leaves the heuristic speed/ZUPT path.
- * No ONNX Runtime and no TimesFM.
+ * `models/learned_imu_v1/linear_dp.json` only when assemble is given
+ * `-Pdriftzero.packLearnedImu=true`. Missing or invalid JSON leaves the
+ * heuristic speed/ZUPT path. No ONNX Runtime and no TimesFM.
  */
 object LearnedImuAssets {
     const val ASSET_PATH: String = "learned_imu_v1/linear_dp.json"

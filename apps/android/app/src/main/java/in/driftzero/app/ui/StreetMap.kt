@@ -1,14 +1,7 @@
 package `in`.driftzero.app.ui
 
 import android.Manifest
-import android.annotation.SuppressLint
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.graphics.Color
-import android.location.Location
-import android.location.LocationManager
 import android.os.Bundle
 import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -22,38 +15,30 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import `in`.driftzero.app.R
 import `in`.driftzero.app.maps.AreaPack
 import `in`.driftzero.app.maps.AreaPackStore
 import `in`.driftzero.app.maps.GeoBbox
 import `in`.driftzero.app.pose.hasLocationPermission
 import `in`.driftzero.app.pose.newestLastKnownLocation
-import `in`.driftzero.core.NavigationMode
-import `in`.driftzero.core.NavigationState
-import `in`.driftzero.core.puckHeadingRad
-import `in`.driftzero.core.puckLatitudeDeg
-import `in`.driftzero.core.puckLongitudeDeg
 import java.io.File
 import org.maplibre.android.MapLibre
-import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
-import org.maplibre.android.location.LocationComponentActivationOptions
-import org.maplibre.android.location.LocationComponentOptions
-import org.maplibre.android.location.modes.CameraMode
-import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.FillLayer
+import org.maplibre.android.style.layers.Layer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
@@ -63,11 +48,16 @@ import org.maplibre.android.style.sources.GeoJsonSource
 /**
  * MapLibre Native street map in an [AndroidView].
  *
+ * The own-vehicle mark, its confidence halo, and its heading cone are GeoJSON
+ * layers fed once per frame by [StreetMapController.applyDisplayPose], so all
+ * three share one clock and the halo is true in metres at every zoom. The
+ * MapLibre LocationComponent is not used: it animates on its own schedule and
+ * draws a pixel accuracy disc.
+ *
  * MapView defaults to a SurfaceView. Compose cannot punch a hole through an
  * opaque parent, so that surface paints behind the window and the map looks
  * gone. [StreetMapConfig.TEXTURE_MODE] puts the map on a TextureView so it
- * composites in the view tree. The view background stays transparent. A black
- * theme background on MapView hides tiles even when they load.
+ * composites in the view tree.
  *
  * MapLibre 13 `android-sdk` is Vulkan. On the emulator that guest VkInstance
  * (engine maplibre-native) then kills host qemu with SIGSEGV 139, host GPU or
@@ -76,20 +66,20 @@ import org.maplibre.android.style.sources.GeoJsonSource
  */
 class StreetMapController {
     internal var session: StreetMapSession? = null
-    var onFix: ((TravelFix) -> Unit)? = null
     var onBearing: ((Float) -> Unit)? = null
     var onPermission: ((Boolean) -> Unit)? = null
+    var onFollowing: ((Boolean) -> Unit)? = null
 
     fun locateOwnVehicle() {
         session?.recenterOnPuck()
     }
 
     fun followOwnVehicle() {
-        session?.followPuck()
+        session?.setFollowing(true)
     }
 
     fun stopFollow() {
-        session?.stopFollow()
+        session?.setFollowing(false)
     }
 
     fun resetNorth() {
@@ -109,11 +99,19 @@ class StreetMapController {
     }
 
     fun clearRoute() {
-        session?.clearRoute()
+        session?.setRoute(emptyList())
     }
 
     fun setDestination(point: TravelLatLng?) {
         session?.setDestination(point)
+    }
+
+    fun setMatchedRoad(points: List<TravelLatLng>?) {
+        session?.setMatchedRoad(points)
+    }
+
+    fun applyDisplayPose(puck: DisplayPuck, lamp: LampDisplay, frameNs: Long) {
+        session?.applyDisplayPose(puck, lamp, frameNs)
     }
 
     fun flyTo(point: TravelLatLng) {
@@ -129,16 +127,50 @@ class StreetMapController {
     }
 }
 
+/** Packed ARGB ints for MapLibre paint properties, taken from the active palette. */
+internal data class MapPalette(
+    val marker: Int,
+    val paper: Int,
+    val routeFill: Int,
+    val routeCasing: Int,
+    val haloFillAlpha: Float,
+    val lampOk: Int,
+    val lampCaution: Int,
+    val lampAlert: Int,
+) {
+    fun lamp(tone: LampTone): Int = when (tone) {
+        LampTone.OK -> lampOk
+        LampTone.CAUTION -> lampCaution
+        LampTone.ALERT -> lampAlert
+    }
+
+    companion object {
+        fun from(colors: InstrumentColors): MapPalette = MapPalette(
+            marker = colors.marker.toArgb(),
+            paper = colors.paper.toArgb(),
+            routeFill = colors.routeFill.toArgb(),
+            routeCasing = colors.routeCasing.toArgb(),
+            haloFillAlpha = colors.haloFillAlpha,
+            lampOk = colors.lampOk.toArgb(),
+            lampCaution = colors.lampCaution.toArgb(),
+            lampAlert = colors.lampAlert.toArgb(),
+        )
+    }
+}
+
 @Composable
 fun StreetMap(
     modifier: Modifier = Modifier,
     controller: StreetMapController = remember { StreetMapController() },
-    pose: NavigationState? = null,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val locationGranted = rememberLocationAccess()
     val session = remember { StreetMapSession() }
+    val night = InstrumentTheme.night
+    val palette = MapPalette.from(InstrumentTheme.colors)
+    val loadColorArgb = InstrumentTheme.colors.chassis.toArgb()
+    session.night = night
 
     DisposableEffect(controller, session) {
         controller.session = session
@@ -154,14 +186,13 @@ fun StreetMap(
     AndroidView(
         modifier = modifier.fillMaxSize(),
         factory = { ctx ->
-            createStreetMapView(ctx).apply {
+            createStreetMapView(ctx, loadColorArgb).apply {
                 session.mapView = this
                 onCreate(Bundle())
-                getMapAsync { map -> session.bind(map, this, ctx) }
             }
         },
         onRelease = { view ->
-            session.unbind(view.context)
+            session.unbind()
             session.mapView = null
             view.onPause()
             view.onStop()
@@ -169,12 +200,15 @@ fun StreetMap(
         },
     )
 
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
             val view = session.mapView ?: return@LifecycleEventObserver
             when (event) {
                 Lifecycle.Event.ON_START -> view.onStart()
-                Lifecycle.Event.ON_RESUME -> view.onResume()
+                Lifecycle.Event.ON_RESUME -> {
+                    view.onResume()
+                    session.attachIfNeeded(view, context)
+                }
                 Lifecycle.Event.ON_PAUSE -> view.onPause()
                 Lifecycle.Event.ON_STOP -> view.onStop()
                 else -> Unit
@@ -187,6 +221,7 @@ fun StreetMap(
             }
             if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
                 view.onResume()
+                session.attachIfNeeded(view, context)
             }
         }
         onDispose {
@@ -194,12 +229,16 @@ fun StreetMap(
         }
     }
 
-    LaunchedEffect(locationGranted, pose) {
+    LaunchedEffect(night) {
+        session.applySheet(night)
+    }
+
+    LaunchedEffect(palette) {
+        session.applyPalette(palette)
+    }
+
+    LaunchedEffect(locationGranted) {
         controller.onPermission?.invoke(locationGranted)
-        if (locationGranted) {
-            session.enablePuck(context)
-            session.applyPose(pose)
-        }
     }
 }
 
@@ -225,11 +264,11 @@ private fun rememberLocationAccess(): Boolean {
     return granted
 }
 
-internal fun createStreetMapView(context: Context): MapView {
+internal fun createStreetMapView(context: Context, loadColorArgb: Int): MapView {
     MapLibre.getInstance(context.applicationContext)
     val options = MapLibreMapOptions.createFromAttributes(context)
         .textureMode(StreetMapConfig.TEXTURE_MODE)
-        .foregroundLoadColor(StreetMapConfig.MAP_LOAD_COLOR_ARGB.toInt())
+        .foregroundLoadColor(loadColorArgb)
         .compassEnabled(false)
         .logoEnabled(false)
         .attributionEnabled(true)
@@ -238,26 +277,37 @@ internal fun createStreetMapView(context: Context): MapView {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT,
         )
-        setBackgroundColor(Color.TRANSPARENT)
+        setBackgroundColor(android.graphics.Color.TRANSPARENT)
     }
 }
 
 internal class StreetMapSession {
     var mapView: MapView? = null
     var controller: StreetMapController? = null
+    var night: Boolean = false
     private var map: MapLibreMap? = null
     private var style: Style? = null
     private var appContext: Context? = null
     private var fallbackUsed: Boolean = false
-    private var puckArmed: Boolean = false
+    private var loadedNight: Boolean? = null
+    private var palette: MapPalette? = null
     private var didInitialRecenter: Boolean = false
-    private var gpsReceiver: BroadcastReceiver? = null
+    private var following: Boolean = false
+    private var cameraBusyUntilNs: Long = 0L
+    private var zoomBand: Double? = null
     private var paddingLeft: Int = 0
     private var paddingTop: Int = 0
     private var paddingRight: Int = 0
     private var paddingBottom: Int = 0
     private var lastFixStore: LastFixStore? = null
     private var packStore: AreaPackStore? = null
+    private var lastPuck: DisplayPuck? = null
+    private var lastDrawnZoom: Double = Double.NaN
+    private var lastLampTone: LampTone? = null
+    private var lastLampDashed: Boolean? = null
+    private var routePoints: List<TravelLatLng> = emptyList()
+    private var destination: TravelLatLng? = null
+    private var matchedRoad: List<TravelLatLng>? = null
 
     fun bind(map: MapLibreMap, mapView: MapView, context: Context) {
         this.map = map
@@ -269,189 +319,283 @@ internal class StreetMapSession {
         map.uiSettings.isAttributionEnabled = true
         map.uiSettings.isLogoEnabled = false
         map.addOnCameraMoveListener {
-            val bearing = map.cameraPosition.bearing.toFloat()
-            controller?.onBearing?.invoke(bearing)
+            controller?.onBearing?.invoke(map.cameraPosition.bearing.toFloat())
+        }
+        map.addOnCameraMoveStartedListener { reason ->
+            if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
+                setFollowing(false)
+            }
         }
         mapView.addOnDidFailLoadingMapListener {
             if (!fallbackUsed && this.style == null) {
                 fallbackUsed = true
-                map.setStyle(StreetMapConfig.STYLE_BRIGHT) { loaded ->
-                    onStyle(map, loaded, context)
-                }
+                map.setStyle(StreetMapConfig.STYLE_BRIGHT) { loaded -> onStyle(map, loaded, context) }
             }
         }
-        val styleUri = packStore?.styleUri(packStore?.active()) ?: StreetMapConfig.STYLE_LIBERTY
-        map.setStyle(styleUri) { loaded ->
-            onStyle(map, loaded, context)
-        }
-        registerGpsReceiver(context)
+        loadSheet(map, context)
     }
 
-    fun unbind(context: Context) {
-        unregisterGpsReceiver(context)
-        puckArmed = false
+    /** Style load waits until MapView is resumed so the TextureView surface exists. */
+    fun attachIfNeeded(view: MapView, context: Context) {
+        if (map != null) {
+            return
+        }
+        view.getMapAsync { mapLibre ->
+            if (this.map == null) {
+                bind(mapLibre, view, context)
+            }
+        }
+    }
+
+    fun unbind() {
         style = null
         map = null
     }
 
+    private fun loadSheet(map: MapLibreMap, context: Context) {
+        loadedNight = night
+        val styleUri = packStore?.styleUri(packStore?.active(), night) ?: StreetMapConfig.hostedStyle(night)
+        map.setStyle(styleUri) { loaded -> onStyle(map, loaded, context) }
+    }
+
+    /** Swap day and night sheets. Every DriftZero layer is re-added on load. */
+    fun applySheet(night: Boolean) {
+        this.night = night
+        val map = map ?: return
+        val context = appContext ?: return
+        if (loadedNight == night) {
+            return
+        }
+        style = null
+        loadSheet(map, context)
+    }
+
+    fun applyPalette(palette: MapPalette) {
+        this.palette = palette
+        style?.let { paintLayers(it, palette) }
+    }
+
     private fun onStyle(map: MapLibreMap, style: Style, context: Context) {
         this.style = style
-        puckArmed = false
         val live = newestLastKnownLocation(context)?.let { TravelLatLng(it.latitude, it.longitude) }
-        val start = CameraStartResolver.resolve(liveGps = live, lastFix = lastFixStore?.read())
-        map.cameraPosition = CameraPosition.Builder()
-            .target(LatLng(start.latitudeDeg, start.longitudeDeg))
-            .zoom(start.zoom)
-            .build()
-        didInitialRecenter = start.isStreetLevel
+        if (!didInitialRecenter) {
+            val start = CameraStartResolver.resolve(liveGps = live, lastFix = lastFixStore?.read())
+            map.cameraPosition = CameraPosition.Builder()
+                .target(LatLng(start.latitudeDeg, start.longitudeDeg))
+                .zoom(start.zoom)
+                .build()
+            didInitialRecenter = start.isStreetLevel
+        }
         live?.let { lastFixStore?.write(it) }
-        ensureRouteLayers(style)
+        ensureLayers(style)
+        palette?.let { paintLayers(style, it) }
         applyPadding()
-        if (hasLocationPermission(context)) {
-            enablePuck(context)
+        setRoute(routePoints)
+        setDestination(destination)
+        setMatchedRoad(matchedRoad)
+        lastPuck?.let { puck ->
+            setGeoJson(StreetMapConfig.PUCK_SOURCE_ID, pointGeoJson(TravelLatLng(puck.latitudeDeg, puck.longitudeDeg)))
         }
     }
 
-    private fun ensureRouteLayers(style: Style) {
-        if (style.getSource(StreetMapConfig.ROUTE_SOURCE_ID) == null) {
-            style.addSource(GeoJsonSource(StreetMapConfig.ROUTE_SOURCE_ID, EMPTY_FEATURE_COLLECTION))
-        }
-        if (style.getSource(StreetMapConfig.DEST_SOURCE_ID) == null) {
-            style.addSource(GeoJsonSource(StreetMapConfig.DEST_SOURCE_ID, EMPTY_FEATURE_COLLECTION))
-        }
-        if (style.getLayer(StreetMapConfig.ROUTE_LAYER_ID) == null) {
-            val line = LineLayer(StreetMapConfig.ROUTE_LAYER_ID, StreetMapConfig.ROUTE_SOURCE_ID)
-                .withProperties(
-                    PropertyFactory.lineColor(Color.parseColor("#1E6BFF")),
-                    PropertyFactory.lineWidth(StreetMapConfig.ROUTE_LINE_WIDTH),
-                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
-                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
-                )
-            val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
-            if (firstSymbol != null) {
-                style.addLayerBelow(line, firstSymbol)
-            } else {
-                style.addLayer(line)
+    private fun ensureLayers(style: Style) {
+        listOf(
+            StreetMapConfig.MATCHED_SOURCE_ID,
+            StreetMapConfig.ROUTE_SOURCE_ID,
+            StreetMapConfig.HALO_SOURCE_ID,
+            StreetMapConfig.CONE_SOURCE_ID,
+            StreetMapConfig.PUCK_SOURCE_ID,
+            StreetMapConfig.DEST_SOURCE_ID,
+        ).forEach { id ->
+            if (style.getSource(id) == null) {
+                style.addSource(GeoJsonSource(id, EMPTY_FEATURE_COLLECTION))
             }
         }
-        if (style.getLayer(StreetMapConfig.DEST_LAYER_ID) == null) {
-            val dest = CircleLayer(StreetMapConfig.DEST_LAYER_ID, StreetMapConfig.DEST_SOURCE_ID)
-                .withProperties(
-                    PropertyFactory.circleRadius(7f),
-                    PropertyFactory.circleColor(Color.parseColor("#1E6BFF")),
-                    PropertyFactory.circleStrokeWidth(3f),
-                    PropertyFactory.circleStrokeColor(Color.WHITE),
-                )
-            style.addLayer(dest)
+        val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
+        fun belowLabels(layer: Layer) {
+            if (style.getLayer(layer.id) != null) return
+            if (firstSymbol != null) style.addLayerBelow(layer, firstSymbol) else style.addLayer(layer)
         }
+        fun onTop(layer: Layer) {
+            if (style.getLayer(layer.id) == null) style.addLayer(layer)
+        }
+        belowLabels(
+            LineLayer(StreetMapConfig.MATCHED_LAYER_ID, StreetMapConfig.MATCHED_SOURCE_ID).withProperties(
+                PropertyFactory.lineWidth(StreetMapConfig.MATCHED_LINE_WIDTH),
+                PropertyFactory.lineOpacity(StreetMapConfig.MATCHED_ALPHA),
+                PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            ),
+        )
+        belowLabels(
+            LineLayer(StreetMapConfig.ROUTE_CASING_LAYER_ID, StreetMapConfig.ROUTE_SOURCE_ID).withProperties(
+                PropertyFactory.lineWidth(StreetMapConfig.ROUTE_CASING_WIDTH),
+                PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            ),
+        )
+        belowLabels(
+            LineLayer(StreetMapConfig.ROUTE_LAYER_ID, StreetMapConfig.ROUTE_SOURCE_ID).withProperties(
+                PropertyFactory.lineWidth(StreetMapConfig.ROUTE_LINE_WIDTH),
+                PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            ),
+        )
+        belowLabels(FillLayer(StreetMapConfig.HALO_FILL_LAYER_ID, StreetMapConfig.HALO_SOURCE_ID))
+        belowLabels(
+            LineLayer(StreetMapConfig.HALO_LINE_LAYER_ID, StreetMapConfig.HALO_SOURCE_ID).withProperties(
+                PropertyFactory.lineWidth(StreetMapConfig.HALO_LINE_WIDTH),
+            ),
+        )
+        belowLabels(
+            FillLayer(StreetMapConfig.CONE_LAYER_ID, StreetMapConfig.CONE_SOURCE_ID).withProperties(
+                PropertyFactory.fillOpacity(StreetMapConfig.CONE_ALPHA),
+            ),
+        )
+        onTop(
+            CircleLayer(StreetMapConfig.PUCK_RING_LAYER_ID, StreetMapConfig.PUCK_SOURCE_ID).withProperties(
+                PropertyFactory.circleRadius(StreetMapConfig.PUCK_DISK_DP / 2f + StreetMapConfig.PUCK_RING_DP),
+                PropertyFactory.circlePitchAlignment(Property.CIRCLE_PITCH_ALIGNMENT_MAP),
+            ),
+        )
+        onTop(
+            CircleLayer(StreetMapConfig.PUCK_LAYER_ID, StreetMapConfig.PUCK_SOURCE_ID).withProperties(
+                PropertyFactory.circleRadius(StreetMapConfig.PUCK_DISK_DP / 2f),
+                PropertyFactory.circlePitchAlignment(Property.CIRCLE_PITCH_ALIGNMENT_MAP),
+            ),
+        )
+        onTop(
+            CircleLayer(StreetMapConfig.DEST_LAYER_ID, StreetMapConfig.DEST_SOURCE_ID).withProperties(
+                PropertyFactory.circleRadius(StreetMapConfig.DEST_RADIUS_DP),
+                PropertyFactory.circleStrokeWidth(StreetMapConfig.DEST_STROKE_DP),
+            ),
+        )
     }
 
-    @SuppressLint("MissingPermission")
-    fun enablePuck(context: Context) {
-        val map = map ?: return
-        val style = style ?: return
-        if (!hasLocationPermission(context)) {
-            return
-        }
-        val component = map.locationComponent
-        if (puckArmed) {
-            component.isLocationComponentEnabled = true
-            return
-        }
-        val puck = StreetMapConfig.PUCK_COLOR_ARGB.toInt()
-        val topLayer = style.layers.lastOrNull()?.id
-        val builder = LocationComponentOptions.builder(context)
-            .foregroundDrawable(R.drawable.own_vehicle_puck)
-            .backgroundDrawable(R.drawable.own_vehicle_puck_ring)
-            .bearingDrawable(R.drawable.own_vehicle_heading)
-            .gpsDrawable(R.drawable.own_vehicle_puck)
-            .accuracyColor(puck)
-            .accuracyAlpha(0.16f)
-            .enableStaleState(false)
-            .pulseEnabled(false)
-            .accuracyAnimationEnabled(false)
-        if (topLayer != null) {
-            builder.layerAbove(topLayer)
-        }
-        component.activateLocationComponent(
-            LocationComponentActivationOptions.builder(context, style)
-                .locationComponentOptions(builder.build())
-                .useDefaultLocationEngine(false)
-                .build(),
+    private fun paintLayers(style: Style, palette: MapPalette) {
+        style.getLayer(StreetMapConfig.MATCHED_LAYER_ID)?.setProperties(PropertyFactory.lineColor(palette.routeFill))
+        style.getLayer(StreetMapConfig.ROUTE_CASING_LAYER_ID)?.setProperties(PropertyFactory.lineColor(palette.routeCasing))
+        style.getLayer(StreetMapConfig.ROUTE_LAYER_ID)?.setProperties(PropertyFactory.lineColor(palette.routeFill))
+        style.getLayer(StreetMapConfig.HALO_FILL_LAYER_ID)?.setProperties(
+            PropertyFactory.fillColor(palette.marker),
+            PropertyFactory.fillOpacity(palette.haloFillAlpha),
         )
-        component.isLocationComponentEnabled = true
-        component.renderMode = RenderMode.GPS
-        component.cameraMode = CameraMode.NONE
-        newestLastKnownLocation(context)?.let { loc ->
-            component.forceLocationUpdate(loc)
-            emitFix(loc)
-            lastFixStore?.write(TravelLatLng(loc.latitude, loc.longitude))
-        }
-        puckArmed = true
+        style.getLayer(StreetMapConfig.CONE_LAYER_ID)?.setProperties(PropertyFactory.fillColor(palette.marker))
+        style.getLayer(StreetMapConfig.PUCK_RING_LAYER_ID)?.setProperties(PropertyFactory.circleColor(palette.paper))
+        style.getLayer(StreetMapConfig.PUCK_LAYER_ID)?.setProperties(PropertyFactory.circleColor(palette.marker))
+        style.getLayer(StreetMapConfig.DEST_LAYER_ID)?.setProperties(
+            PropertyFactory.circleColor(palette.marker),
+            PropertyFactory.circleStrokeColor(palette.paper),
+        )
+        lastLampTone = null
+        lastLampDashed = null
     }
 
-    @SuppressLint("MissingPermission")
-    fun applyPose(state: NavigationState?) {
-        val map = map ?: return
-        if (!puckArmed || state == null) {
+    private fun setGeoJson(sourceId: String, json: String) {
+        style?.getSourceAs<GeoJsonSource>(sourceId)?.setGeoJson(json)
+    }
+
+    /**
+     * One frame of the own-vehicle mark. Halo radius is [DisplayPuck.radiusM]
+     * on the ground; cone length is 36 dp at the current zoom; the stroke
+     * takes the lamp colour and dashes on coasting modes.
+     */
+    fun applyDisplayPose(puck: DisplayPuck, lamp: LampDisplay, frameNs: Long) {
+        val map = map ?: run { lastPuck = puck; return }
+        val style = style ?: run { lastPuck = puck; return }
+        val zoom = map.cameraPosition.zoom
+        val unchanged = puck == lastPuck && zoom == lastDrawnZoom &&
+            lamp.tone == lastLampTone && lamp.dashed == lastLampDashed
+        if (unchanged && !following) {
             return
         }
-        val component = map.locationComponent
-        val location = state.toAndroidLocation()
-        component.forceLocationUpdate(location)
-        emitFixFromPose(state)
-        lastFixStore?.write(
-            TravelLatLng(state.position.latitude.value, state.position.longitude.value),
+        lastPuck = puck
+        lastDrawnZoom = zoom
+        val centre = TravelLatLng(puck.latitudeDeg, puck.longitudeDeg)
+        setGeoJson(StreetMapConfig.PUCK_SOURCE_ID, pointGeoJson(centre))
+        setGeoJson(
+            StreetMapConfig.HALO_SOURCE_ID,
+            polygonGeoJson(MapGeometry.circle(puck.latitudeDeg, puck.longitudeDeg, puck.radiusM)),
         )
+        if (MapGeometry.coneVisible(puck.speedMps, puck.heading95Rad)) {
+            val lengthM = MapGeometry.CONE_LENGTH_DP * MapGeometry.metresPerDp(puck.latitudeDeg, zoom)
+            setGeoJson(
+                StreetMapConfig.CONE_SOURCE_ID,
+                polygonGeoJson(
+                    MapGeometry.wedge(puck.latitudeDeg, puck.longitudeDeg, puck.headingRad, puck.heading95Rad, lengthM),
+                ),
+            )
+        } else {
+            setGeoJson(StreetMapConfig.CONE_SOURCE_ID, EMPTY_FEATURE_COLLECTION)
+        }
+        val palette = palette
+        if (palette != null && (lamp.tone != lastLampTone || lamp.dashed != lastLampDashed)) {
+            lastLampTone = lamp.tone
+            lastLampDashed = lamp.dashed
+            val dash = if (lamp.dashed) arrayOf(4f, 2.67f) else arrayOf(1f, 0f)
+            style.getLayer(StreetMapConfig.HALO_LINE_LAYER_ID)?.setProperties(
+                PropertyFactory.lineColor(palette.lamp(lamp.tone)),
+                PropertyFactory.lineDasharray(dash),
+            )
+        }
+        lastFixStore?.write(centre)
         if (!didInitialRecenter) {
             didInitialRecenter = true
             recenterOnPuck()
+            return
         }
+        if (following && frameNs >= cameraBusyUntilNs) {
+            followCamera(map, puck, zoom)
+        }
+    }
+
+    private fun followCamera(map: MapLibreMap, puck: DisplayPuck, zoom: Double) {
+        val band = MapGeometry.zoomForSpeed(puck.speedMps, zoomBand)
+        val target = LatLng(puck.latitudeDeg, puck.longitudeDeg)
+        if (band != zoomBand) {
+            zoomBand = band
+            cameraBusyUntilNs = System.nanoTime() + StreetMapConfig.FOLLOW_ZOOM_EASE_MS * 1_000_000L
+            map.easeCamera(CameraUpdateFactory.newLatLngZoom(target, band), StreetMapConfig.FOLLOW_ZOOM_EASE_MS.toInt())
+            return
+        }
+        map.moveCamera(CameraUpdateFactory.newLatLngZoom(target, zoom))
+    }
+
+    fun setFollowing(on: Boolean) {
+        if (following == on) {
+            return
+        }
+        following = on
+        if (!on) {
+            zoomBand = null
+        }
+        controller?.onFollowing?.invoke(on)
     }
 
     fun recenterOnPuck() {
         val map = map ?: return
-        val loc = map.locationComponent.lastKnownLocation ?: return
-        map.locationComponent.cameraMode = CameraMode.TRACKING_GPS
+        val target = lastPuck?.let { TravelLatLng(it.latitudeDeg, it.longitudeDeg) } ?: originOrNull() ?: return
+        setFollowing(true)
+        zoomBand = MapGeometry.zoomForSpeed(lastPuck?.speedMps ?: 0.0, null)
+        cameraBusyUntilNs = System.nanoTime() + StreetMapConfig.CAMERA_EASE_MS * 1_000_000L
         map.easeCamera(
-            CameraUpdateFactory.newLatLngZoom(
-                LatLng(loc.latitude, loc.longitude),
-                StreetMapConfig.CAMERA_ZOOM,
-            ),
-            250,
+            CameraUpdateFactory.newLatLngZoom(LatLng(target.latitudeDeg, target.longitudeDeg), zoomBand ?: StreetMapConfig.CAMERA_ZOOM),
+            StreetMapConfig.CAMERA_EASE_MS,
         )
-    }
-
-    fun followPuck() {
-        if (!puckArmed) {
-            return
-        }
-        map?.locationComponent?.cameraMode = CameraMode.TRACKING_GPS
-    }
-
-    fun stopFollow() {
-        if (!puckArmed) {
-            return
-        }
-        map?.locationComponent?.cameraMode = CameraMode.NONE
     }
 
     fun resetNorth() {
         val map = map ?: return
         val current = map.cameraPosition
+        cameraBusyUntilNs = System.nanoTime() + StreetMapConfig.CAMERA_EASE_MS * 1_000_000L
         map.easeCamera(
-            CameraUpdateFactory.newCameraPosition(
-                CameraPosition.Builder(current).bearing(0.0).build(),
-            ),
-            250,
+            CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(current).bearing(0.0).build()),
+            StreetMapConfig.CAMERA_EASE_MS,
         )
     }
 
     fun originOrNull(): TravelLatLng? {
-        val loc = map?.locationComponent?.lastKnownLocation
-        if (loc != null) {
-            return TravelLatLng(loc.latitude, loc.longitude)
-        }
+        lastPuck?.let { return TravelLatLng(it.latitudeDeg, it.longitudeDeg) }
         lastFixStore?.read()?.let { return it }
         val known = appContext?.let { newestLastKnownLocation(it) } ?: return null
         return TravelLatLng(known.latitude, known.longitude)
@@ -483,39 +627,32 @@ internal class StreetMapSession {
     }
 
     fun setRoute(points: List<TravelLatLng>) {
-        val style = style ?: return
-        val source = style.getSourceAs<GeoJsonSource>(StreetMapConfig.ROUTE_SOURCE_ID) ?: return
-        if (points.size < 2) {
-            source.setGeoJson(EMPTY_FEATURE_COLLECTION)
-            return
-        }
-        source.setGeoJson(lineStringGeoJson(points))
-    }
-
-    fun clearRoute() {
-        val style = style ?: return
-        style.getSourceAs<GeoJsonSource>(StreetMapConfig.ROUTE_SOURCE_ID)
-            ?.setGeoJson(EMPTY_FEATURE_COLLECTION)
+        routePoints = points
+        setGeoJson(
+            StreetMapConfig.ROUTE_SOURCE_ID,
+            if (points.size < 2) EMPTY_FEATURE_COLLECTION else lineStringGeoJson(points),
+        )
     }
 
     fun setDestination(point: TravelLatLng?) {
-        val style = style ?: return
-        val source = style.getSourceAs<GeoJsonSource>(StreetMapConfig.DEST_SOURCE_ID) ?: return
-        if (point == null) {
-            source.setGeoJson(EMPTY_FEATURE_COLLECTION)
-        } else {
-            source.setGeoJson(pointGeoJson(point))
-        }
+        destination = point
+        setGeoJson(StreetMapConfig.DEST_SOURCE_ID, if (point == null) EMPTY_FEATURE_COLLECTION else pointGeoJson(point))
+    }
+
+    fun setMatchedRoad(points: List<TravelLatLng>?) {
+        matchedRoad = points
+        setGeoJson(
+            StreetMapConfig.MATCHED_SOURCE_ID,
+            if (points == null || points.size < 2) EMPTY_FEATURE_COLLECTION else lineStringGeoJson(points),
+        )
     }
 
     fun flyTo(point: TravelLatLng) {
         val map = map ?: return
+        setFollowing(false)
         map.easeCamera(
-            CameraUpdateFactory.newLatLngZoom(
-                LatLng(point.latitudeDeg, point.longitudeDeg),
-                StreetMapConfig.CAMERA_ZOOM,
-            ),
-            250,
+            CameraUpdateFactory.newLatLngZoom(LatLng(point.latitudeDeg, point.longitudeDeg), StreetMapConfig.CAMERA_ZOOM),
+            StreetMapConfig.CAMERA_EASE_MS,
         )
     }
 
@@ -528,17 +665,12 @@ internal class StreetMapSession {
             flyTo(points.first())
             return
         }
+        setFollowing(false)
         val bounds = LatLngBounds.Builder()
         points.forEach { bounds.include(LatLng(it.latitudeDeg, it.longitudeDeg)) }
         map.easeCamera(
-            CameraUpdateFactory.newLatLngBounds(
-                bounds.build(),
-                paddingLeft,
-                paddingTop,
-                paddingRight,
-                paddingBottom,
-            ),
-            250,
+            CameraUpdateFactory.newLatLngBounds(bounds.build(), paddingLeft, paddingTop, paddingRight, paddingBottom),
+            StreetMapConfig.CAMERA_EASE_MS,
         )
     }
 
@@ -553,89 +685,4 @@ internal class StreetMapSession {
     private fun applyPadding() {
         map?.setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom)
     }
-
-    private fun emitFixFromPose(state: NavigationState) {
-        controller?.onFix?.invoke(state.toTravelFix(providerEnabled = gpsProviderEnabled(appContext ?: return) && state.mode != NavigationMode.DEAD_RECKONING))
-    }
-
-    private fun emitFix(location: Location) {
-        val context = appContext ?: return
-        val speed = if (location.hasSpeed()) location.speed.toDouble() else null
-        val bearing = if (location.hasBearing()) location.bearing.toDouble() else null
-        val accuracy = if (location.hasAccuracy()) location.accuracy.toDouble() else null
-        controller?.onFix?.invoke(
-            TravelFix(
-                latitudeDeg = location.latitude,
-                longitudeDeg = location.longitude,
-                speedMps = speed,
-                bearingDeg = bearing,
-                accuracyM = accuracy,
-                gpsProviderOn = gpsProviderEnabled(context),
-            ),
-        )
-    }
-
-    private fun registerGpsReceiver(context: Context) {
-        if (gpsReceiver != null) {
-            return
-        }
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(ctx: Context, intent: Intent) {
-                if (intent.action != LocationManager.PROVIDERS_CHANGED_ACTION) {
-                    return
-                }
-                val loc = map?.locationComponent?.lastKnownLocation
-                if (loc != null) {
-                    emitFix(loc)
-                }
-            }
-        }
-        ContextCompat.registerReceiver(
-            context.applicationContext,
-            receiver,
-            IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION),
-            ContextCompat.RECEIVER_NOT_EXPORTED,
-        )
-        gpsReceiver = receiver
-    }
-
-    private fun unregisterGpsReceiver(context: Context) {
-        val receiver = gpsReceiver ?: return
-        try {
-            context.applicationContext.unregisterReceiver(receiver)
-        } catch (_: IllegalArgumentException) {
-            // Already unregistered with the map view.
-        }
-        gpsReceiver = null
-    }
-}
-
-private fun gpsProviderEnabled(context: Context): Boolean {
-    val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-    if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-        return true
-    }
-    if (manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-        return true
-    }
-    return try {
-        manager.isProviderEnabled("fused")
-    } catch (_: IllegalArgumentException) {
-        false
-    }
-}
-
-private const val POSE_PROVIDER = "driftzero"
-
-private fun NavigationState.toAndroidLocation(): Location {
-    val location = Location(POSE_PROVIDER)
-    location.latitude = puckLatitudeDeg()
-    location.longitude = puckLongitudeDeg()
-    location.bearing = Math.toDegrees(puckHeadingRad()).toFloat()
-    location.speed = motion.speed.value.toFloat()
-    location.accuracy = uncertainty.horizontal95.value.toFloat()
-    location.elapsedRealtimeNanos = timestamp.value
-    location.time = System.currentTimeMillis()
-    position.altitudeM?.let { location.altitude = it }
-    return location
 }

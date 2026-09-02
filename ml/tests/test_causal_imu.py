@@ -64,6 +64,20 @@ class CausalImuTests(unittest.TestCase):
         self.assertTrue(features.idle)
         self.assertFalse(features.bump)
 
+    def test_missing_gyro_is_not_idle_evidence(self) -> None:
+        samples = [
+            ImuSample(
+                timestamp_ns=i * 20_000_000,
+                ax=0.0,
+                ay=0.0,
+                az=GRAVITY_MPS2,
+            )
+            for i in range(40)
+        ]
+        features = extract_causal_imu_features(samples)
+        self.assertFalse(features.idle)
+        self.assertLess(features.idle_score, 0.85)
+
     def test_extract_rejects_empty_window(self) -> None:
         with self.assertRaisesRegex(ValueError, "empty"):
             extract_causal_imu_features([])

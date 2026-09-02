@@ -6,11 +6,13 @@ No SAC, NRSC, or `isro.gov.in` data pack is named in `PRD.md`, `docs/04_DATASETS
 
 TimesFM checkpoints are not stored here.
 
-## On disk right now
+## What Git contains versus a local checkout
 
-| Dataset | On disk? | Path |
+Raw IO-VNBD CSVs are gitignored. A judge clone does not receive them. Hashes for a screening subset live in `data/manifests/io_vnbd_screening_v1.yaml`. Fetch commands: `scripts/fetch_datasets.md`.
+
+| Dataset | In this Git tree? | Path |
 |---|---|---|
-| IO-VNBD (official) | **Yes, smartphone LFS.** 241 `S-*.csv` pulled (762,583,010 bytes). Vehicle `V-*.csv` / zips not pulled. Hashes in `data/manifests/io_vnbd_screening_v1.yaml`. | `data/raw/io_vnbd/` (gitignored official clone) |
+| IO-VNBD (official) | No. Local `data/raw/io_vnbd/` is gitignored. Pending Git LFS on a clean machine. | `data/raw/io_vnbd/` after you fetch |
 | IO-VNBD test excerpt | Yes | `ml/tests/fixtures/io_vnbd_s_vta9_head.csv` (header plus 3 rows) |
 | OxIOD, RoNIN, TUM VI, EuRoC, GSDC | No | Expected under `data/raw/<name>/` after you fetch |
 
@@ -48,8 +50,8 @@ Logging, chip, ISRO FAQ limits, and judge language: [docs/refs/NAVIC.md](NAVIC.m
 | Job | Can we run it now? |
 |---|---|
 | Linear motion student on synthetic IMU | Yes. `PYTHONPATH=ml/src python -m driftzero_ml.student.train` |
-| Linear student / learned_imu on categorised synchronised IO-VNBD S- tables | Yes after LFS pull. Weights in `models/motion_student_v1/` and `models/learned_imu_v1/`. Not a screening plot until a locked blackout suite exists. |
-| Full IO-VNBD screening plot | **No.** Smartphone LFS is local. Blackout interval IDs are not locked yet. |
+| Linear student / learned_imu on categorised synchronised IO-VNBD S- tables | After a local LFS pull. Checked-in weights in `models/motion_student_v1/` and `models/learned_imu_v1/` came from one such checkout. Not a screening plot until a locked blackout suite exists in `results/`. |
+| Full IO-VNBD screening plot | **Pending.** Raw CSVs are not in Git. Blackout interval IDs are not locked in `results/`. |
 | Optional GRU | Only if `torch` is installed (`./ml[research]`). Research artifact, not APK. |
 | OxIOD / RoNIN / TUM VI / EuRoC / GSDC | Loaders exist. No local files yet. Pedestrian and robot sets must not be reported as IO-VNBD or India-phone scores. |
 | TimesFM teacher | Optional desktop extra. Weights stay out of Git. |

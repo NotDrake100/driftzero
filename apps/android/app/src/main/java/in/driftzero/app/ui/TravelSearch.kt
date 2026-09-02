@@ -92,6 +92,15 @@ internal fun pointGeoJson(point: TravelLatLng): String {
     return """{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.longitudeDeg},${point.latitudeDeg}]},"properties":{}}]}"""
 }
 
+/** One closed ring. Callers pass a ring whose last vertex repeats the first. */
+internal fun polygonGeoJson(ring: List<TravelLatLng>): String {
+    if (ring.size < 4) {
+        return EMPTY_FEATURE_COLLECTION
+    }
+    val coords = ring.joinToString(",") { "[${it.longitudeDeg},${it.latitudeDeg}]" }
+    return """{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[$coords]]},"properties":{}}]}"""
+}
+
 internal const val EMPTY_FEATURE_COLLECTION = """{"type":"FeatureCollection","features":[]}"""
 
 private fun httpGet(url: String): String {

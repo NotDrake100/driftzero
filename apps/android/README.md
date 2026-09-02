@@ -1,6 +1,6 @@
 # Android application specification
 
-The `apps/android/app` module ships the travel map chrome plus a MapLibre Native street map (`AndroidView` `MapView`, OpenFreeMap liberty, bright fallback). Live pose comes from `PoseStore` / `DeadReckoningFilter` (strapdown INS plus ESKF). `PhoneImuSource` copies accel/gyro only. The 10 Hz tick runs `ZuptAccelMotionModel` into `ingestMotionPseudo`. Assemble packs `motion_student_v1/linear.json` into assets when that file exists. `learned_imu_v1/linear_dp.json` may also pack; Δp stays χ²-gated and is not a screening claim. No TimesFM and no ONNX Runtime in the APK. The hosted style is a stand-in until an installed PMTiles area package owns rendering. No Google Maps SDK.
+The `apps/android/app` module ships the travel map chrome plus a MapLibre Native street map (`AndroidView` `MapView`, OpenFreeMap liberty, bright fallback). Live pose comes from `PoseStore` / `DeadReckoningFilter` (strapdown INS plus ESKF). `PhoneImuSource` copies accel/gyro only. The 10 Hz tick runs `ZuptAccelMotionModel` into `ingestMotionPseudo`. Assemble packs `motion_student_v1/linear.json` into assets when that file exists. `learned_imu_v1/linear_dp.json` is not packed unless you pass `-Pdriftzero.packLearnedImu=true`; its train report is worse than freeze. `gru.json` is never packed and there is no Kotlin GRU runtime. No TimesFM and no ONNX Runtime in the APK. The hosted style is a stand-in until an installed PMTiles area package owns rendering. No Google Maps SDK.
 
 ## Proposed identity
 

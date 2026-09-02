@@ -123,6 +123,9 @@ def extract_causal_imu_features(samples: Sequence[ImuSample]) -> CausalImuFeatur
     vibration_energy = _mean(residuals)
     specific_rms = sqrt(vibration_energy)
     gyro_energy = _gyro_energy(samples)
+    gyro_present = any(
+        row.gx is not None and row.gy is not None and row.gz is not None for row in samples
+    )
     gyro_z = [row.gz for row in samples if row.gz is not None]
     gyro_z_mean = _mean(gyro_z)
     bump = any(sqrt(item) >= BUMP_MPS2 for item in residuals)
@@ -130,7 +133,7 @@ def extract_causal_imu_features(samples: Sequence[ImuSample]) -> CausalImuFeatur
     dt_mean = _mean_dt_s(samples)
     n_norm = len(samples) / MAX_SAMPLES
     idle_score = 0.0
-    if gyro_energy < GYRO_IDLE_ENERGY:
+    if gyro_present and gyro_energy < GYRO_IDLE_ENERGY:
         idle_score += 0.4
     if accel_std < ACCEL_IDLE_STD:
         idle_score += 0.3

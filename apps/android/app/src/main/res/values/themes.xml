@@ -1,14 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.DriftZero" parent="android:Theme.DeviceDefault.NoActionBar">
+    <!-- Day sheet. values-night mirrors these with the night palette so the
+         window matches InstrumentPalette before Compose draws. -->
+    <style name="Theme.DriftZero" parent="android:Theme.DeviceDefault.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowBackground">#F2EFE9</item>
-        <item name="android:colorPrimary">#1E6BFF</item>
-        <item name="android:colorAccent">#1E6BFF</item>
-        <item name="android:textColorPrimary">#1A1C19</item>
+        <item name="android:windowBackground">@color/chassis</item>
+        <item name="android:colorPrimary">@color/marker</item>
+        <item name="android:colorAccent">@color/marker</item>
+        <item name="android:textColorPrimary">@color/ink</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
         <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+
+    <style name="Theme.DriftZero.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/chassis</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.DriftZero</item>
     </style>
 </resources>

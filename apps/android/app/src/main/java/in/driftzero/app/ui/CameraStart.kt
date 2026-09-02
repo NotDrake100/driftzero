@@ -65,14 +65,6 @@ internal fun searchBiasLatLon(
     return camera.latitudeDeg to camera.longitudeDeg
 }
 
-internal fun routeOrigin(
-    poseLat: Double?,
-    poseLon: Double?,
-    mapOrigin: TravelLatLng?,
-): TravelLatLng? {
-    return CameraStartResolver.validOrNull(poseLat, poseLon) ?: mapOrigin
-}
-
 internal fun searchBiasKey(near: Pair<Double, Double>?): String {
     if (near == null) {
         return ""

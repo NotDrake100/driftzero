@@ -2,12 +2,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from driftzero_ml.baselines import constant_velocity_baseline, freeze_baseline
+from driftzero_ml.baselines import constant_velocity_baseline, freeze_baseline, persist_course_baseline
 from driftzero_ml.io_vnbd import (
     IOVNBDMissing,
+    assign_grouped_trip_splits,
     assign_trip_splits,
     inspect_delimited_table,
     require_local_root,
+    session_group_id,
 )
 
 
@@ -55,6 +57,17 @@ class SplitTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate"):
             assign_trip_splits(["same", "same"], seed="x")
 
+    def test_session_siblings_share_one_split(self) -> None:
+        self.assertEqual(session_group_id("S-S3a"), "S-S3")
+        self.assertEqual(session_group_id("S-Vta1b"), "S-Vta1")
+        self.assertEqual(session_group_id("S-Vta12"), "S-Vta12")
+        trips = ["S-S3a", "S-S3b", "S-S3c", "S-Vta1a", "S-Vta1b", "S-Vta2"]
+        rows = assign_grouped_trip_splits(trips, seed="26168")
+        by_id = {row.trip_id: row.split for row in rows}
+        self.assertEqual(by_id["S-S3a"], by_id["S-S3b"])
+        self.assertEqual(by_id["S-S3b"], by_id["S-S3c"])
+        self.assertEqual(by_id["S-Vta1a"], by_id["S-Vta1b"])
+
 
 class BaselineTests(unittest.TestCase):
     def test_freeze_repeats_last_fix(self) -> None:
@@ -73,6 +86,11 @@ class BaselineTests(unittest.TestCase):
         history = ((0.0, 0.0, 0), (0.0, 0.001, 1_000))
         with self.assertRaisesRegex(ValueError, "at or after"):
             constant_velocity_baseline(history, (500,))
+
+    def test_persist_course_holds_heading(self) -> None:
+        points = persist_course_baseline((0.0, 0.0), 0.0, 10.0, [1.0, 1.0])
+        self.assertEqual(len(points), 2)
+        self.assertGreater(points[1][0], points[0][0])
 
 
 if __name__ == "__main__":

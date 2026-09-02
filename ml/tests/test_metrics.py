@@ -4,8 +4,10 @@ import unittest
 from driftzero_ml.metrics import (
     BlackoutMetrics,
     evaluate_blackout,
+    gaussian_nll,
     haversine_m,
     path_length_m,
+    picp,
     summarize_blackouts,
 )
 
@@ -35,6 +37,17 @@ class MetricsTests(unittest.TestCase):
     def test_path_length_requires_data(self) -> None:
         with self.assertRaisesRegex(ValueError, "at least one"):
             path_length_m([])
+
+    def test_along_cross_and_picp(self) -> None:
+        # Truth moves due north 111.195 m. Estimate ends 11.1195 m east of the end.
+        truth = [(0.0, 0.0), (0.001, 0.0)]
+        estimate = [(0.0, 0.0), (0.001, 0.0001)]
+        metrics = evaluate_blackout(estimate, truth)
+        self.assertIsNotNone(metrics.along_track_error_m)
+        self.assertTrue(math.isclose(metrics.along_track_error_m, 0.0, abs_tol=0.05))
+        self.assertTrue(math.isclose(abs(metrics.cross_track_error_m or 0.0), 11.1195, rel_tol=1e-3))
+        self.assertTrue(math.isclose(picp([0.5, 1.5], [1.0, 1.0], 1.0), 0.5))
+        self.assertTrue(gaussian_nll([0.0], [0.0]) > 0.0)
 
     def test_summarize_keeps_ineligible_count(self) -> None:
         rows = [

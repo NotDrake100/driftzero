@@ -295,6 +295,85 @@ class DeadReckoningFilterTest {
         assertEquals(NavigationMode.GNSS_FUSED, pose!!.mode)
     }
 
+    @Test
+    fun poorAccuracyFixReportsGnssDegradedNotFused() {
+        val filter = DeadReckoningFilter()
+        filter.ingestGnss(fix(0L, accuracyM = 4.0))
+        assertEquals(NavigationMode.GNSS_FUSED, filter.poseAt(Nanoseconds(100_000_000L))!!.mode)
+        filter.ingestGnss(fix(1_000_000_000L, accuracyM = 45.0))
+        val pose = filter.poseAt(Nanoseconds(1_100_000_000L))!!
+        assertEquals(NavigationMode.GNSS_DEGRADED, pose.mode)
+        assertTrue(pose.gnssHealth.riskFlags.contains(DeadReckoningFilter.RISK_POOR_ACCURACY))
+        filter.ingestGnss(fix(2_000_000_000L, accuracyM = 5.0))
+        assertEquals(NavigationMode.GNSS_FUSED, filter.poseAt(Nanoseconds(2_100_000_000L))!!.mode)
+    }
+
+    @Test
+    fun coastThenFixesWalkThroughReacquiringBeforeFused() {
+        val filter = DeadReckoningFilter()
+        filter.ingestGnss(fix(0L))
+        assertEquals(NavigationMode.DEAD_RECKONING, filter.poseAt(Nanoseconds(3_000_000_000L))!!.mode)
+        filter.ingestGnss(fix(3_000_000_000L))
+        val first = filter.poseAt(Nanoseconds(3_100_000_000L))!!
+        assertEquals(NavigationMode.REACQUIRING, first.mode)
+        assertTrue(first.gnssHealth.riskFlags.contains(DeadReckoningFilter.RISK_REACQUIRING))
+        assertFalse(first.gnssHealth.riskFlags.contains(DeadReckoningFilter.RISK_STALE_GNSS))
+        filter.ingestGnss(fix(4_000_000_000L))
+        assertEquals(NavigationMode.REACQUIRING, filter.poseAt(Nanoseconds(4_100_000_000L))!!.mode)
+        filter.ingestGnss(fix(5_000_000_000L))
+        assertEquals(NavigationMode.GNSS_FUSED, filter.poseAt(Nanoseconds(5_100_000_000L))!!.mode)
+    }
+
+    @Test
+    fun heldGnssReleaseGoesThroughReacquiring() {
+        val filter = DeadReckoningFilter()
+        filter.ingestGnss(fix(0L))
+        filter.setGnssHeld(true)
+        assertEquals(NavigationMode.DEAD_RECKONING, filter.poseAt(Nanoseconds(500_000_000L))!!.mode)
+        filter.setGnssHeld(false)
+        filter.ingestGnss(fix(600_000_000L))
+        assertEquals(NavigationMode.REACQUIRING, filter.poseAt(Nanoseconds(700_000_000L))!!.mode)
+    }
+
+    @Test
+    fun gatedFixKeepsDegradedForFiveSecondsThenClears() {
+        val filter = DeadReckoningFilter()
+        filter.ingestGnss(fix(0L))
+        // 0.01 deg of latitude is about 1.1 km, far outside the 6 sigma gate.
+        filter.ingestGnss(fix(500_000_000L, latitudeDeg = 0.01))
+        val gated = filter.poseAt(Nanoseconds(600_000_000L))!!
+        assertEquals(NavigationMode.GNSS_DEGRADED, gated.mode)
+        assertTrue(gated.gnssHealth.riskFlags.contains(DeadReckoningFilter.RISK_GATED_FIX))
+        assertTrue(abs(gated.position.latitude.value) < 0.001)
+        filter.ingestGnss(fix(1_500_000_000L))
+        assertEquals(NavigationMode.GNSS_DEGRADED, filter.poseAt(Nanoseconds(1_600_000_000L))!!.mode)
+        filter.ingestGnss(fix(3_000_000_000L))
+        filter.ingestGnss(fix(4_500_000_000L))
+        filter.ingestGnss(fix(6_000_000_000L))
+        assertEquals(NavigationMode.GNSS_FUSED, filter.poseAt(Nanoseconds(6_000_000_000L))!!.mode)
+    }
+
+    @Test
+    fun gapBetweenFixesWithoutPoseQueryStillCountsAsCoast() {
+        val filter = DeadReckoningFilter()
+        filter.ingestGnss(fix(0L))
+        filter.ingestGnss(fix(4_000_000_000L))
+        assertEquals(NavigationMode.REACQUIRING, filter.poseAt(Nanoseconds(4_000_000_000L))!!.mode)
+    }
+
+    private fun fix(
+        timestampNs: Long,
+        latitudeDeg: Double = 0.0,
+        accuracyM: Double = 4.0,
+    ): CoastFix = CoastFix(
+        timestamp = Nanoseconds(timestampNs),
+        latitudeDeg = latitudeDeg,
+        longitudeDeg = 0.0,
+        speedMps = 0.0,
+        headingRad = 0.0,
+        horizontalAccuracyM = accuracyM,
+    )
+
     private fun stepImu(
         filter: DeadReckoningFilter,
         t: Nanoseconds,

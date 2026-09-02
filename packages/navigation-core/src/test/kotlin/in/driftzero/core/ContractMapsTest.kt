@@ -70,6 +70,67 @@ class ContractMapsTest {
     }
 
     @Test
+    fun gnssFixRoundTripsSpeedAndBearing() {
+        val frame = SensorFrame(
+            sourceId = "phone-gnss",
+            sequence = 4L,
+            timestamp = Nanoseconds(2_000_000_000L),
+            clockDomain = ClockDomain.DATASET_DECLARED,
+            kind = SensorKind.GNSS_FIX,
+            quality = Quality(available = true, accuracyCode = 2),
+            payload = FixPayload(
+                GnssFixPayload(
+                    latitude = LatitudeDeg(12.97),
+                    longitude = LongitudeDeg(77.59),
+                    horizontalAccuracyM = Metres(3.0),
+                    providerTimeMs = 1_700_000_000_000L,
+                    altitudeM = 920.0,
+                    speedMps = MetresPerSecond(10.0),
+                    bearingRad = HeadingRadians(0.5),
+                    isMock = false,
+                ),
+            ),
+        )
+        val json = ContractJson.stringify(ContractMaps.sensorFrame(frame))
+        val parsed = ContractMaps.sensorFrameFrom(ContractJson.parseObject(json))
+        val fix = (parsed.payload as FixPayload).fix
+        assertEquals(10.0, fix.speedMps!!.value, 0.0)
+        assertEquals(0.5, fix.bearingRad!!.value, 0.0)
+        assertEquals(920.0, fix.altitudeM!!, 0.0)
+        assertEquals(false, fix.isMock)
+        assertEquals(1_700_000_000_000L, fix.providerTimeMs)
+    }
+
+    @Test
+    fun writtenStateSchemaRoundTrip() {
+        val state = sampleState()
+        val json = ContractJson.stringify(ContractMaps.navigationState(state))
+        val parsed = ContractMaps.navigationStateFrom(ContractJson.parseObject(json))
+        val again = ContractJson.stringify(ContractMaps.navigationState(parsed))
+        assertEquals(json, again)
+        assertEquals(state.sequence, parsed.sequence)
+        assertEquals(state.timestamp, parsed.timestamp)
+        assertEquals(state.mode, parsed.mode)
+        assertEquals(state.position.latitude.value, parsed.position.latitude.value, 0.0)
+        assertEquals(state.position.longitude.value, parsed.position.longitude.value, 0.0)
+        val required = listOf(
+            "schema_version",
+            "sequence",
+            "timestamp_ns",
+            "mode",
+            "position",
+            "motion",
+            "uncertainty",
+            "gnss_health",
+            "map_match",
+            "health",
+            "provenance",
+        )
+        val keys = ContractJson.parseObject(json).keys
+        required.forEach { key -> assertTrue(key, keys.contains(key)) }
+    }
+
+    @Test
     fun accelerometerRejectsWrongUnit() {
         var rejected = false
         try {

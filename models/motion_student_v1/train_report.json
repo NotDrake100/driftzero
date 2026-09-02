@@ -1,28 +1,31 @@
 {
   "seed": "26168",
-  "train_windows": 54889,
+  "train_windows": 49535,
   "splits": {
     "validation": {
-      "count": 27823,
-      "freeze_speed_mae": 3.9249098467694594,
-      "heuristic_speed_mae": 4.60061637244351,
-      "linear_speed_mae": 1.622494701351644
-    },
-    "public_test": {
-      "count": 7808,
-      "freeze_speed_mae": 2.4759000739981785,
-      "heuristic_speed_mae": 2.9497220439225913,
-      "linear_speed_mae": 1.1067198022398643
+      "count": 23420,
+      "freeze_speed_mae": 13.939661827497865,
+      "heuristic_speed_mae": 7.421290015109609,
+      "linear_speed_mae": 5.912981440513693
     },
     "locked_test": {
-      "count": 7195,
-      "freeze_speed_mae": 2.32420508068875,
-      "heuristic_speed_mae": 1.729935198571662,
-      "linear_speed_mae": 1.2031767322150486
+      "count": 16241,
+      "freeze_speed_mae": 10.650635428852903,
+      "heuristic_speed_mae": 7.26343723781582,
+      "linear_speed_mae": 5.25663679942681
+    },
+    "public_test": {
+      "count": 7696,
+      "freeze_speed_mae": 8.803153586278587,
+      "heuristic_speed_mae": 5.235873337566176,
+      "linear_speed_mae": 4.391172475671001
     }
   },
-  "torch_available": false,
-  "source": "io_vnbd:72 smartphone tables",
+  "speed_unit": "m/s",
+  "split": "session_grouped",
+  "supersedes_invalid_kmh_labels": true,
+  "torch_available": true,
+  "source": "io_vnbd:71 smartphone tables",
   "window_stride": 10,
   "feature_names": [
     "accel_mag_mean",
@@ -39,6 +42,6 @@
     "n_norm"
   ],
   "window_ns": 1000000000,
-  "gru": "skipped: torch not installed",
+  "gru": "skipped: not enough odometry windows",
   "learned_imu": "RoNIN/TLIO heads live in driftzero_ml.learned_imu. This script still fits the speed-only linear student. Run python -m driftzero_ml.learned_imu for \u0394p + log \u03c3."
 }

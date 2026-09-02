@@ -1,4 +1,4 @@
-.PHONY: test lint validate jvm android
+.PHONY: test lint validate links jvm android
 
 PYTHON ?= python3
 
@@ -7,6 +7,9 @@ test:
 
 lint:
 	$(PYTHON) -m ruff check ml
+
+links:
+	$(PYTHON) scripts/check_doc_links.py
 
 validate:
 	$(PYTHON) -m json.tool contracts/sensor_frame.schema.json >/dev/null

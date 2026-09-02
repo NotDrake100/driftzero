@@ -2,7 +2,7 @@
 
 Raw trees belong in gitignored `data/raw/`. Do not commit TimesFM weights.
 
-This machine had about 6 GB free and no `git-lfs` when the commands were recorded. Prefer one small file first.
+Prefer one small smartphone file first. Full LFS needs `git-lfs` and on the order of 1 to 2 GB.
 
 ## 1. IO-VNBD (official SIH reference)
 

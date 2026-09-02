@@ -15,6 +15,20 @@ It implements a strapdown INS in the local-tangent n-frame (ENU) and a 15-state 
 
 Each adapter declares units, axes, time base, expected rate, calibration source, and quality mapping.
 
+### File replay (FR-11, FR-12, SIH-26)
+
+`ReplaySensorSource` reads one `SensorFrame` JSON object per line. An optional first line may be a header object with `declared_rate_hz`, `clock_domain`, `frame`, and `source_id`. Otherwise those fields come from the first IMU frame and the IMU period. Units are the contract strings (`m/s^2`, `rad/s`, `uT`). Timestamps are integer nanoseconds. The adapter does not care whether the file is 10 Hz, 100 Hz, or 200 Hz.
+
+IO-VNBD frames are produced by the Python side (`ml/`) as aligned, unit-checked SensorFrame JSONL. This adapter stays dataset-agnostic. Hidden truth GNSS is never present in the input during a mask. Scoring is Python (`ml/src/driftzero_ml/eval_navstate.py`).
+
+Drive the same `DeadReckoningFilter` used on the phone:
+
+```
+JAVA_HOME="$(/usr/libexec/java_home -v 17)" ./gradlew :navigation-core:replay --args="--input frames.jsonl --output states.jsonl"
+```
+
+Optional `--mask-start-ns` and `--mask-end-ns` drop GNSS kinds in that inclusive nanosecond interval before the filter sees them. Optional `--declared-rate-hz` and `--config name=value` override the header and `InsConfig`. Output is one `NavigationState` JSON object per line at 10 Hz on the recorded clock.
+
 ## Output
 
 The core emits `NavigationState` at a configured rate, normally 10 Hz on phone. It includes estimate, motion, 95-percent uncertainty, GNSS health, map status, component health, and provenance.

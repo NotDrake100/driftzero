@@ -73,16 +73,6 @@ class CameraStartTest {
     }
 
     @Test
-    fun routeOriginPrefersFusedPose() {
-        val fromPose = routeOrigin(40.758, -73.985, TravelLatLng(18.5362, 73.8938))
-        assertEquals(40.758, fromPose!!.latitudeDeg, 0.0001)
-        assertEquals(-73.985, fromPose.longitudeDeg, 0.0001)
-        val fromMap = routeOrigin(null, null, TravelLatLng(51.5074, -0.1278))
-        assertEquals(51.5074, fromMap!!.latitudeDeg, 0.0001)
-        assertNull(routeOrigin(null, null, null))
-    }
-
-    @Test
     fun searchBiasKeyQuantizesToAboutAKilometre() {
         assertEquals("", searchBiasKey(null))
         assertEquals(searchBiasKey(40.758 to -73.985), searchBiasKey(40.756 to -73.987))

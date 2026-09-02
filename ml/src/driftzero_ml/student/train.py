@@ -23,7 +23,7 @@ from driftzero_ml.datasets.io_vnbd import (
     screening_smartphone_tables,
     to_imu_records,
 )
-from driftzero_ml.io_vnbd import IOVNBDMissing, assign_trip_splits
+from driftzero_ml.io_vnbd import IOVNBDMissing, assign_grouped_trip_splits
 from driftzero_ml.student.csv_load import load_imu_csv
 from driftzero_ml.student.gru import torch_is_installed
 from driftzero_ml.student.heads import zupt_accel_infer
@@ -73,6 +73,8 @@ def labeled_windows(records: list[dict], *, stride: int = 1) -> list[Window]:
                 row.ax,
                 row.ay,
                 row.az,
+                # Optional torch path only. Missing gyro stays 0 here. Feature
+                # pooling skips None axes and does not treat that as idle.
                 0.0 if row.gx is None else row.gx,
                 0.0 if row.gy is None else row.gy,
                 0.0 if row.gz is None else row.gz,
@@ -103,7 +105,7 @@ def train_from_trips(
     seed: str = "26168",
     stride: int = 1,
 ) -> dict:
-    assignments = {row.trip_id: row.split for row in assign_trip_splits(sorted(trips), seed=seed)}
+    assignments = {row.trip_id: row.split for row in assign_grouped_trip_splits(sorted(trips), seed=seed)}
     train_x: list[tuple[float, ...]] = []
     train_speed: list[float] = []
     train_stop: list[float] = []
@@ -120,7 +122,14 @@ def train_from_trips(
     if not train_x:
         raise ValueError("no labeled IMU windows in the training split")
     student = fit_linear_motion_student(train_x, train_speed, train_stop)
-    report: dict = {"seed": seed, "train_windows": len(train_x), "splits": {}}
+    report: dict = {
+        "seed": seed,
+        "train_windows": len(train_x),
+        "splits": {},
+        "speed_unit": "m/s",
+        "split": "session_grouped",
+        "supersedes_invalid_kmh_labels": True,
+    }
     for split, rows in eval_rows.items():
         targets = [item[1] for item in rows]
         freeze = zero_speed_baseline(len(targets))

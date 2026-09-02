@@ -7,7 +7,7 @@ integrity-critical evaluator can run in a minimal environment.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from math import asin, cos, isfinite, radians, sin, sqrt
+from math import asin, atan2, cos, exp, isfinite, log, pi, radians, sin, sqrt
 from statistics import mean, median
 from typing import Iterable, Sequence
 
@@ -59,9 +59,87 @@ class BlackoutMetrics:
     mean_position_error_m: float | None
     max_position_error_m: float | None
     sample_count: int
+    along_track_error_m: float | None = None
+    cross_track_error_m: float | None = None
+    speed_mae_mps: float | None = None
+    heading_mae_rad: float | None = None
 
     def to_dict(self) -> dict[str, float | int | None]:
         return asdict(self)
+
+
+def enu_m(origin: LatLon, point: LatLon) -> tuple[float, float]:
+    """East/north metres from origin. Phone GNSS, not RTK."""
+
+    _validate_point(origin)
+    _validate_point(point)
+    dlat = radians(point[0] - origin[0])
+    dlon = radians(point[1] - origin[1])
+    east = EARTH_MEAN_RADIUS_M * dlon * cos(radians(origin[0]))
+    north = EARTH_MEAN_RADIUS_M * dlat
+    return east, north
+
+
+def along_cross_m(estimate: LatLon, truth: LatLon, heading_rad: float) -> tuple[float, float]:
+    """Endpoint error in the truth heading frame. Along is forward, cross is right."""
+
+    east, north = enu_m(truth, estimate)
+    along = north * cos(heading_rad) + east * sin(heading_rad)
+    cross = east * cos(heading_rad) - north * sin(heading_rad)
+    return along, cross
+
+
+def path_heading_rad(points: Sequence[LatLon]) -> float:
+    """Heading of the last non-trivial truth segment, else first-to-last."""
+
+    if len(points) < 2:
+        raise ValueError("need two points for a path heading")
+    for a, b in zip(reversed(points[:-1]), reversed(points[1:])):
+        east, north = enu_m(a, b)
+        if east * east + north * north >= 0.25:
+            return atan2(east, north)
+    east, north = enu_m(points[0], points[-1])
+    if east * east + north * north < 1e-12:
+        return 0.0
+    return atan2(east, north)
+
+
+def wrap_heading_error_rad(estimate_rad: float, truth_rad: float) -> float:
+    return (estimate_rad - truth_rad + pi) % (2.0 * pi) - pi
+
+
+def circular_mae_rad(estimate: Sequence[float], truth: Sequence[float]) -> float:
+    if len(estimate) != len(truth) or not estimate:
+        raise ValueError("heading series must be non-empty and aligned")
+    return mean(abs(wrap_heading_error_rad(a, b)) for a, b in zip(estimate, truth))
+
+
+def gaussian_nll(residual: Sequence[float], log_variance: Sequence[float]) -> float:
+    """Mean Gaussian NLL. log_variance is ln(sigma^2)."""
+
+    if len(residual) != len(log_variance) or not residual:
+        raise ValueError("NLL series must be non-empty and aligned")
+    acc = 0.0
+    for err, log_var in zip(residual, log_variance):
+        var = max(1e-8, exp(log_var) if log_var <= 80.0 else 5.540622384e34)
+        acc += 0.5 * (log(2.0 * pi) + log_var + err * err / var)
+    return acc / len(residual)
+
+
+def picp(residual: Sequence[float], sigma: Sequence[float], z: float) -> float:
+    """Prediction interval coverage. z=1 is ~68%, z=1.959964 is ~95%."""
+
+    if len(residual) != len(sigma) or not residual:
+        raise ValueError("PICP series must be non-empty and aligned")
+    if z <= 0:
+        raise ValueError("z must be positive")
+    hits = 0
+    for err, s in zip(residual, sigma):
+        if s < 0:
+            raise ValueError("sigma must be non-negative")
+        if abs(err) <= z * s:
+            hits += 1
+    return hits / len(residual)
 
 
 def evaluate_blackout(
@@ -87,6 +165,8 @@ def evaluate_blackout(
     truth_distance = path_length_m(truth)
     endpoint_error = errors[-1]
     ratio = endpoint_error / truth_distance if truth_distance >= minimum_ratio_path_m else None
+    heading = path_heading_rad(truth) if len(truth) >= 2 else 0.0
+    along, cross = along_cross_m(estimate[-1], truth[-1], heading)
     return BlackoutMetrics(
         endpoint_error_m=endpoint_error,
         truth_path_length_m=truth_distance,
@@ -94,6 +174,8 @@ def evaluate_blackout(
         mean_position_error_m=mean(errors),
         max_position_error_m=max(errors),
         sample_count=len(errors),
+        along_track_error_m=along,
+        cross_track_error_m=cross,
     )
 
 

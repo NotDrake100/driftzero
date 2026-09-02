@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Product | DriftZero |
-| Tagline | AI-Assisted Resilient Navigation Beyond GNSS |
+| Tagline | Phone-only dead-reckoning navigation beyond GNSS |
 | Problem statement | SIH26168 |
 | Sponsor | Indian Space Research Organisation, Department of Space |
 | Category | Software |
@@ -30,7 +30,7 @@ When GNSS degrades, drivers and field operators need continuous, understandable 
 - a position that continues smoothly through a short or medium outage;
 - road and direction consistency without inappropriate snapping;
 - an explicit warning as uncertainty grows;
-- a seamless, non-teleporting recovery when GNSS returns;
+- a continuous, non-teleporting recovery when GNSS returns;
 - offline operation for the map, model, and navigation engine;
 - no vehicle modification, special antenna, or network dependency.
 
@@ -86,7 +86,7 @@ Product principles:
 - Explicit GNSS quality and innovation-based outage state machine.
 - Offline vector map and road graph for a selected Indian demo corridor.
 - Online HMM/Viterbi map matching with heading, speed, topology, and uncertainty-aware candidate scoring.
-- Seamless outage entry and bounded recovery blending.
+- Bounded outage entry and recovery blending.
 - Deterministic replay of IO-VNBD and team-collected India routes.
 - Artificial blackout tool that retains labels only for scoring.
 - Dashboard/report for endpoint error, drift ratio, along/cross-track error, heading error, continuity, recovery jump, latency, and power.
@@ -98,7 +98,7 @@ Product principles:
 - NavIC-specific satellite and raw-measurement diagnostics where supported by the phone.
 - Route-aware hazard or outage-zone prediction.
 - Federated or privacy-preserving improvement workflow.
-- Multi-phone robustness calibration and automated device capability profiling.
+- Multi-phone calibration and automated device capability profiling.
 - Secure signed offline map/model bundles.
 - Accessibility-grade voice and haptic status cues.
 - Operations dashboard for consented, anonymized fleet health statistics.

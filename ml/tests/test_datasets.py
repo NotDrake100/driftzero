@@ -163,6 +163,13 @@ class OxiodRoninTests(unittest.TestCase):
             with self.assertRaisesRegex(DatasetMissing, "RoNIN"):
                 require_ronin_sequence(Path(folder))
 
+    def test_gsdc_missing_root_is_explicit(self) -> None:
+        from driftzero_ml.datasets.gsdc import find_imu_csvs
+
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(DatasetMissing, "GSDC"):
+                find_imu_csvs(Path(folder) / "missing")
+
 
 if __name__ == "__main__":
     unittest.main()

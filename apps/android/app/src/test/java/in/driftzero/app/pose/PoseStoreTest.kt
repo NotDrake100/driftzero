@@ -69,6 +69,41 @@ class PoseStoreTest {
     }
 
     @Test
+    fun lastGnssSeenIgnoresHeldFixes() {
+        var now = 0L
+        val store = PoseStore(
+            filter = DeadReckoningFilter(),
+            clockNs = { now },
+        )
+        store.ingestGnss(
+            CoastFix(
+                timestamp = Nanoseconds(0L),
+                latitudeDeg = 0.0,
+                longitudeDeg = 0.0,
+                speedMps = 10.0,
+                headingRad = 0.0,
+                horizontalAccuracyM = 5.0,
+            ),
+        )
+        assertEquals(0L, store.lastGnssSeenNs.value)
+        assertEquals(1, store.rawTrail().size)
+        store.setSimulateGpsOff(true)
+        now = 2_000_000_000L
+        store.ingestGnss(
+            CoastFix(
+                timestamp = Nanoseconds(2_000_000_000L),
+                latitudeDeg = 1.0,
+                longitudeDeg = 1.0,
+                speedMps = 1.0,
+                headingRad = 1.0,
+                horizontalAccuracyM = 5.0,
+            ),
+        )
+        assertEquals(0L, store.lastGnssSeenNs.value)
+        assertEquals(1, store.rawTrail().size)
+    }
+
+    @Test
     fun tickWithNoFixStaysEmpty() {
         val store = PoseStore(
             filter = DeadReckoningFilter(),

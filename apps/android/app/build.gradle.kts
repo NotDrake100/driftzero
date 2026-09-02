@@ -6,8 +6,12 @@ plugins {
 
 val learnedImuJson = rootProject.file("models/learned_imu_v1/linear_dp.json")
 val motionStudentJson = rootProject.file("models/motion_student_v1/linear.json")
+// linear_dp.json is worse than freeze. Opt in with -Pdriftzero.packLearnedImu=true.
+// gru.json is never packed. There is no Kotlin GRU runtime.
+val packLearnedImuEnabled =
+    (findProperty("driftzero.packLearnedImu") as String?)?.equals("true", ignoreCase = true) == true
 val packLearnedImu = tasks.register<Copy>("packLearnedImu") {
-    onlyIf { learnedImuJson.isFile }
+    onlyIf { packLearnedImuEnabled && learnedImuJson.isFile }
     from(learnedImuJson)
     into(layout.buildDirectory.dir("generated/learnedImuAssets/learned_imu_v1"))
 }
@@ -68,6 +72,7 @@ dependencies {
     implementation(libs.maplibre.android)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.splashscreen)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.animation)

@@ -1,6 +1,6 @@
 # Phone test
 
-Sideload the debug APK (`demo/TESTER_SIDELLOAD.md`). No OBD cable. No extra antenna.
+Sideload the debug APK (`demo/TESTER_SIDELOAD.md`). No OBD cable. No extra antenna.
 
 1. Open DriftZero. Allow precise location while using the app. Streets should appear. The field at the top is Where to?. Outdoors with a fix, the chip should read GPS on.
 2. Type a real nearby place. Pick a result. A blue route line should draw. Distance and ETA appear only after that line exists.

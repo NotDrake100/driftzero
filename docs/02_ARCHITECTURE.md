@@ -204,5 +204,8 @@ No Android package may depend on the TimesFM Python environment or checkpoint.
 - [Hybrid learned filter](adr/001-hybrid-filter.md)
 - [TimesFM as teacher](adr/002-timesfm-teacher.md)
 - [Offline map package](adr/003-offline-maps.md)
+- [Pose store and GNSS-off coast](adr/004-cv-stub.md)
 - [Motion pseudo-measurement hook](adr/005-motion-pseudo-measurement.md)
+
+TimesFM 3 results are pending. There is no keep/reject report in `results/`. The adapter under `ml/` fails closed when the optional package is missing.
 

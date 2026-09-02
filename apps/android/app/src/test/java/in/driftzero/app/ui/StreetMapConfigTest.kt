@@ -17,6 +17,14 @@ class StreetMapConfigTest {
     }
 
     @Test
+    fun nightSheetIsOpenFreeMapDarkOnTheSameHost() {
+        assertEquals("https://tiles.openfreemap.org/styles/dark", StreetMapConfig.STYLE_DARK)
+        assertEquals(StreetMapConfig.STYLE_LIBERTY, StreetMapConfig.hostedStyle(night = false))
+        assertEquals(StreetMapConfig.STYLE_DARK, StreetMapConfig.hostedStyle(night = true))
+        assertFalse(StreetMapConfig.STYLE_DARK.contains("tile.openstreetmap.org"))
+    }
+
+    @Test
     fun cameraFallbackIsWorldNotACity() {
         assertEquals(20.0, StreetMapConfig.WORLD_LAT_DEG, 0.0)
         assertEquals(0.0, StreetMapConfig.WORLD_LON_DEG, 0.0)
@@ -34,7 +42,6 @@ class StreetMapConfigTest {
         assertEquals(0xFF1E6BFFL, StreetMapConfig.PUCK_COLOR_ARGB)
         assertEquals(InstrumentPalette.MARKER_BLUE, StreetMapConfig.PUCK_COLOR_ARGB)
         assertTrue(StreetMapConfig.TEXTURE_MODE)
-        assertEquals(InstrumentPalette.CHASSIS, StreetMapConfig.MAP_LOAD_COLOR_ARGB)
     }
 
     @Test

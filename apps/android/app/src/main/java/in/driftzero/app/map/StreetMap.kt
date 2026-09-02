@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -39,6 +40,7 @@ fun StreetMap(
     locationPermissionGranted: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val mapView = remember {
         MapView(context)

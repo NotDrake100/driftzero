@@ -12,7 +12,7 @@ Street tiles still come from the network (`StreetMapConfig.STYLE_LIBERTY` on Ope
 
 ## Status
 
-Honest as of 2026-09-03. Screening source of record: [results/io_vnbd_screening_v1/summary.md](results/io_vnbd_screening_v1/summary.md) (git `069e74b` plus the uncommitted `ml/` tree, seed 26168, IO-VNBD checkout `1189396`). The official median drift gate of 0.10 is not met. Do not cite a mean-only drift number. `filter_only` in that table is the Python coast, not the Kotlin `DeadReckoningFilter`.
+Honest as of 2026-09-03. Screening source of record: [results/io_vnbd_screening_v1/summary.md](results/io_vnbd_screening_v1/summary.md) (git `069e74b` plus the uncommitted `ml/` tree, seed 26168, IO-VNBD checkout `1189396`). The official median drift gate of 0.10 is not met. Do not cite a mean-only drift number. `filter_only` in that table is the Python coast. `kotlin_eskf` is the product `DeadReckoningFilter`: drift p50 6.6863 on 33 of 35 intervals, worse than persist 0.5168. LOW_CONFIDENCE 5326 of 11325 blackout states. S-S3b failed. Next step is diagnosis, not a new model.
 
 **Works in this repository**
 
@@ -28,7 +28,7 @@ Honest as of 2026-09-03. Screening source of record: [results/io_vnbd_screening_
 **Planned or pending evidence**
 
 - IO-VNBD raw CSVs are not in Git. Fetch with Git LFS into gitignored `data/raw/`. Commands: [scripts/fetch_datasets.md](scripts/fetch_datasets.md).
-- Python screening bundle exists at [results/io_vnbd_screening_v1/summary.md](results/io_vnbd_screening_v1/summary.md). Official 10 percent median drift gate is not met. Next evidence is Kotlin replay scored by `eval_navstate`. Protocol: [docs/06_EVALUATION_PROTOCOL.md](docs/06_EVALUATION_PROTOCOL.md).
+- Python screening bundle exists at [results/io_vnbd_screening_v1/summary.md](results/io_vnbd_screening_v1/summary.md). Official 10 percent median drift gate is not met. Product filter row `kotlin_eskf` is in that file, worse than persist. Next step is diagnosis of that filter, not a new model. Protocol: [docs/06_EVALUATION_PROTOCOL.md](docs/06_EVALUATION_PROTOCOL.md).
 - TimesFM 3 desktop zero-shot and distillation: adapter and config exist. No keep/reject report in `results/`. 3.0 weights are non-commercial / non-production and cannot ship.
 - Airplane-mode tiles and graph after a Ready area pack. Hosted OpenFreeMap is the stand-in until then.
 - Judge-mode replay overlay and guided calibration UI. Specified, not published here.
@@ -66,7 +66,7 @@ Sideload notes: [demo/TESTER_SIDELOAD.md](demo/TESTER_SIDELOAD.md). Equation map
 
 ## Evidence
 
-Python screening v1 is at [results/io_vnbd_screening_v1/summary.md](results/io_vnbd_screening_v1/summary.md). 35 gated held-out intervals. The official median drift gate of 0.10 is not met. Per-system p50, p90, p95, and worst are in that file. Do not cite a mean-only drift number. `filter_only` is the Python coast, not the Kotlin filter. Score-only plots: `plots/S-Vta2_mid.png`, `S-S1_mid.png`, `S-S3b_mid.png`. A full release bundle should still match [docs/06_EVALUATION_PROTOCOL.md](docs/06_EVALUATION_PROTOCOL.md) section 11. Latency and satellite figures are not in this bundle. Next evidence is Kotlin replay scored by `eval_navstate`.
+Python screening v1 is at [results/io_vnbd_screening_v1/summary.md](results/io_vnbd_screening_v1/summary.md). 35 gated held-out intervals. The official median drift gate of 0.10 is not met. Per-system p50, p90, p95, and worst are in that file. Do not cite a mean-only drift number. `filter_only` is the Python coast. `kotlin_eskf` is the product filter: drift p50 6.6863 on 33 of 35 intervals, worse than persist 0.5168. LOW_CONFIDENCE 5326 of 11325 blackout states. S-S3b failed. Score-only plots: `plots/S-Vta2_mid.png`, `S-S1_mid.png`, `S-S3b_mid.png`. A full release bundle should still match [docs/06_EVALUATION_PROTOCOL.md](docs/06_EVALUATION_PROTOCOL.md) section 11. Latency and satellite figures are not in this bundle. Next step is diagnosis of the Kotlin filter, not a new model.
 
 Desktop train reports live next to the JSON weights:
 

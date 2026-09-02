@@ -1,5 +1,6 @@
 package `in`.driftzero.app.pose
 
+import `in`.driftzero.app.trips.TripRecorder
 import `in`.driftzero.core.CoastFix
 import `in`.driftzero.core.DeadReckoningFilter
 import `in`.driftzero.core.DisplacementModel
@@ -12,10 +13,12 @@ import `in`.driftzero.core.MotionPseudoRuntime
 import `in`.driftzero.core.Nanoseconds
 import `in`.driftzero.core.NavigationMode
 import `in`.driftzero.core.NavigationState
+import `in`.driftzero.core.ResetReason
 import `in`.driftzero.core.RoadGraph
 import `in`.driftzero.core.RoadMatcher
 import `in`.driftzero.core.SensorFrame
 import `in`.driftzero.core.VectorFrame
+import `in`.driftzero.core.Wgs84
 import `in`.driftzero.core.ZuptAccelMotionModel
 import `in`.driftzero.core.withMapMatch
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,6 +54,16 @@ class PoseStore(
     private val rawTrailBuf = RingBuffer<PosePoint>(TRAIL_CAP)
     private val fusedTrailBuf = RingBuffer<PosePoint>(TRAIL_CAP)
     private val modeStripBuf = RingBuffer<NavigationMode>(TRAIL_CAP)
+    private var holdStartNs: Long? = null
+    private var holdStart: PosePoint? = null
+    private var recorder: TripRecorder? = null
+    private var replayClockNs: Long? = null
+    private val _replayActive = MutableStateFlow(false)
+    val replayActive: StateFlow<Boolean> = _replayActive.asStateFlow()
+
+    fun attachRecorder(next: TripRecorder?) {
+        recorder = next
+    }
 
     fun ingestGnss(fix: CoastFix) {
         if (_simulateGpsOff.value) {
@@ -65,16 +78,19 @@ class PoseStore(
         }
         _lastGnssSeenNs.value = now.value
         rawTrailBuf.add(PosePoint(stamped.latitudeDeg, stamped.longitudeDeg))
+        recorder?.offerGnss(stamped)
         filter.ingestGnss(stamped)
         publish()
     }
 
     fun ingestAccel(timestamp: Nanoseconds, x: Double, y: Double, z: Double) {
+        recorder?.offerAccel(timestamp, x, y, z)
         filter.ingestAccel(timestamp, x, y, z, VectorFrame.ANDROID_DEVICE)
         motion.ingestAccel(timestamp, x, y, z)
     }
 
     fun ingestGyro(timestamp: Nanoseconds, x: Double, y: Double, z: Double) {
+        recorder?.offerGyro(timestamp, x, y, z)
         filter.ingestGyro(timestamp, x, y, z, VectorFrame.ANDROID_DEVICE)
         motion.ingestGyro(timestamp, x, y, z)
     }
@@ -88,9 +104,34 @@ class PoseStore(
         _simulateGpsOff.value = off
         if (off) {
             navic.clear()
+            holdStartNs = clockNowNs()
+            val pose = _state.value
+            holdStart = pose?.let { PosePoint(it.position.latitude.value, it.position.longitude.value) }
+            recorder?.holdStart(holdStartNs!!)
+        } else {
+            val end = clockNowNs()
+            recorder?.holdEnd(end)
+            holdStartNs = null
+            holdStart = null
         }
         filter.setGnssHeld(off)
         publish()
+    }
+
+    fun holdElapsedS(): Double? {
+        val start = holdStartNs ?: return null
+        return ((clockNowNs() - start) / NS_PER_S).coerceAtLeast(0.0)
+    }
+
+    fun holdDistanceM(): Double? {
+        val start = holdStart ?: return null
+        val pose = _state.value ?: return null
+        return Wgs84.distanceMetres(
+            start.latitudeDeg,
+            start.longitudeDeg,
+            pose.position.latitude.value,
+            pose.position.longitude.value,
+        )
     }
 
     fun toggleSimulateGpsOff() {
@@ -103,6 +144,33 @@ class PoseStore(
         motion.inferAt(now)?.let { filter.ingestMotionPseudo(it, now) }
         motion.inferDisplacementAt(now)?.let { filter.ingestDisplacementPseudo(it, now) }
         publish()
+    }
+
+    fun tickAt(timestamp: Nanoseconds) {
+        replayClockNs = timestamp.value
+        tick()
+    }
+
+    fun beginReplay() {
+        _replayActive.value = true
+        replayClockNs = null
+        attachRecorder(null)
+        filter.reset(ResetReason.USER)
+        matcher?.reset()
+        rawTrailBuf.clear()
+        fusedTrailBuf.clear()
+        modeStripBuf.clear()
+        _state.value = null
+        _lastGnssSeenNs.value = null
+        holdStartNs = null
+        holdStart = null
+        _simulateGpsOff.value = false
+        filter.setGnssHeld(false)
+    }
+
+    fun endReplay() {
+        replayClockNs = null
+        _replayActive.value = false
     }
 
     fun p95GapMs(): Double? = ticks.p95Ms()
@@ -152,10 +220,15 @@ class PoseStore(
         if (pose != null) {
             fusedTrailBuf.add(PosePoint(pose.position.latitude.value, pose.position.longitude.value))
             modeStripBuf.add(pose.mode)
+            if (!_replayActive.value) {
+                recorder?.offerState(pose)
+            }
         }
     }
 
-    private fun nowNs(): Nanoseconds = Nanoseconds(clockNs().coerceAtLeast(0L))
+    fun clockNowNs(): Long = (replayClockNs ?: clockNs()).coerceAtLeast(0L)
+
+    private fun nowNs(): Nanoseconds = Nanoseconds(clockNowNs())
 
     companion object {
         private const val NS_PER_S: Double = 1_000_000_000.0

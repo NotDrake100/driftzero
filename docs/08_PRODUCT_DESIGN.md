@@ -6,7 +6,7 @@ Status: production-path spec for the Android app. Written 2026-09-03 against the
 
 Binding rules: `.cursor/rules/design-anti-vibecode.mdc`, `android.mdc`, `code-quality.mdc`, `core.mdc`, PRD sections 12, 13, 16, 18.
 
-Implementation status as of 2026-09-03 (phases from the phase plan in section 14): A design (this file) done. B theme, brand, icon, splash, settings store done. C mode lamp, five-state filter modes (ADR 006), metre-true halo, heading cone, puck interpolation, route casing, matched road overlay, day and night sheets done. D status sheet, E judge overlay, F first run, offline areas, settings and about screens, G trips: not implemented. Sections below carry a one-line status where the work is not in the tree.
+Implementation status as of 2026-09-03 (phases from the phase plan in section 14): A to G are in the tree. D status sheet (`BottomInstrument`, `StatusCopy`, `reasonText`). E Judge overlay (trails, mode strip, Hold GNSS, p95). F first run (`StationaryCalibrator`, `MountMonitor`), offline areas, settings, About (`about_india` from `docs/refs/SIH26168_EVIDENCE.md`). G trip record, list, delete, export, and replay through existing `ReplaySensorSource`. Camera start stays live GNSS, then last trusted fix, then world 20, 0. No city default.
 
 ## 1. Thesis
 
@@ -61,7 +61,7 @@ Back always returns to Map. Nothing opens a modal over the map while a route is 
 
 ### 4.1 First run
 
-Not implemented as of 2026-09-03; see phase plan (F). `SettingsStore.firstRunDone` exists and is never set.
+Implemented: `FirstRunScreen`. `SettingsStore.firstRunDone` is set when the flow finishes.
 
 Three full-screen steps on the chassis colour. Each has a title (Plex Sans semibold 24), one paragraph, one primary button, and at most one secondary text button.
 
@@ -104,7 +104,7 @@ The route rows live inside the bottom instrument while a route exists: destinati
 
 ### 4.6 Bottom instrument (status sheet)
 
-Not implemented as of 2026-09-03; see phase plan (D). The reason line is ready: `modeReason(state)` in `ModeLamp.kt` and `reasonText` in `InstrumentStrings.kt` have no caller yet.
+Implemented: `BottomInstrument` in `BottomInstrument.kt`. Reason uses `modeReason` and `reasonText`. Lamp tap expands the sheet. Long-press on the collapsed line opens Judge.
 
 Opaque `panel`, 8 dp top corners, hairline top edge. Drag handle 32 x 4 dp, `hairline`.
 
@@ -130,31 +130,31 @@ Links row at the bottom: `Trips`, `Offline areas`, `Settings`, `About`. Long-pre
 
 ### 4.7 Judge overlay
 
-Not implemented as of 2026-09-03; see phase plan (E). Only Hold GNSS exists, as the lamp long-press.
+Implemented: `JudgeOverlay.kt`. Lamp long-press still holds GNSS under 8 m/s. Judge Hold GNSS has no speed gate. Trails are display only.
 
 Opens over the map; the sheet collapses. Adds: raw GNSS trail (dotted 2 dp `inkDim`, 600 points), fused trail (solid 3 dp marker blue, 600 points), a 60 s mode strip (one 2 dp column per 10 Hz sample, lamp colour), a `Hold GNSS` toggle button with `Held 32 s, 410 m dead reckoned` while held, `p95 output gap 108 ms` from real tick intervals, and a `Close` button. Nothing in Judge writes into the filter. Raw GNSS is display only and is labelled `Phone GNSS (not an input while held)`. Ground truth from a dataset is never drawn on the phone; that belongs to the desktop report.
 
 ### 4.8 Trips
 
-Not implemented as of 2026-09-03; see phase plan (G).
+Implemented: `TripRecorder`, `TripStore`, `TripReplay`, `TripsScreen`. Recording is opt-in from Settings and shown by a `REC` mono tag in the sheet.
 
-List of recorded trips: start time, duration, distance, `DR 14 %` share of samples not `GNSS_FUSED`. Row actions: `Replay`, `Delete`. `Export` asks for consent in a dialog that names the contents (`NavigationState at 10 Hz, sensor frames, no contacts, no identifiers`) before an Android share sheet. Replay feeds the recorded `SensorFrame` stream to a fresh `DeadReckoningEngine` and draws the result as a trail. Recording is opt-in from Settings and shown by a `REC` mono tag in the sheet.
+List of recorded trips: start time, distance, `DR 14 %` share of samples not `GNSS_FUSED`. Row actions: `Replay`, `Delete`. `Export` asks for consent in a dialog that names the contents (`NavigationState at 10 Hz, sensor frames, no contacts, no identifiers`) before an Android share sheet. Replay loads `sensors.jsonl` with `ReplayJsonl` / `ReplaySensorSource` and feeds `PoseStore.ingestSensor` at recorded timestamps. Hold windows become `GnssMaskInterval`. Sensor callbacks only copy into a ring. File writes run off that thread. `Replay.kt` is unused by the app path.
 
 ### 4.9 Offline areas
 
-Not implemented as of 2026-09-03; see phase plan (F). `AreaPackStore.styleUri(pack, night)` now returns the night sheet when no pack owns rendering.
+Implemented: `OfflineAreasScreen.kt` lists installed and queued packs from `AreaPackStore`. Header notice while no Ready pack. Sideload path and required files. No expiry invented.
 
 Two lists from `AreaPackStore`: Installed (id, label, bbox, bytes, `Ready` or `Corrupt`) and Queued (id, bbox). Header notice while no Ready pack: `Streets from OpenFreeMap and routes from OSRM use the network until a pack is installed.` Sideload row shows the exact directory path `files/area-packs/installed/<id>/` and the required files `manifest.json`, `tiles.pmtiles`, `graph.bin`, `style.json`. No expiry field exists in `AreaPackManifest` today; the row shows `No expiry recorded` rather than inventing a date.
 
 ### 4.10 Settings
 
-Not implemented as of 2026-09-03 as a screen; see phase plan (F). The store exists: `settings/SettingsStore.kt` (`AppSettings`, `ThemeMode`, `SpeedUnit`, `MotionMode`, SharedPreferences `driftzero_settings`), and `MainActivity` already reads theme, reduce motion, and units from it.
+Implemented: `SettingsScreen.kt` writes `SettingsStore`. Units, theme, reduce motion, haptic, audio, record trips. Delete all trips confirms, then `TripStore.deleteAll`.
 
 Rows with a toggle or a segmented choice: Units (`km/h`, `mph`), Theme (`System`, `Day`, `Night`), Reduce motion (`System`, `On`), Haptic cue on mode change (on/off), Audio cue on Low confidence (on/off), Record trips (on/off), Delete all trips (destructive, confirm). A footer states `Logs stay on this phone. Export asks first.`
 
 ### 4.11 About
 
-Not implemented as of 2026-09-03; see phase plan (F). Re-check the section 2 paragraph against `docs/refs/SIH26168_EVIDENCE.md` before it becomes `about_india`.
+Implemented: `AboutScreen.kt`. `about_india` uses only facts from `docs/refs/SIH26168_EVIDENCE.md`.
 
 Wordmark, version and core version, the India paragraph, Limitations (`Not certified for safety-of-life or autonomous control`, `NavIC count is a chipset report, not integrity`, `Streets and routing use the network until a pack is installed`, `Drift grows without GNSS; the radius shows how much`), and a link to third-party notices (`NOTICE.md`).
 
@@ -361,7 +361,7 @@ Day sheet: OpenFreeMap liberty (current). Night sheet: OpenFreeMap dark, same ho
 
 Route: casing `routeCasing` 9 dp under fill `routeFill` 5 dp, round caps and joins, inserted below the first symbol layer so labels stay legible. Matched road: when `mapMatch.status == MATCHED`, the full `GraphEdge.points` polyline of `roadSegmentId` is drawn 7 dp in `routeFill` at alpha 0.35 under the route. Destination: 7 dp marker blue circle, 3 dp paper stroke.
 
-Camera: north-up at rest. Following moves the camera to the interpolated puck each frame (`StreetMapSession.followCamera`; there is no LocationComponent camera mode any more) so north stays up; heading is the cone. Zoom by speed while following (`MapGeometry.zoomForSpeed`): 17 below 5 m/s, 16 below 15 m/s, 15 above, with 1 m/s hysteresis so it never hunts, eased 500 ms when the band changes. A gesture (`REASON_API_GESTURE`) stops following; Locate resumes it. Matched road, casing, night sheet: implemented (`driftzero-matched-line`, `driftzero-route-casing`, `StreetMapConfig.STYLE_DARK`, `hostedStyle(night)`).
+Camera: north-up at rest. Following moves the camera to the interpolated puck each frame (`StreetMapSession.followCamera`; there is no LocationComponent camera mode any more) so north stays up; heading is the cone. Zoom by speed while following (`MapGeometry.zoomForSpeed`): street zoom 16 below 15 m/s, 15 above, with 1 m/s hysteresis so it never hunts, eased 500 ms when the band changes. Day sheet is OpenFreeMap liberty. Night sheet is OpenFreeMap dark, only when the theme is night. A gesture (`REASON_API_GESTURE`) stops following; Locate resumes it. Matched road, casing, night sheet: implemented (`driftzero-matched-line`, `driftzero-route-casing`, `StreetMapConfig.STYLE_DARK`, `hostedStyle(night)`).
 
 ## 10. Accessibility
 

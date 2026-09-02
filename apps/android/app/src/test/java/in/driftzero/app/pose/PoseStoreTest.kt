@@ -101,6 +101,8 @@ class PoseStoreTest {
         )
         assertEquals(0L, store.lastGnssSeenNs.value)
         assertEquals(1, store.rawTrail().size)
+        assertEquals(2.0, store.holdElapsedS()!!, 1e-6)
+        assertTrue(store.holdDistanceM() != null)
     }
 
     @Test

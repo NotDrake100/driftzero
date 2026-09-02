@@ -144,6 +144,22 @@ class ReplaySensorSourceTest {
     }
 
     @Test
+    fun maskSetsGpsHeldAndKeepsSpeed() {
+        val trip = constantVelocityNorth(imuHz = 100.0)
+        val states = Replay.runFilter(
+            trip.frames,
+            DeadReckoningFilter(SYNTHETIC_CONFIG),
+            trip.mask,
+        )
+        val during = states.filter { it.timestamp.value >= trip.mask.startNs }
+        assertTrue(during.isNotEmpty())
+        assertTrue(during.all { it.health.flags.contains(DeadReckoningFilter.FLAG_GPS_HELD) })
+        val mid = during[during.size / 2]
+        assertEquals(NavigationMode.DEAD_RECKONING, mid.mode)
+        assertTrue("held coast should keep seed speed, got ${mid.motion.speed.value}", mid.motion.speed.value > 8.0)
+    }
+
+    @Test
     fun summaryCountsMatchInput() {
         val lines = listOf(
             """{"declared_rate_hz":100.0,"clock_domain":"dataset_declared","frame":"vehicle_flu","source_id":"count"}""",

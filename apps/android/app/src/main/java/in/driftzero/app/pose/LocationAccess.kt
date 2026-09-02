@@ -101,8 +101,12 @@ fun rememberPoseStore(): PoseStore {
         poses
     }
     val gpsOff by store.simulateGpsOff.collectAsState()
+    val replaying by store.replayActive.collectAsState()
     val periodMs = (1000.0 / DeadReckoningFilter.OUTPUT_HZ).toLong()
-    LaunchedEffect(store, gpsOff) {
+    LaunchedEffect(store, gpsOff, replaying) {
+        if (replaying) {
+            return@LaunchedEffect
+        }
         val source = GnssLocationSource(context, store)
         val imu = PhoneImuSource(context, store)
         imu.start()

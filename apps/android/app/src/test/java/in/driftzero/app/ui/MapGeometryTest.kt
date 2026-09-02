@@ -55,9 +55,9 @@ class MapGeometryTest {
 
     @Test
     fun zoomBandsHoldUntilSpeedLeavesThem() {
-        assertEquals(17.0, MapGeometry.zoomForSpeed(2.0, null), 0.0)
-        assertEquals(17.0, MapGeometry.zoomForSpeed(5.5, 17.0), 0.0)
-        assertEquals(16.0, MapGeometry.zoomForSpeed(6.5, 17.0), 0.0)
+        assertEquals(16.0, MapGeometry.zoomForSpeed(2.0, null), 0.0)
+        assertEquals(16.0, MapGeometry.zoomForSpeed(5.5, 16.0), 0.0)
+        assertEquals(16.0, MapGeometry.zoomForSpeed(6.5, 16.0), 0.0)
         assertEquals(16.0, MapGeometry.zoomForSpeed(4.5, 16.0), 0.0)
         assertEquals(15.0, MapGeometry.zoomForSpeed(20.0, 16.0), 0.0)
         assertEquals(15.0, MapGeometry.zoomForSpeed(14.5, 15.0), 0.0)

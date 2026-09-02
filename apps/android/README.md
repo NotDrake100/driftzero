@@ -66,14 +66,16 @@ TravelMapScreen
     RoutePolyline
     DestinationPoint
   WhereToSearch
-  GpsChip          (GPS on / No GPS, estimating)
-  NavicChip        (NavIC N, only if IRNSS used in the current fix)
+  ModeLamp         (GNSS / Assisted / Dead reckoning / Reacquiring / Low confidence)
   LocateControl    (long-press queues the visible bbox for an area pack)
-  RouteDock        (speed, distance, ETA, Stop; only while routing)
+  BottomInstrument (collapsed status, route rows, expanded sheet)
+  JudgeOverlay     (trails, mode strip, Hold GNSS)
 ```
 
-Idle: map, search, GPS chip, locate. No empty speed, DIST, or ETA slab.
-Navigating: the same, plus a route line and a bottom dock with real distance, ETA, and speed.
+Idle: map, search, lamp, locate, collapsed sheet. No empty speed, DIST, or ETA slab.
+Navigating: the same, plus a route line and destination, distance, and ETA in the sheet.
+
+Opt-in trip recording writes `sensors.jsonl` and `states.jsonl` under `files/trips/<id>/`. Replay uses `ReplaySensorSource` from that sensor file. Export is a local zip after a consent dialog. The APK packs `motion_student_v1/linear.json` only.
 
 Search uses Photon, then Nominatim, biased to fused pose/GPS or the camera. Routing uses public OSRM. Tiles are hosted OpenFreeMap until an installed area pack owns rendering. Long-press Locate queues the visible bbox for an offline pack.
 

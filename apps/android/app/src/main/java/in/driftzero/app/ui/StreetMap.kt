@@ -114,6 +114,14 @@ class StreetMapController {
         session?.applyDisplayPose(puck, lamp, frameNs)
     }
 
+    fun setRawTrail(points: List<TravelLatLng>) {
+        session?.setRawTrail(points)
+    }
+
+    fun setFusedTrail(points: List<TravelLatLng>) {
+        session?.setFusedTrail(points)
+    }
+
     fun flyTo(point: TravelLatLng) {
         session?.flyTo(point)
     }
@@ -137,6 +145,7 @@ internal data class MapPalette(
     val lampOk: Int,
     val lampCaution: Int,
     val lampAlert: Int,
+    val inkDim: Int,
 ) {
     fun lamp(tone: LampTone): Int = when (tone) {
         LampTone.OK -> lampOk
@@ -154,6 +163,7 @@ internal data class MapPalette(
             lampOk = colors.lampOk.toArgb(),
             lampCaution = colors.lampCaution.toArgb(),
             lampAlert = colors.lampAlert.toArgb(),
+            inkDim = colors.inkDim.toArgb(),
         )
     }
 }
@@ -308,6 +318,8 @@ internal class StreetMapSession {
     private var routePoints: List<TravelLatLng> = emptyList()
     private var destination: TravelLatLng? = null
     private var matchedRoad: List<TravelLatLng>? = null
+    private var rawTrail: List<TravelLatLng> = emptyList()
+    private var fusedTrail: List<TravelLatLng> = emptyList()
 
     fun bind(map: MapLibreMap, mapView: MapView, context: Context) {
         this.map = map
@@ -393,6 +405,8 @@ internal class StreetMapSession {
         setRoute(routePoints)
         setDestination(destination)
         setMatchedRoad(matchedRoad)
+        setRawTrail(rawTrail)
+        setFusedTrail(fusedTrail)
         lastPuck?.let { puck ->
             setGeoJson(StreetMapConfig.PUCK_SOURCE_ID, pointGeoJson(TravelLatLng(puck.latitudeDeg, puck.longitudeDeg)))
         }
@@ -400,6 +414,8 @@ internal class StreetMapSession {
 
     private fun ensureLayers(style: Style) {
         listOf(
+            StreetMapConfig.TRAIL_RAW_SOURCE_ID,
+            StreetMapConfig.TRAIL_FUSED_SOURCE_ID,
             StreetMapConfig.MATCHED_SOURCE_ID,
             StreetMapConfig.ROUTE_SOURCE_ID,
             StreetMapConfig.HALO_SOURCE_ID,
@@ -419,6 +435,21 @@ internal class StreetMapSession {
         fun onTop(layer: Layer) {
             if (style.getLayer(layer.id) == null) style.addLayer(layer)
         }
+        belowLabels(
+            LineLayer(StreetMapConfig.TRAIL_RAW_LAYER_ID, StreetMapConfig.TRAIL_RAW_SOURCE_ID).withProperties(
+                PropertyFactory.lineWidth(StreetMapConfig.TRAIL_RAW_WIDTH),
+                PropertyFactory.lineDasharray(arrayOf(1f, 1.5f)),
+                PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            ),
+        )
+        belowLabels(
+            LineLayer(StreetMapConfig.TRAIL_FUSED_LAYER_ID, StreetMapConfig.TRAIL_FUSED_SOURCE_ID).withProperties(
+                PropertyFactory.lineWidth(StreetMapConfig.TRAIL_FUSED_WIDTH),
+                PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            ),
+        )
         belowLabels(
             LineLayer(StreetMapConfig.MATCHED_LAYER_ID, StreetMapConfig.MATCHED_SOURCE_ID).withProperties(
                 PropertyFactory.lineWidth(StreetMapConfig.MATCHED_LINE_WIDTH),
@@ -473,6 +504,8 @@ internal class StreetMapSession {
     }
 
     private fun paintLayers(style: Style, palette: MapPalette) {
+        style.getLayer(StreetMapConfig.TRAIL_RAW_LAYER_ID)?.setProperties(PropertyFactory.lineColor(palette.inkDim))
+        style.getLayer(StreetMapConfig.TRAIL_FUSED_LAYER_ID)?.setProperties(PropertyFactory.lineColor(palette.marker))
         style.getLayer(StreetMapConfig.MATCHED_LAYER_ID)?.setProperties(PropertyFactory.lineColor(palette.routeFill))
         style.getLayer(StreetMapConfig.ROUTE_CASING_LAYER_ID)?.setProperties(PropertyFactory.lineColor(palette.routeCasing))
         style.getLayer(StreetMapConfig.ROUTE_LAYER_ID)?.setProperties(PropertyFactory.lineColor(palette.routeFill))
@@ -644,6 +677,22 @@ internal class StreetMapSession {
         setGeoJson(
             StreetMapConfig.MATCHED_SOURCE_ID,
             if (points == null || points.size < 2) EMPTY_FEATURE_COLLECTION else lineStringGeoJson(points),
+        )
+    }
+
+    fun setRawTrail(points: List<TravelLatLng>) {
+        rawTrail = points
+        setGeoJson(
+            StreetMapConfig.TRAIL_RAW_SOURCE_ID,
+            if (points.size < 2) EMPTY_FEATURE_COLLECTION else lineStringGeoJson(points),
+        )
+    }
+
+    fun setFusedTrail(points: List<TravelLatLng>) {
+        fusedTrail = points
+        setGeoJson(
+            StreetMapConfig.TRAIL_FUSED_SOURCE_ID,
+            if (points.size < 2) EMPTY_FEATURE_COLLECTION else lineStringGeoJson(points),
         )
     }
 

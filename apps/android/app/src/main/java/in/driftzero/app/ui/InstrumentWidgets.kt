@@ -149,6 +149,68 @@ internal fun InstrumentSheet(
 }
 
 @Composable
+internal fun ChoiceRow(
+    label: String,
+    options: List<Pair<String, Boolean>>,
+    onPick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        BasicText(text = label, style = InstrumentTheme.type.caption)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            options.forEachIndexed { index, (name, selected) ->
+                if (selected) {
+                    PrimaryButton(label = name, onClick = { onPick(index) }, modifier = Modifier.weight(1f))
+                } else {
+                    SecondaryButton(label = name, onClick = { onPick(index) }, modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun ToggleRow(
+    label: String,
+    on: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .travelClickable(
+                onClick = onToggle,
+                idle = InstrumentTheme.colors.panel,
+                pressed = InstrumentTheme.colors.panelPressed,
+            )
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        BasicText(text = label, style = InstrumentTheme.type.body, modifier = Modifier.weight(1f))
+        Box(
+            modifier = Modifier
+                .width(32.dp)
+                .height(20.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (on) InstrumentTheme.colors.ink else InstrumentTheme.colors.well),
+            contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart,
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(2.dp)
+                    .width(16.dp)
+                    .height(16.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(InstrumentTheme.colors.chassis),
+            )
+        }
+    }
+}
+
+@Composable
 internal fun ConfirmPanel(
     title: String,
     body: String? = null,

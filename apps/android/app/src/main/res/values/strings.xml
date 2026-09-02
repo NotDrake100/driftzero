@@ -88,6 +88,7 @@
     <string name="calib_failed_no_gyro">No gyroscope</string>
     <string name="trips_title">Trips</string>
     <string name="trips_empty">No trips recorded. Turn on Record trips in Settings.</string>
+    <string name="trips_row">%1$s, %2$s km, DR %3$d%%</string>
     <string name="trips_delete_title">Delete this trip?</string>
     <string name="trips_export_title">Export this trip?</string>
     <string name="trips_export_body">The file contains NavigationState at 10 Hz and sensor frames. No contacts, no identifiers.</string>
@@ -112,6 +113,7 @@
     <string name="settings_theme_day">Day</string>
     <string name="settings_theme_night">Night</string>
     <string name="settings_reduce_motion">Reduce motion</string>
+    <string name="settings_motion_on">On</string>
     <string name="settings_haptic">Haptic tick on mode change</string>
     <string name="settings_audio">Sound on Low confidence</string>
     <string name="settings_record">Record trips</string>
@@ -126,4 +128,7 @@
     <string name="about_limit_3">Streets and routing use the network until a pack is installed.</string>
     <string name="about_limit_4">Drift grows without GNSS. The radius shows how much.</string>
     <string name="about_notices">Third-party notices</string>
+    <string name="about_notices_body">DriftZero is a research prototype. It is not certified for autonomous control, safety-of-life navigation, or guaranteed lane-level positioning. IBM Plex fonts are SIL OFL 1.1. MapLibre is BSD 2-Clause. Street tiles are OpenFreeMap from OpenStreetMap (ODbL). Photon, Nominatim, and OSRM are hosted services. TimesFM is desktop-only and is not an APK dependency. See NOTICE.md in the source tree.</string>
+    <string name="value_present">Present</string>
+    <string name="value_missing">Missing</string>
 </resources>

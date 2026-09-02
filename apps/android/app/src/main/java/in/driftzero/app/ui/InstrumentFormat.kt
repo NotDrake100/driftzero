@@ -1,7 +1,9 @@
 package `in`.driftzero.app.ui
 
 import `in`.driftzero.app.settings.SpeedUnit
+import java.util.Calendar
 import java.util.Locale
+import java.util.TimeZone
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -96,6 +98,22 @@ object InstrumentFormat {
     }
 
     fun formatConfidence(value: Double): String = String.format(Locale.US, "%.2f", value.coerceIn(0.0, 1.0))
+
+    fun formatClock(wallMs: Long, zone: TimeZone = TimeZone.getDefault()): String {
+        val cal = Calendar.getInstance(zone)
+        cal.timeInMillis = wallMs.coerceAtLeast(0L)
+        return String.format(
+            Locale.US,
+            "%02d:%02d",
+            cal.get(Calendar.HOUR_OF_DAY),
+            cal.get(Calendar.MINUTE),
+        )
+    }
+
+    fun formatTripKm(metres: Double): String {
+        val km = (metres / 1000.0).coerceAtLeast(0.0)
+        return String.format(Locale.US, "%.1f", km)
+    }
 }
 
 data class TravelPlace(

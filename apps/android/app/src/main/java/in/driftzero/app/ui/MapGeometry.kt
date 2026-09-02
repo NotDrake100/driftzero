@@ -70,8 +70,7 @@ object MapGeometry {
     /** Follow-camera zoom by speed. Only changes when the band changes so it never hunts. */
     fun zoomForSpeed(speedMps: Double, current: Double?): Double {
         val band = when {
-            speedMps < 5.0 -> 17.0
-            speedMps < 15.0 -> 16.0
+            speedMps < 15.0 -> StreetMapConfig.STREET_ZOOM
             else -> 15.0
         }
         if (current == null) {
@@ -79,8 +78,7 @@ object MapGeometry {
         }
         // Hysteresis: hold the current band until speed leaves it by 1 m/s.
         val holds = when (current) {
-            17.0 -> speedMps < 6.0
-            16.0 -> speedMps in 4.0..16.0
+            StreetMapConfig.STREET_ZOOM -> speedMps < 16.0
             15.0 -> speedMps > 14.0
             else -> false
         }

@@ -79,9 +79,13 @@ class DeadReckoningFilter(
     private var coastedSinceFix: Boolean = false
     private var reacquiredFixes: Int = 0
     private var lastGatedGnssNs: Long = -1L
+    private var speedBeforeHold: Double = 0.0
 
     fun setGnssHeld(held: Boolean) {
         synchronized(lock) {
+            if (held && !gnssHeld) {
+                speedBeforeHold = hypot(ve, vn)
+            }
             gnssHeld = held
         }
     }
@@ -243,6 +247,7 @@ class DeadReckoningFilter(
             coastedSinceFix = false
             reacquiredFixes = 0
             lastGatedGnssNs = -1L
+            speedBeforeHold = 0.0
             p.zero()
             if (reason == ResetReason.USER) {
                 gnssHeld = false
@@ -669,9 +674,14 @@ class DeadReckoningFilter(
             omega < config.zuptGyroRadps &&
             accelVariance() < config.zuptAccelVar &&
             aHor < config.zuptAccelMps2
-        val wantZupt = lastStopProbability >= config.zuptStopProbability || (still && speed < 1.5)
+        val skipStillZupt = gnssHeld && speedBeforeHold >= config.zuptHeldSkipMps
+        val stillZupt = still && speed < 1.5 && !skipStillZupt
+        val wantZupt = lastStopProbability >= config.zuptStopProbability || stillZupt
         if (wantZupt) {
-            applyZupt(force = lastStopProbability >= config.zuptStopProbability || still)
+            applyZupt(force = lastStopProbability >= config.zuptStopProbability || stillZupt)
+            return
+        }
+        if (imuFrame == VectorFrame.UNSPECIFIED) {
             return
         }
         val aVeh = bodyToVehicle(imuFrame) * c.timesT(aNav)
@@ -994,7 +1004,7 @@ class DeadReckoningFilter(
         const val RISK_GATED_FIX: String = "gated_fix"
         const val RISK_REACQUIRING: String = "reacquiring"
         const val CONFIG_ID: String =
-            "eskf.v1.stale_s=2.output_hz=10.wgs84.somigliana_2_139.nframe_enu.phi_2_139.q_pv.zupt.nhc.joseph.tlio_dp_chi2_11.345.modes_v2_degraded_30m_reacquire_3"
+            "eskf.v2.stale_s=2.output_hz=10.wgs84.somigliana_2_139.nframe_enu.phi_2_139.q_pv.zupt_skip_held.nhc_off_unspecified.joseph.tlio_dp_chi2_11.345.modes_v2_degraded_30m_reacquire_3"
         val CONFIG_HASH: String = sha256Hex(CONFIG_ID)
         private const val NS_PER_S: Double = 1_000_000_000.0
         private const val ACCEL_HIST: Int = 32
@@ -1027,6 +1037,7 @@ data class InsConfig(
     val zuptAccelVar: Double = 0.12,
     val zuptStopProbability: Double = 0.75,
     val zuptVelStdMps: Double = 0.03,
+    val zuptHeldSkipMps: Double = 1.5,
     val nhcMinSpeedMps: Double = 1.2,
     val nhcDropLateralMps2: Double = 2.0,
     val nhcVelStdMps: Double = 0.35,

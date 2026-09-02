@@ -31,7 +31,9 @@ data class ReplayExecution(
  * ```
  *
  * Optional: `--mask-start-ns` and `--mask-end-ns` drop GNSS kinds in that
- * inclusive interval before the filter sees them. `--declared-rate-hz` overrides
+ * inclusive interval before the filter sees them. Replay also calls
+ * [DeadReckoningFilter.setGnssHeld] for every timestamp in the interval so
+ * still-ZUPT does not zero a moving coast. `--declared-rate-hz` overrides
  * the file header. `--config name=value` overrides an [InsConfig] Double field
  * (camelCase or snake_case). Same input bytes yield the same output bytes.
  * No wall clock and no randomness are used in the loop.
@@ -101,8 +103,11 @@ object Replay {
         val states = ArrayList<NavigationState>()
         var lastEmitNs = -1L
         for (frame in frames) {
-            if (mask != null && mask.drops(frame)) {
-                continue
+            if (mask != null) {
+                filter.setGnssHeld(mask.contains(frame.timestamp.value))
+                if (mask.drops(frame)) {
+                    continue
+                }
             }
             onConsume?.invoke(frame)
             filter.consume(frame)
@@ -270,6 +275,7 @@ private fun InsConfig.overrideField(name: String, value: Double): InsConfig {
         "zuptaccelvar" -> copy(zuptAccelVar = value)
         "zuptstopprobability" -> copy(zuptStopProbability = value)
         "zuptvelstdmps" -> copy(zuptVelStdMps = value)
+        "zuptheldskipmps" -> copy(zuptHeldSkipMps = value)
         "nhcminspeedmps" -> copy(nhcMinSpeedMps = value)
         "nhcdroplateralmps2" -> copy(nhcDropLateralMps2 = value)
         "nhcvelstdmps" -> copy(nhcVelStdMps = value)

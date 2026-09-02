@@ -18,6 +18,12 @@ class RingBuffer<T>(val capacity: Int) {
 
     fun toList(): List<T> = items.toList()
 
+    fun drain(): List<T> {
+        val out = items.toList()
+        items.clear()
+        return out
+    }
+
     fun clear() {
         items.clear()
     }

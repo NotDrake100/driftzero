@@ -9,9 +9,9 @@ class TickIntervalsTest {
     @Test
     fun p95NeedsTwentySamples() {
         val ticks = TickIntervals()
-        repeat(19) { i -> ticks.record(i * 100_000_000L) }
+        repeat(20) { i -> ticks.record(i * 100_000_000L) }
         assertNull(ticks.p95Ms())
-        ticks.record(19 * 100_000_000L)
+        ticks.record(20 * 100_000_000L)
         val p95 = ticks.p95Ms()
         assertEquals(100.0, p95!!, 0.5)
     }

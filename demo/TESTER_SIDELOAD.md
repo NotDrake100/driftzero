@@ -35,18 +35,20 @@ You only need this switch for the app that delivered the file.
 
 ## First launch
 
-1. Open DriftZero from the app list.
+1. Open DriftZero from the app list. First run asks for precise location, lists phone sensors, then a 5 s still mount if you start it while stopped.
 2. If the phone asks for location, tap Allow. Choose precise location, while using the app. The blue own-vehicle mark needs that permission.
-3. If you deny location, the map can still open, but the blue mark will not track you.
+3. If you deny location, the map can still open. The lamp reads No location permission. The blue mark waits.
 
 ## What you should see
 
 - A full-bleed street map (OpenFreeMap via MapLibre). Needs network for tiles until an offline package is installed
 - A "Where to?" field at the top. Type a place, pick a result, follow the blue route line
 - A solid blue you-are-here mark after location is allowed
-- A small chip: "GPS on" or "No GPS, estimating". Not a title
-- If the phone uses NavIC satellites in the fix, a second small chip: "NavIC 3". That is a used-satellite count, not a safety lock. Many phones never show it.
-- Speed only while you are moving, or while a route is active. Distance and ETA only on a route
+- A mode lamp: GNSS, Assisted, Dead reckoning, Reacquiring, or Low confidence, with age. Tap it for the status sheet. Long-press holds GNSS when you are under 8 m/s
+- Status sheet links: Trips, Offline areas, Settings, About. Long-press the collapsed line for Judge
+- Record trips is off until you turn it on in Settings. Export asks first
+- NavIC counts live in the sheet. They are chipset visibility, not integrity
+- Speed on the collapsed sheet when moving. Distance and ETA only on a route
 - No empty `--.- km/h`, NO ROUTE, or DIST/ETA slab when idle
 
 The five-step trip test (search, route, walk, GPS-off hold, GPS back on) is in `PRODUCT.md`.

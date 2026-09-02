@@ -136,7 +136,7 @@ checksums.sha256
 
 Plots must label interpolation, smoothing, and score-only truth. A demo screenshot is not a benchmark.
 
-Python screening v1 lives at `results/io_vnbd_screening_v1/summary.md` (git `069e74b` plus the uncommitted `ml/` tree, seed 26168, IO-VNBD checkout `1189396`). 35 gated held-out intervals. The official median drift gate of 0.10 is not met. `filter_only` in that table is the Python coast, not the Kotlin `DeadReckoningFilter`. Next evidence is Kotlin replay scored by `eval_navstate`. Latency and satellite figures remain pending. Do not cite a mean-only drift number.
+Python screening v1 lives at `results/io_vnbd_screening_v1/summary.md` (git `069e74b` plus the uncommitted `ml/` tree, seed 26168, IO-VNBD checkout `1189396`). 35 gated held-out intervals. The official median drift gate of 0.10 is not met. `filter_only` in that table is the Python coast, not the Kotlin `DeadReckoningFilter`. The Kotlin `DeadReckoningFilter` has been replayed on the locked IO-VNBD screening intervals. The official row `kotlin_eskf` is in `results/io_vnbd_screening_v1/summary.md`. Drift p50 is 6.6863 on 33 of 35 intervals, worse than persist 0.5168. The next step is diagnosis of that gap, not a new model. Latency and satellite figures remain pending. Do not cite a mean-only drift number.
 
 ## 12. Release decision
 

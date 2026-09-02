@@ -66,4 +66,13 @@ class InstrumentFormatTest {
         assertEquals("1.2 GB", InstrumentFormat.formatBytes(1_200_000_000L))
         assertEquals("0.91", InstrumentFormat.formatConfidence(0.912))
     }
+
+    @Test
+    fun tripClockAndKm() {
+        val utc = java.util.TimeZone.getTimeZone("UTC")
+        assertEquals("00:00", InstrumentFormat.formatClock(0L, utc))
+        assertEquals("01:30", InstrumentFormat.formatClock(5_400_000L, utc))
+        assertEquals("0.0", InstrumentFormat.formatTripKm(12.0))
+        assertEquals("12.4", InstrumentFormat.formatTripKm(12_400.0))
+    }
 }

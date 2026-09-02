@@ -17,10 +17,13 @@ filter:
   use_stop_update: true
   use_magnetometer: gated
   learned_update_fallback: disabled
+# InsConfig in DeadReckoningFilter.kt is the source of truth for live thresholds.
 gnss_health:
   fused_to_degraded_consecutive: 3
   degraded_to_dr_timeout_s: 2.0
-  reacquiring_required_fixes: 5
+  degraded_accuracy_m: 30.0
+  gated_recent_s: 5.0
+  reacquiring_required_fixes: 3
   innovation_gate_probability: 0.99
 recovery:
   blend_duration_s: 3.0
@@ -33,7 +36,7 @@ map_matching:
   max_search_radius_m: 250
   soft_filter_feedback: true
 confidence:
-  low_confidence_horizontal_95_m: 100
+  low_confidence_horizontal_95_m: 120
   suppress_lane_precision_horizontal_95_m: 8
 runtime:
   deterministic_replay: true

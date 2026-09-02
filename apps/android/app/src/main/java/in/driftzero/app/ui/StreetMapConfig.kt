@@ -39,6 +39,10 @@ object StreetMapConfig {
 
     // Draw order, bottom to top. Everything up to the cone sits below the first
     // symbol layer so street names stay legible; puck and destination sit on top.
+    const val TRAIL_RAW_SOURCE_ID = "driftzero-trail-raw"
+    const val TRAIL_RAW_LAYER_ID = "driftzero-trail-raw-line"
+    const val TRAIL_FUSED_SOURCE_ID = "driftzero-trail-fused"
+    const val TRAIL_FUSED_LAYER_ID = "driftzero-trail-fused-line"
     const val MATCHED_SOURCE_ID = "driftzero-matched"
     const val MATCHED_LAYER_ID = "driftzero-matched-line"
     const val ROUTE_SOURCE_ID = "driftzero-route"
@@ -55,6 +59,8 @@ object StreetMapConfig {
     const val DEST_SOURCE_ID = "driftzero-dest"
     const val DEST_LAYER_ID = "driftzero-dest-point"
 
+    const val TRAIL_RAW_WIDTH = 2f
+    const val TRAIL_FUSED_WIDTH = 3f
     const val MATCHED_LINE_WIDTH = 7f
     const val MATCHED_ALPHA = 0.35f
     const val ROUTE_CASING_WIDTH = 9f

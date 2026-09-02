@@ -7,8 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,7 +16,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -284,84 +281,6 @@ internal fun MapControls(
             contentAlignment = Alignment.Center,
         ) {
             LocateMark()
-        }
-    }
-}
-
-@Composable
-internal fun RouteDock(
-    destinationName: String,
-    distanceText: String,
-    etaText: String,
-    speedText: String?,
-    onStop: () -> Unit,
-    visible: Boolean,
-    reduceMotion: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val colors = InstrumentTheme.colors
-    val type = InstrumentTheme.type
-    val stopLabel = stringResource(R.string.action_stop)
-    val motion = tween<Float>(durationMillis = TRAVEL_MOTION_MS, easing = TravelEaseOut)
-    AnimatedVisibility(
-        visible = visible,
-        modifier = modifier.fillMaxWidth(),
-        enter = if (reduceMotion) {
-            fadeIn(tween(0))
-        } else {
-            fadeIn(motion) + slideInVertically(
-                animationSpec = tween(TRAVEL_MOTION_MS, easing = TravelEaseOut),
-                initialOffsetY = { it / 4 },
-            )
-        },
-        exit = if (reduceMotion) {
-            fadeOut(tween(0))
-        } else {
-            fadeOut(motion) + slideOutVertically(
-                animationSpec = tween(TRAVEL_MOTION_MS, easing = TravelEaseOut),
-                targetOffsetY = { it / 4 },
-            )
-        },
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(16.dp)
-                .shadow(2.dp, SheetCorner)
-                .clip(SheetCorner)
-                .background(colors.panel)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (speedText != null) {
-                        BasicText(text = speedText, style = type.readoutLarge)
-                    }
-                    BasicText(text = "$distanceText, $etaText", style = type.label)
-                    BasicText(text = destinationName, style = type.caption)
-                }
-                Spacer(Modifier.width(16.dp))
-                Box(
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .travelClickable(
-                            onClick = onStop,
-                            idle = colors.well,
-                            pressed = colors.panelPressed,
-                            shape = SheetCorner,
-                        )
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .semantics { contentDescription = stopLabel },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    BasicText(text = stopLabel, style = type.label)
-                }
-            }
         }
     }
 }

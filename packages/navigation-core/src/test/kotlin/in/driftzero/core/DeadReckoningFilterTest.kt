@@ -354,6 +354,83 @@ class DeadReckoningFilterTest {
     }
 
     @Test
+    fun unspecifiedFrameDoesNotApplyNhc() {
+        val filter = DeadReckoningFilter(
+            InsConfig(nhcMinSpeedMps = 0.5, nhcVelStdMps = 0.05, nhcDropLateralMps2 = 2.0),
+        )
+        filter.seedForTest(
+            timestamp = Nanoseconds(0L),
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            velocityEnu = Vec3(5.0, 4.0, 0.0),
+            quat = Quat.IDENTITY,
+            posStdM = 5.0,
+            frame = VectorFrame.UNSPECIFIED,
+            headingRad = PI / 2.0,
+        )
+        val g = Wgs84.gravityMps2(0.0)
+        for (i in 1..8) {
+            filter.ingestGyro(Nanoseconds(i * 20_000_000L), 0.0, 0.0, 0.0, VectorFrame.UNSPECIFIED)
+            filter.ingestAccel(Nanoseconds(i * 20_000_000L), 0.0, 0.0, g, VectorFrame.UNSPECIFIED)
+        }
+        val after = filter.velocityEnu()
+        assertTrue("NHC must not run on unspecified, vn=${after.y}", after.y > 3.5)
+        val pose = filter.poseAt(Nanoseconds(8 * 20_000_000L))
+        assertFalse(pose!!.health.flags.contains(DeadReckoningFilter.FLAG_NHC))
+    }
+
+    @Test
+    fun heldHighSpeedSkipsStillZupt() {
+        val filter = DeadReckoningFilter()
+        filter.seedForTest(
+            timestamp = Nanoseconds(0L),
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            velocityEnu = Vec3(8.0, 0.0, 0.0),
+            quat = Quat.IDENTITY,
+            posStdM = 5.0,
+            frame = VectorFrame.VEHICLE_FLU,
+            headingRad = PI / 2.0,
+        )
+        filter.setGnssHeld(true)
+        filter.seedForTest(
+            timestamp = Nanoseconds(0L),
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            velocityEnu = Vec3(0.4, 0.0, 0.0),
+            quat = Quat.IDENTITY,
+            posStdM = 5.0,
+            frame = VectorFrame.VEHICLE_FLU,
+            headingRad = PI / 2.0,
+        )
+        val g = Wgs84.gravityMps2(0.0)
+        for (i in 1..8) {
+            stepImu(filter, Nanoseconds(i * 20_000_000L), ax = 0.0, ay = 0.0, az = g)
+        }
+        val held = filter.velocityEnu()
+        assertTrue("held still-ZUPT skip should keep speed, ve=${held.x}", held.x > 0.2)
+        val heldPose = filter.poseAt(Nanoseconds(8 * 20_000_000L))
+        assertFalse(heldPose!!.health.flags.contains(DeadReckoningFilter.FLAG_ZUPT))
+
+        val free = DeadReckoningFilter()
+        free.seedForTest(
+            timestamp = Nanoseconds(0L),
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            velocityEnu = Vec3(0.4, 0.0, 0.0),
+            quat = Quat.IDENTITY,
+            posStdM = 5.0,
+            frame = VectorFrame.VEHICLE_FLU,
+            headingRad = PI / 2.0,
+        )
+        for (i in 1..8) {
+            stepImu(free, Nanoseconds(i * 20_000_000L), ax = 0.0, ay = 0.0, az = g)
+        }
+        val stopped = free.velocityEnu()
+        assertTrue("unheld still-ZUPT should kill speed, ve=${stopped.x}", abs(stopped.x) < 0.15)
+    }
+
+    @Test
     fun gapBetweenFixesWithoutPoseQueryStillCountsAsCoast() {
         val filter = DeadReckoningFilter()
         filter.ingestGnss(fix(0L))

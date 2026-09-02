@@ -1,45 +1,57 @@
 # DriftZero
 
-**AI-Assisted Resilient Navigation Beyond GNSS**
+Phone navigation that keeps a pose when GNSS fails.
 
-DriftZero is an Android-first, software-only vehicle navigation engine for the SIH 2026 problem statement **SIH26168: AI-ML based Intelligent Dead Reckoning system for seamless navigation**. It keeps estimating a vehicle's position when GNSS is blocked, degraded, jammed, or inconsistent, using only the phone's accelerometer, gyroscope, magnetometer, GNSS, offline road data, and lightweight on-device inference.
+DriftZero is an Android-first, software-only vehicle navigator. It keeps estimating a vehicle's position when GNSS is blocked, degraded, jammed, or inconsistent, using only the phone's accelerometer, gyroscope, magnetometer, GNSS, offline road data, and a compact on-device student when one is present.
 
-This repository is a build-ready product and engineering blueprint. It includes the PRD, official requirement traceability, system architecture, TimesFM 3 research strategy, datasets, offline map plan, evaluation protocol, demo screenplay, Cursor rules, machine-readable contracts, experiment configuration, and tested metric utilities.
+Built by LastKnown.
+
+This repository is a product spec plus a research harness: PRD, architecture, TimesFM 3 research strategy, datasets, offline map plan, evaluation protocol, Cursor rules, machine-readable contracts, experiment configuration, and tested metric utilities.
 
 ## Product promise
 
-- Seamless transition from fused GNSS navigation to inertial dead reckoning and back.
-- Standalone Android phone, with no OBD-II, speedometer, cloud, or custom vehicle hardware dependency.
-- Target dead-reckoning drift below 10 percent of blackout distance, evaluated without label leakage.
-- Smooth 10 Hz navigation output and an offline-first map experience.
-- A reusable navigation core that can also accept an external IMU for the SIH edge-engine requirement.
-- Honest confidence and degradation states rather than false lane-level certainty.
+- Hold a pose through fused GNSS, degraded GNSS, and inertial dead reckoning.
+- Standalone Android phone. No OBD-II, speedometer, cloud, or custom vehicle hardware.
+- Target dead-reckoning drift below 10 percent of blackout distance, scored without label leakage.
+- 10 Hz navigation output and an offline-first map.
+- Navigation core can accept an external IMU. That is an engine interface, not a consumer requirement.
+- Confidence and degradation states. No fake lane-level certainty.
+
+## How a trip works
+
+Product flow on the phone. The last step is product intent. The live estimator is not fully shipped.
+
+```mermaid
+flowchart TD
+    openApp[Open app] --> whereTo["Where to?"]
+    whereTo --> pickPlace[Pick a place]
+    pickPlace --> routeOnMap[Route on map]
+    routeOnMap --> followBlue[Follow the blue mark]
+    followBlue --> gpsOutage["If GPS dies, estimate continues"]
+```
+
+## How the engine works
+
+Runtime path from sensors to the map. Filter-only remains valid when the student is absent.
+
+```mermaid
+flowchart TD
+    sensors[Phone sensors and GNSS] --> sync[Time sync]
+    sync --> filter[Filter plus optional student]
+    filter --> match[Map match]
+    match --> pose["10 Hz pose on map"]
+```
 
 ## The central technical decision
 
 TimesFM 3 is not placed directly in the phone's 10 Hz navigation loop. The official model is roughly 0.3B parameters and its current weights are intended for research use. DriftZero uses it on desktop as a zero-shot multivariate forecasting baseline, uncertainty teacher, and hypothesis generator. If it improves held-out vehicle trajectories, its useful behavior is distilled into a small causal TCN or GRU student for on-device inference. The production loop remains deterministic, bounded, and functional even when the TimesFM adapter is absent.
 
-## Architecture at a glance
-
-```mermaid
-flowchart TD
-    A["Phone sensors and GNSS"] --> B["Time sync, calibration, alignment"]
-    B --> C["Causal learned motion model"]
-    B --> D["Error-state navigation filter"]
-    C --> D
-    D --> E["GNSS health and outage state machine"]
-    E --> F["Offline HMM road matching"]
-    F --> G["10 Hz position, heading, speed, confidence"]
-    H["TimesFM 3 desktop teacher"] --> C
-```
-
 ## Start here
 
 1. Read [PRD.md](PRD.md).
-2. Check [official requirement traceability](docs/01_SIH_REQUIREMENTS_TRACEABILITY.md).
-3. Review [architecture](docs/02_ARCHITECTURE.md) and [TimesFM 3 strategy](docs/03_TIMESFM3_STRATEGY.md).
-4. Give Cursor [the master build prompt](tasks/CURSOR_MASTER_BUILD_PROMPT.md), then execute phase prompts in order.
-5. Run the research utilities:
+2. Review [architecture](docs/02_ARCHITECTURE.md) and [TimesFM 3 strategy](docs/03_TIMESFM3_STRATEGY.md).
+3. Give Cursor [the master build prompt](tasks/CURSOR_MASTER_BUILD_PROMPT.md), then execute phase prompts in order.
+4. Run the research utilities:
 
 ```bash
 PYTHONPATH=ml/src python -m unittest discover -s ml/tests -v
@@ -66,4 +78,4 @@ Ground-truth GNSS may be retained to score an artificial outage, but it must nev
 
 ## Status
 
-This initial repository is a specification plus research harness, not a claim that the complete Android product has already been implemented. Milestones and definitions of done are in [the roadmap](docs/08_ROADMAP_AND_BACKLOG.md).
+This initial repository is a specification plus research harness, not a claim that the complete Android product has already been implemented. The trip chart above is the intended driver flow. Routing, map matching, and the live estimator are still being built. Milestones are in [the roadmap](docs/08_ROADMAP_AND_BACKLOG.md).

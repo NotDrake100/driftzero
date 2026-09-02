@@ -2,7 +2,7 @@
 
 ## Recommended format
 
-- Duration: 3 minutes 30 seconds to 4 minutes 30 seconds unless SIH specifies another limit.
+- Duration: 3 minutes 30 seconds to 4 minutes 30 seconds unless a later brief specifies another limit.
 - Capture: 1080p landscape master, readable phone close-ups, separate clean voiceover.
 - Evidence: one real field sequence plus one deterministic replay that exposes metrics.
 - Safety: passenger operates the device or use a fixed mount. Never film a driver handling the phone.
@@ -86,7 +86,7 @@
 
 ## On-screen evidence checklist
 
-- SIH26168 and ISRO sponsor naming exactly as official.
+- Product name DriftZero. Sponsor ISRO. No contest ID on screen.
 - Standalone phone, no vehicle connection.
 - Airplane mode after offline area install.
 - Visible transition state and confidence.

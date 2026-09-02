@@ -51,3 +51,9 @@ Before polishing the full app, produce:
 - The consumer product is phone-only. The external IMU input is a reusable engine boundary, not a hidden dependency in the demo.
 - GNSS interference is described as a condition the system observes. The app does not claim certified jamming or spoofing classification.
 
+## Prototype notes (2026-09-02)
+
+- The Android app now has destination search and an OSRM driving route on MapLibre. That is FR-10 chrome only. It does not satisfy SIH-01, SIH-06, SIH-21, or SIH-22.
+- Search uses Photon, then Nominatim, with `User-Agent: DriftZero/0.1` and a Pune bias. The Pune demo destination comes from search. A Koregaon Park origin is used only when GPS is missing.
+- Dead-reckoning filter, GNSS outage state machine, confidence halo, and offline PMTiles packages are still missing. See `PRODUCT.md`, ADR 004 (visual map), and ADR 005 (search and routing).
+

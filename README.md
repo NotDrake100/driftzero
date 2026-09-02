@@ -35,11 +35,12 @@ flowchart TD
 
 ## Start here
 
-1. Read [PRD.md](PRD.md).
-2. Check [official requirement traceability](docs/01_SIH_REQUIREMENTS_TRACEABILITY.md).
-3. Review [architecture](docs/02_ARCHITECTURE.md) and [TimesFM 3 strategy](docs/03_TIMESFM3_STRATEGY.md).
-4. Give Cursor [the master build prompt](tasks/CURSOR_MASTER_BUILD_PROMPT.md), then execute phase prompts in order.
-5. Run the research utilities:
+1. Read [PRODUCT.md](PRODUCT.md) for how a tester uses the phone app.
+2. Read [PRD.md](PRD.md).
+3. Check [official requirement traceability](docs/01_SIH_REQUIREMENTS_TRACEABILITY.md).
+4. Review [architecture](docs/02_ARCHITECTURE.md) and [TimesFM 3 strategy](docs/03_TIMESFM3_STRATEGY.md).
+5. Give Cursor [the master build prompt](tasks/CURSOR_MASTER_BUILD_PROMPT.md), then execute phase prompts in order.
+6. Run the research utilities:
 
 ```bash
 PYTHONPATH=ml/src python -m unittest discover -s ml/tests -v

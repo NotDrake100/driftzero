@@ -19,12 +19,22 @@
 
 Pin versions after running a dependency and SDK compatibility check. Software versions listed in research sources are snapshots, not instructions to auto-upgrade without tests.
 
+## Current first screen (production-path prototype)
+
+The `:android-app` module lives at `apps/android/app`. The launch screen is a full-bleed MapLibre street map (OpenFreeMap liberty), a small DriftZero wordmark, one destination field (`Where to?`), a blue LocationComponent puck, and a compact bottom row: `GPS on` / `No GPS, estimating`, speed only when known, and `Start` only when a destination is typed. Contest IDs and empty SPEED/HDG/UNC slabs are not shown.
+
+```bash
+./gradlew :android-app:assembleDebug
+```
+
+Geocoding and routing are collected as destination text here; product behavior owns search/route execution.
+
 ## Module target
 
 ```text
 apps/android/
-  app/                 activity, navigation, permissions, DI
-  feature-map/         MapLibre surface and NavigationState rendering
+  app/                 activity, StreetMap, driver chrome, permissions
+  feature-map/         later: PMTiles surface and NavigationState rendering
   feature-calibrate/   guided mount calibration flow
   feature-replay/      judge mode, blackout controls, result viewer
   sensor-android/      SensorManager, LocationManager, GNSS adapters
@@ -58,21 +68,30 @@ The platform-neutral filter and map-matching logic belongs under `packages/`, no
 
 ```text
 NavigationScreen
-  OfflineMap
-    PositionMarker
-    HeadingCone
-    ConfidenceHalo
-    RoutePolyline
-  TopModeChip
-  SpeedAndInstructionCard
-  StatusBottomSheet
-    Confidence
-    GNSSHealth
-    LastTrustedFix
-    SensorAndMountHealth
-    MapPackage
-  EngineeringOverlay (judge build or explicit mode)
+  StreetMap (full-bleed MapLibre + OpenFreeMap liberty)
+    LocationComponent blue puck
+    OSRM route polyline + destination mark
+  DestinationSearchBar
+    DriftZero wordmark
+    Where to?
+    Photon / Nominatim results
+  DriverStatusBar
+    GPS on | No GPS yet | GPS is weak
+    speed km/h (hidden when unknown)
+    DIST / ETA when a route exists
+    Search (runs place search, not a hard-coded route)
+  Engineering overlay stays out of the default driver view
 ```
+
+## Current prototype (product path)
+
+Search and routing sit on the existing `StreetMap`. See [PRODUCT.md](../../PRODUCT.md) and ADR 005.
+
+```bash
+./gradlew :android-app:assembleDebug
+```
+
+The dead-reckoning filter and outage state machine are still missing.
 
 ## Android acceptance tests
 

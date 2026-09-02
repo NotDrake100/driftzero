@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DriftZero</string>
+    <string name="wordmark">DriftZero</string>
+    <string name="where_to">Where to?</string>
+    <string name="start">Start</string>
+    <string name="gps_on">GPS on</string>
+    <string name="gps_estimating">No GPS yet</string>
+    <string name="search">Search</string>
+</resources>

@@ -4,14 +4,13 @@
 |---|---|
 | Product | DriftZero |
 | Tagline | AI-Assisted Resilient Navigation Beyond GNSS |
-| Problem statement | SIH26168 |
-| Sponsor | Indian Space Research Organisation, Department of Space |
+| Problem | Intelligent dead reckoning for seamless navigation when GNSS is unavailable or degraded |
+| Domain | ISRO complementary PNT / intelligent dead reckoning |
 | Category | Software |
 | Theme | Smart Vehicles |
 | Primary platform | Android |
 | PRD version | 1.0 |
 | Date | 2026-09-02 |
-| SIH deadline | 2026-09-20 |
 
 ## 1. Executive summary
 
@@ -71,7 +70,7 @@ Product principles:
 | Emergency responder | Maintain situational awareness in a covered or damaged area | Rapid start, confidence warning, privacy |
 | Government field team | Use resilient local navigation without data connectivity | Local maps, secure export, deterministic behavior |
 | Navigation engineer | Integrate the engine with a different IMU | Stable sensor and output contracts, configurable rates |
-| SIH judge | Verify the result and innovation | Replay, blackout toggle, metrics, ablations, source traceability |
+| Engineering reviewer | Verify the result and innovation | Replay, blackout toggle, metrics, ablations, source traceability |
 
 ## 5. Product scope
 
@@ -103,7 +102,7 @@ Product principles:
 - Accessibility-grade voice and haptic status cues.
 - Operations dashboard for consented, anonymized fleet health statistics.
 
-### 5.3 Explicit non-goals for the SIH demo
+### 5.3 Explicit non-goals
 
 - Replacing GNSS, NavIC, certified INS, or automotive safety systems.
 - Autonomous lane keeping or collision avoidance.
@@ -171,13 +170,13 @@ Users shall download or sideload a city/corridor package containing a PMTiles vi
 
 ### FR-10 Driver interface
 
-The default screen shall show the map, moving blue dot, heading indicator, route, concise mode label, confidence halo, and one expandable status sheet. Technical metrics shall be hidden while driving but available in judge/engineering mode.
+The default screen shall show the map, moving blue dot, heading indicator, route, concise mode label, confidence halo, and one expandable status sheet. Technical metrics shall be hidden while driving but available in engineering replay mode.
 
 **Acceptance:** mode and uncertainty are understandable at a glance; essential controls meet large touch-target and contrast requirements.
 
-### FR-11 Replay and judge mode
+### FR-11 Replay and engineering mode
 
-The app shall replay recorded sessions through exactly the same pipeline used live. A judge can select an interval, mask GNSS, compare fused and DR traces, inspect state transitions, and export a signed result bundle.
+The app shall replay recorded sessions through exactly the same pipeline used live. An engineering reviewer can select an interval, mask GNSS, compare fused and DR traces, inspect state transitions, and export a signed result bundle.
 
 **Acceptance:** a supplied IO-VNBD subset runs offline from a clean install and reproduces the documented report.
 
@@ -219,11 +218,11 @@ This makes the foundation model meaningful without pretending that a large deskt
 
 ## 9. Accuracy and quality gates
 
-The official benchmark target is dead-reckoning drift below 10 percent of distance traveled during GNSS loss. This is a necessary gate, not the whole quality definition.
+The product accuracy target is dead-reckoning drift below 10 percent of distance traveled during GNSS loss. This is a necessary gate, not the whole quality definition.
 
 ### Release gates
 
-- Median endpoint drift ratio below 10 percent across the locked mandatory IO-VNBD blackout suite.
+- Median endpoint drift ratio below 10 percent across the locked IO-VNBD blackout suite.
 - Report p50, p90, p95, and worst-case drift ratio, never only the mean.
 - No split leakage by trip, route, driver, or vehicle.
 - No ground-truth GNSS or future data in blackout inputs.
@@ -249,7 +248,7 @@ The official benchmark target is dead-reckoning drift below 10 percent of distan
 
 ### Mandatory
 
-IO-VNBD is the official mandatory dataset and screening evidence must include preliminary AI results and an inferred position plot from a subset. Use synchronized phone data first, then vehicle data for diagnostic comparisons. Split by complete journey and group correlated drives.
+IO-VNBD is the locked evaluation dataset. Baseline evidence must include preliminary AI results and an inferred position plot from a subset. Use synchronized phone data first, then vehicle data for diagnostic comparisons. Split by complete journey and group correlated drives.
 
 ### Supplemental
 
@@ -298,7 +297,7 @@ Map matching uses a bounded online HMM with a rolling Viterbi beam. Emission lik
 
 Use plain instructions: secure phone, remain still, then drive straight when safe. Show progress and quality, not raw matrices. A user can skip only if a valid profile exists for the same mount state.
 
-### Judge mode
+### Engineering replay mode
 
 Side-by-side or overlay traces: hidden truth, ordinary GNSS behavior, filter-only, full DriftZero. Include a blackout timeline, state timeline, drift metrics, latency, and an explanation of what the TimesFM experiment did. Truth must be visually labeled and never displayed as an input.
 
@@ -333,7 +332,7 @@ Offline diagnostic events include sensor availability, state transitions, reject
 
 ## 16. Demo success story
 
-The final video begins with a real Indian navigation problem, demonstrates an ordinary marker degrading at a tunnel or simulated blackout, then shows DriftZero continuing with visible confidence. The audience sees no external hardware and airplane mode remains enabled. Judge mode reveals the sensor pipeline, outage state, road hypotheses, and metrics. A recovery sequence shows gradual GNSS re-entry without a jump. The close explains the TimesFM teacher/student experiment, offline privacy, external IMU interface, India data plan, and honest limitations.
+The final video begins with a real Indian navigation problem, demonstrates an ordinary marker degrading at a tunnel or simulated blackout, then shows DriftZero continuing with visible confidence. The audience sees no external hardware and airplane mode remains enabled. Engineering replay reveals the sensor pipeline, outage state, road hypotheses, and metrics. A recovery sequence shows gradual GNSS re-entry without a jump. The close explains the TimesFM teacher/student experiment, offline privacy, external IMU interface, India data plan, and honest limitations.
 
 The exact narration and shot timing are in `docs/07_DEMO_VIDEO_SCRIPT.md`.
 
@@ -349,5 +348,5 @@ The exact narration and shot timing are in `docs/07_DEMO_VIDEO_SCRIPT.md`.
 
 ## 18. Definition of excellent
 
-DriftZero is excellent when it is hard to fool, easy to understand, and easy to verify. A polished animation alone is insufficient. The project must show a real pipeline, difficult failure cases, held-out metrics, ablations, uncertainty calibration, reproducible artifacts, offline execution, and a candid failure taxonomy. The most credible winning claim is not that the phone never drifts. It is that DriftZero measures, constrains, communicates, and recovers from that drift better than defensible baselines under the official constraints.
+DriftZero is excellent when it is hard to fool, easy to understand, and easy to verify. A polished animation alone is insufficient. The project must show a real pipeline, difficult failure cases, held-out metrics, ablations, uncertainty calibration, reproducible artifacts, offline execution, and a candid failure taxonomy. The most credible product claim is not that the phone never drifts. It is that DriftZero measures, constrains, communicates, and recovers from that drift better than defensible baselines under the published constraints.
 

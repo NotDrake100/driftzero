@@ -5,7 +5,7 @@
 
 ## Context
 
-Raw phone inertial integration drifts quickly, while an end-to-end black-box position model is difficult to validate, constrain, and recover. The SIH problem asks for AI-based fusion and gives UKF/HMM as examples rather than mandating a pure neural system.
+Raw phone inertial integration drifts quickly, while an end-to-end black-box position model is difficult to validate, constrain, and recover. The IDR problem asks for AI-based fusion and gives UKF/HMM as examples rather than mandating a pure neural system.
 
 ## Decision
 

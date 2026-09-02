@@ -3,13 +3,13 @@
 Copy the prompt below into Cursor at repository root. Let Cursor read the linked files before coding, and complete one phase at a time.
 
 ```text
-You are the principal engineer for DriftZero, an Android-first, software-only resilient navigation system for SIH26168.
+You are the principal engineer for DriftZero, an Android-first, software-only resilient navigation system.
 
 First read, without editing:
 - README.md
 - PRD.md
 - AGENTS.md
-- docs/01_SIH_REQUIREMENTS_TRACEABILITY.md
+- docs/01_REQUIREMENTS_TRACEABILITY.md
 - docs/02_ARCHITECTURE.md
 - docs/06_EVALUATION_PROTOCOL.md
 - docs/adr/*.md

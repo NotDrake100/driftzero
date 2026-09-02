@@ -2,9 +2,9 @@
 
 **AI-Assisted Resilient Navigation Beyond GNSS**
 
-DriftZero is an Android-first, software-only vehicle navigation engine for the SIH 2026 problem statement **SIH26168: AI-ML based Intelligent Dead Reckoning system for seamless navigation**. It keeps estimating a vehicle's position when GNSS is blocked, degraded, jammed, or inconsistent, using only the phone's accelerometer, gyroscope, magnetometer, GNSS, offline road data, and lightweight on-device inference.
+DriftZero is an Android-first, software-only intelligent dead-reckoning navigator. It keeps estimating a vehicle's position when GNSS is blocked, degraded, jammed, or inconsistent, using only the phone's accelerometer, gyroscope, magnetometer, GNSS, offline road data, and lightweight on-device inference.
 
-This repository is a build-ready product and engineering blueprint. It includes the PRD, official requirement traceability, system architecture, TimesFM 3 research strategy, datasets, offline map plan, evaluation protocol, demo screenplay, Cursor rules, machine-readable contracts, experiment configuration, and tested metric utilities.
+This repository is a build-ready product and engineering blueprint. It includes the PRD, requirement traceability, system architecture, TimesFM 3 research strategy, datasets, offline map plan, evaluation protocol, demo screenplay, Cursor rules, machine-readable contracts, experiment configuration, and tested metric utilities.
 
 ## Product promise
 
@@ -12,7 +12,7 @@ This repository is a build-ready product and engineering blueprint. It includes 
 - Standalone Android phone, with no OBD-II, speedometer, cloud, or custom vehicle hardware dependency.
 - Target dead-reckoning drift below 10 percent of blackout distance, evaluated without label leakage.
 - Smooth 10 Hz navigation output and an offline-first map experience.
-- A reusable navigation core that can also accept an external IMU for the SIH edge-engine requirement.
+- A reusable navigation core that can also accept an external IMU for edge-engine deployments.
 - Honest confidence and degradation states rather than false lane-level certainty.
 
 ## The central technical decision
@@ -36,7 +36,7 @@ flowchart TD
 ## Start here
 
 1. Read [PRD.md](PRD.md).
-2. Check [official requirement traceability](docs/01_SIH_REQUIREMENTS_TRACEABILITY.md).
+2. Check [requirement traceability](docs/01_REQUIREMENTS_TRACEABILITY.md).
 3. Review [architecture](docs/02_ARCHITECTURE.md) and [TimesFM 3 strategy](docs/03_TIMESFM3_STRATEGY.md).
 4. Give Cursor [the master build prompt](tasks/CURSOR_MASTER_BUILD_PROMPT.md), then execute phase prompts in order.
 5. Run the research utilities:

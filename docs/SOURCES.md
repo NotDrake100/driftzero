@@ -2,10 +2,10 @@
 
 Retrieved and checked on 2026-09-02 unless noted. Product decisions are interpretations by the DriftZero team; sources do not endorse the product.
 
-## Problem statement
+## Problem framing
 
-- [SIH 2026 official problem statements](https://www.sih.gov.in/sih2026PS), search for ID 26168. Source of record for title, sponsor, constraints, required modules, dataset, output rates, and drift target.
-- [IO-VNBD repository](https://github.com/onyekpeu/IO-VNBD), official mandatory dataset link from the problem statement.
+- Internal engineering context: ISRO intelligent dead-reckoning (IDR) for seamless vehicle navigation during GNSS outage or degradation. See `docs/01_REQUIREMENTS_TRACEABILITY.md`. Do not cite a contest identifier in product surfaces.
+- [IO-VNBD repository](https://github.com/onyekpeu/IO-VNBD), locked evaluation dataset for smartphone speed and dead-reckoning research.
 - [IO-VNBD Data in Brief paper](https://doi.org/10.1016/j.dib.2021.106885), dataset scale, geography, sensors, and collection description.
 - [IO-VNBD inertial speed-estimation research](https://arxiv.org/abs/2005.01701).
 

@@ -9,10 +9,10 @@
 | S05 | Assisted to DR transition | Screen plus state timeline | Seamless outage handling |
 | S06 | Growing confidence halo | Screen close-up | Honest uncertainty |
 | S07 | Sensor/filter/map pipeline | Motion graphic from actual architecture | Technical mechanism |
-| S08 | IO-VNBD trip selector and fixed blackout | Judge-mode screen | Mandatory dataset |
-| S09 | Truth marked score-only | Judge-mode screen | No label leakage |
-| S10 | Baseline, filter, full system overlay | Judge-mode screen | Ablation evidence |
-| S11 | Drift and tail metric card | Result bundle plus screen | Official target evaluation |
+| S08 | IO-VNBD trip selector and fixed blackout | Engineering-replay screen | Locked evaluation dataset |
+| S09 | Truth marked score-only | Engineering-replay screen | No label leakage |
+| S10 | Baseline, filter, full system overlay | Engineering-replay screen | Ablation evidence |
+| S11 | Drift and tail metric card | Result bundle plus screen | Product target evaluation |
 | S12 | TimesFM forecast and student boundary | Desktop research capture | Foundation-model role |
 | S13 | Android latency/model-size card | Profiler/result capture | Edge deployability |
 | S14 | Parallel road/flyover ambiguity | Map/replay close-up | HMM and no false snap |

@@ -8,6 +8,6 @@ Do not commit `local.properties`, `secrets.properties`, raw trip CSVs, or privat
 
 ## Reporting
 
-Open a private GitHub security advisory on [NotDrake100/driftzero-sih26168](https://github.com/NotDrake100/driftzero-sih26168) if the issue can expose location history, allow unsigned model or map loading, or execute untrusted replay input. For contest-week questions that are not vulnerabilities, use a normal issue.
+Open a private GitHub security advisory on [NotDrake100/driftzero](https://github.com/NotDrake100/driftzero) if the issue can expose location history, allow unsigned model or map loading, or execute untrusted replay input. For contest-week questions that are not vulnerabilities, use a normal issue.
 
 This repository is a research prototype. It is not certified for safety-of-life navigation.

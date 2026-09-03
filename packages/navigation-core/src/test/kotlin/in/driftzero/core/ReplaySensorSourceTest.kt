@@ -307,6 +307,25 @@ class ReplaySensorSourceTest {
         assertEquals(6.0, v7.config.gnssReseedAfterS, 0.0)
         assertTrue(v7.config.gnssReseedWhileFused)
         assertTrue(v7.config.coastHonestP)
+        assertTrue(!v7.config.gnssReseedRequireSparseSpacing)
+        val v8 = Replay.parseArgs(
+            arrayOf(
+                "--input",
+                "in.jsonl",
+                "--output",
+                "out.jsonl",
+                "--gnss-reseed-after-s=8",
+                "--gnss-reseed-require-sparse",
+                "--coast-honest-p",
+                "--config",
+                "gnssReseedMinSparseHops=3",
+            ),
+        )
+        assertEquals(8.0, v8.config.gnssReseedAfterS, 0.0)
+        assertTrue(v8.config.gnssReseedRequireSparseSpacing)
+        assertEquals(3, v8.config.gnssReseedMinSparseHops)
+        assertTrue(v8.config.coastHonestP)
+        assertTrue(!v8.config.gnssReseedWhileFused)
     }
 
     @Test

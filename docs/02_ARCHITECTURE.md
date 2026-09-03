@@ -206,6 +206,7 @@ No Android package may depend on the TimesFM Python environment or checkpoint. T
 - [Offline map package](adr/003-offline-maps.md)
 - [Pose store and GNSS-off coast](adr/004-cv-stub.md)
 - [Motion pseudo-measurement hook](adr/005-motion-pseudo-measurement.md)
+- [Sparse unique-gap reseed](adr/008-sparse-unique-reseed.md)
 
 TimesFM 3.0 is designed, not run. There is no `results/timesfm/` keep/reject report. The adapter under `ml/` fails closed when the optional package is missing. 3.0 cannot ship. Distillation from 3.0 needs a license read.
 

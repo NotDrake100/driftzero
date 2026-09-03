@@ -42,6 +42,18 @@ class HeadingGyroPick:
     pair_count: int
 
 
+@dataclass(frozen=True)
+class HeadingGyroDecision:
+    """Accepted pick, or an explicit weak/fallback record. Never a silent default."""
+
+    pick: HeadingGyroPick | None
+    pair_count: int
+    best_axis: str | None
+    best_correlation: float | None
+    reason: str
+    mask_start_ns: int | None
+
+
 HEADING_GYRO_AXES = ("yaw", "pitch", "roll")
 MIN_HEADING_GYRO_PAIRS = 8
 MIN_HEADING_GYRO_ABS_CORR = 0.25
@@ -109,21 +121,53 @@ def select_heading_gyro(
     *,
     min_pairs: int = MIN_HEADING_GYRO_PAIRS,
     min_abs_corr: float = MIN_HEADING_GYRO_ABS_CORR,
+    mask_start_ns: int | None = None,
 ) -> HeadingGyroPick | None:
     """Pick the raw gyro column whose mean in each unique-fix hop tracks course rate.
 
     Sign is chosen so exported ω_z is opposite GNSS course rate (right-hand
-    about up, ENU heading clockwise from north).
+    about up, ENU heading clockwise from north). When mask_start_ns is set,
+    only unique-fix hops whose later fix is strictly before the mask are used.
     """
+
+    return heading_gyro_decision(
+        gyros,
+        unique_fixes,
+        min_pairs=min_pairs,
+        min_abs_corr=min_abs_corr,
+        mask_start_ns=mask_start_ns,
+    ).pick
+
+
+def heading_gyro_decision(
+    gyros: Sequence[tuple[int, float, float, float]],
+    unique_fixes: Sequence[tuple[int, float, float]],
+    *,
+    min_pairs: int = MIN_HEADING_GYRO_PAIRS,
+    min_abs_corr: float = MIN_HEADING_GYRO_ABS_CORR,
+    mask_start_ns: int | None = None,
+) -> HeadingGyroDecision:
+    """Same pick as select_heading_gyro, plus the weak-pick reason and best r."""
 
     if min_pairs < 2:
         raise ValueError("min_pairs must be at least 2")
-    if len(unique_fixes) < 3 or len(gyros) < 2:
-        return None
+    fixes = list(unique_fixes)
+    if mask_start_ns is not None:
+        fixes = [row for row in fixes if row[0] < mask_start_ns]
+    empty = HeadingGyroDecision(
+        pick=None,
+        pair_count=0,
+        best_axis=None,
+        best_correlation=None,
+        reason="insufficient_fixes",
+        mask_start_ns=mask_start_ns,
+    )
+    if len(fixes) < 3 or len(gyros) < 2:
+        return empty
     hops: list[tuple[int, int, float, tuple[float, float, float]]] = []
     gyro_times = [row[0] for row in gyros]
     start = 0
-    for earlier, later in zip(unique_fixes, unique_fixes[1:]):
+    for earlier, later in zip(fixes, fixes[1:]):
         dt = (later[0] - earlier[0]) / 1_000_000_000.0
         if dt < MIN_HEADING_GYRO_DT_S:
             continue
@@ -166,13 +210,31 @@ def select_heading_gyro(
         delta = (current[2] - previous[2] + pi) % (2.0 * pi) - pi
         dpsi.append(delta / dt)
         aligned_means.append(current[3])
-    if len(dpsi) < min_pairs:
-        return None
-    baseline = sum(rate * rate for rate in dpsi) / len(dpsi)
+    pair_count = len(dpsi)
+    if pair_count < min_pairs:
+        return HeadingGyroDecision(
+            pick=None,
+            pair_count=pair_count,
+            best_axis=None,
+            best_correlation=None,
+            reason="few_hops",
+            mask_start_ns=mask_start_ns,
+        )
+    baseline = sum(rate * rate for rate in dpsi) / pair_count
     if baseline < 1e-8:
-        return None
+        return HeadingGyroDecision(
+            pick=None,
+            pair_count=pair_count,
+            best_axis=None,
+            best_correlation=None,
+            reason="no_heading_rate",
+            mask_start_ns=mask_start_ns,
+        )
     best: HeadingGyroPick | None = None
     best_score = min_abs_corr
+    observed_axis: str | None = None
+    observed_corr: float | None = None
+    observed_abs = -1.0
     for axis_index, axis in enumerate(HEADING_GYRO_AXES):
         series = [row[axis_index] for row in aligned_means]
         value = _corr(dpsi, series)
@@ -183,11 +245,31 @@ def select_heading_gyro(
             sign, mse = _heading_axis_fit(dpsi, series)
             score = 1.0 - (mse / baseline)
             value = score if sign < 0.0 else -score
+        if score > observed_abs:
+            observed_abs = score
+            observed_axis = axis
+            observed_corr = value
         if score < min_abs_corr or (best is not None and score <= best_score):
             continue
         best_score = score
-        best = HeadingGyroPick(axis=axis, sign=sign, correlation=value, pair_count=len(dpsi))
-    return best
+        best = HeadingGyroPick(axis=axis, sign=sign, correlation=value, pair_count=pair_count)
+    if best is None:
+        return HeadingGyroDecision(
+            pick=None,
+            pair_count=pair_count,
+            best_axis=observed_axis,
+            best_correlation=observed_corr,
+            reason="weak_corr",
+            mask_start_ns=mask_start_ns,
+        )
+    return HeadingGyroDecision(
+        pick=best,
+        pair_count=pair_count,
+        best_axis=best.axis,
+        best_correlation=best.correlation,
+        reason="accepted",
+        mask_start_ns=mask_start_ns,
+    )
 
 
 def heading_gyro_radps(

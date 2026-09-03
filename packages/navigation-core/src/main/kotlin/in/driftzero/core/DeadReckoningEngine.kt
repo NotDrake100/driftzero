@@ -27,7 +27,7 @@ class DeadReckoningEngine(
     override suspend fun consume(frame: SensorFrame) {
         filter.consume(frame)
         motion.ingestFrame(frame)
-        maybeEmit(frame.timestamp)
+        emitIfDue(frame.timestamp)?.let { _states.tryEmit(it) }
     }
 
     override fun states(): Flow<NavigationState> = _states.asSharedFlow()
@@ -40,24 +40,34 @@ class DeadReckoningEngine(
 
     fun ingestMotionPseudo(meas: MotionPseudoMeasurement, timestamp: Nanoseconds) {
         filter.ingestMotionPseudo(meas, timestamp)
-        maybeEmit(timestamp)
+        emitIfDue(timestamp)?.let { _states.tryEmit(it) }
     }
 
     fun ingestDisplacementPseudo(meas: DisplacementPseudoMeasurement, timestamp: Nanoseconds) {
         filter.ingestDisplacementPseudo(meas, timestamp)
-        maybeEmit(timestamp)
+        emitIfDue(timestamp)?.let { _states.tryEmit(it) }
     }
 
-    private fun maybeEmit(timestamp: Nanoseconds) {
+    /**
+     * Synchronous consume for JVM replay. Same 10 Hz cadence and student
+     * inject as [consume]. Default Replay stays consume-only.
+     */
+    fun ingestForReplay(frame: SensorFrame): NavigationState? {
+        filter.consume(frame)
+        motion.ingestFrame(frame)
+        return emitIfDue(frame.timestamp)
+    }
+
+    private fun emitIfDue(timestamp: Nanoseconds): NavigationState? {
         val t = timestamp.value
         if (lastEmitNs >= 0L && t - lastEmitNs < PERIOD_NS) {
-            return
+            return null
         }
         motion.inferAt(timestamp)?.let { filter.ingestMotionPseudo(it, timestamp) }
         motion.inferDisplacementAt(timestamp)?.let { filter.ingestDisplacementPseudo(it, timestamp) }
-        val raw = filter.poseAt(timestamp) ?: return
+        val raw = filter.poseAt(timestamp) ?: return null
         lastEmitNs = t
-        _states.tryEmit(overlayMatch(raw))
+        return overlayMatch(raw)
     }
 
     private fun overlayMatch(state: NavigationState): NavigationState {

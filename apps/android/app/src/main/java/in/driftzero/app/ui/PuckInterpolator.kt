@@ -1,5 +1,6 @@
 package `in`.driftzero.app.ui
 
+import `in`.driftzero.core.GuidanceState
 import `in`.driftzero.core.NavigationState
 import `in`.driftzero.core.puckHeadingRad
 import `in`.driftzero.core.puckLatitudeDeg
@@ -32,10 +33,19 @@ class PuckInterpolator(
     private var endNs: Long = 0L
     private var last: DisplayPuck? = null
 
-    fun target(state: NavigationState, nowNs: Long) {
+    fun target(state: NavigationState, nowNs: Long, guidance: GuidanceState? = null) {
+        val navigating = guidance != null
         val next = DisplayPuck(
-            latitudeDeg = state.puckLatitudeDeg(),
-            longitudeDeg = state.puckLongitudeDeg(),
+            latitudeDeg = if (navigating) {
+                GuidanceNav.displayLatitudeDeg(state, guidance)
+            } else {
+                state.puckLatitudeDeg()
+            },
+            longitudeDeg = if (navigating) {
+                GuidanceNav.displayLongitudeDeg(state, guidance)
+            } else {
+                state.puckLongitudeDeg()
+            },
             headingRad = state.puckHeadingRad(),
             radiusM = state.uncertainty.horizontal95.value,
             heading95Rad = state.uncertainty.heading95Rad,

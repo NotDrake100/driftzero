@@ -6,8 +6,8 @@
 |---|---|---|
 | Sensor/GNSS provider | stale, malformed, inconsistent or manipulated measurement | monotonicity, range, freshness, innovation and quality gates |
 | Replay/import file | path traversal, oversized record, invalid numbers | schema validation, bounds, streaming parser, finite checks |
-| Model bundle | tampering, incompatible feature order, unsafe artifact | signed/checksummed package, fixed format, schema/version hash |
-| Map package | corrupted graph, stale metadata, malicious geometry | checksum/signature, bounds, atomic install, version compatibility |
+| Model bundle | tampering, incompatible feature order, unsafe artifact | checksum planned. Signed bundles are not implemented. Fixed format and schema/version hash on packed JSON. |
+| Map package | corrupted graph, stale metadata, malicious geometry | checksum/signature planned. Sideload marks Ready without a signature check today. |
 | Export | disclosure of home/work routes or identity | explicit consent, minimization, encryption, user deletion |
 | UI | false precision or distracted driving | confidence state, large controls, passenger/setup guidance |
 
@@ -20,7 +20,7 @@
 - Minimize exact location retention. Research exports should support spatial/temporal redaction.
 - Encrypt sensitive local artifacts with Android platform mechanisms.
 - Use explicit, purpose-specific consent for any upload or research reuse.
-- Publish a retention policy before a public pilot.
+- Publish a retention policy before a public collection. No India pilot dataset exists yet.
 
 ## 3. Android permission strategy
 
@@ -57,7 +57,7 @@ Each model/map package contains:
 - region or model capability metadata;
 - feature/graph schema hash;
 - byte size and SHA-256;
-- signature when distribution infrastructure exists;
+- signature when distribution infrastructure exists (planned. Not implemented);
 - creation time and source manifest;
 - rollback compatibility.
 
@@ -72,6 +72,6 @@ Diagnostic logs must avoid raw precise coordinates unless trip recording is enab
 - Dataset terms and consent remain attached to derived artifacts.
 - Train/validation/test provenance is recorded.
 - Do not release raw participant routes publicly without explicit permission.
-- Do not claim generalization to India until the locked India pilot is evaluated.
+- Do not claim generalization to India until locked Pune drives are evaluated. No India dataset exists yet.
 - Document any demographic or geographic sampling gaps relevant to deployment.
 

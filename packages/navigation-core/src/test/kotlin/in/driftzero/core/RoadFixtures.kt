@@ -24,6 +24,7 @@ internal object RoadFixtures {
             startNorth = 0.0,
             endEast = 0.0,
             endNorth = lengthM,
+            oneway = !bidirectional,
         )
         val east = edge(
             id = if (bidirectional) "east:fwd" else "east",
@@ -35,6 +36,7 @@ internal object RoadFixtures {
             startNorth = 0.0,
             endEast = sepM,
             endNorth = lengthM,
+            oneway = !bidirectional,
         )
         val edges = ArrayList<GraphEdge>()
         edges.add(west)
@@ -43,14 +45,126 @@ internal object RoadFixtures {
             edges.add(reverse(west, "west:rev"))
             edges.add(reverse(east, "east:rev"))
         }
-        val nodes = LinkedHashMap<Long, GraphNode>()
-        for (item in edges) {
-            val start = item.points.first()
-            val end = item.points.last()
-            nodes[item.fromNodeId] = GraphNode(item.fromNodeId, start.latitude, start.longitude)
-            nodes[item.toNodeId] = GraphNode(item.toNodeId, end.latitude, end.longitude)
+        return graphOf(packageId, edges)
+    }
+
+    fun singleRoad(
+        originLat: Double = ORIGIN_LAT,
+        originLon: Double = ORIGIN_LON,
+        lengthM: Double = LENGTH_M,
+        packageId: String = "fixture-single",
+        tunnel: Boolean = false,
+        bridge: Boolean = false,
+        layer: Int = 0,
+        oneway: Boolean = true,
+    ): RoadGraph {
+        val fwd = edge(
+            id = "road",
+            fromId = 1L,
+            toId = 2L,
+            originLat = originLat,
+            originLon = originLon,
+            startEast = 0.0,
+            startNorth = 0.0,
+            endEast = 0.0,
+            endNorth = lengthM,
+            layer = layer,
+            bridge = bridge,
+            tunnel = tunnel,
+            oneway = oneway,
+        )
+        val edges = ArrayList<GraphEdge>()
+        edges.add(fwd)
+        if (!oneway) {
+            edges.add(reverse(fwd, "road:rev"))
         }
-        return RoadGraph(packageId, nodes, edges)
+        return graphOf(packageId, edges)
+    }
+
+    /**
+     * T-junction at local (0, 0): west approach, east departure, south leg.
+     * Junction node id 3 has undirected degree 3.
+     */
+    fun tJunction(
+        originLat: Double = ORIGIN_LAT,
+        originLon: Double = ORIGIN_LON,
+        armM: Double = 100.0,
+        packageId: String = "fixture-t-junction",
+    ): RoadGraph {
+        val west = edge(
+            id = "west",
+            fromId = 1L,
+            toId = 3L,
+            originLat = originLat,
+            originLon = originLon,
+            startEast = -armM,
+            startNorth = 0.0,
+            endEast = 0.0,
+            endNorth = 0.0,
+            oneway = true,
+        )
+        val east = edge(
+            id = "east",
+            fromId = 3L,
+            toId = 4L,
+            originLat = originLat,
+            originLon = originLon,
+            startEast = 0.0,
+            startNorth = 0.0,
+            endEast = armM,
+            endNorth = 0.0,
+            oneway = true,
+        )
+        val south = edge(
+            id = "south",
+            fromId = 3L,
+            toId = 5L,
+            originLat = originLat,
+            originLon = originLon,
+            startEast = 0.0,
+            startNorth = 0.0,
+            endEast = 0.0,
+            endNorth = -armM,
+            oneway = true,
+        )
+        return graphOf(packageId, listOf(west, east, south))
+    }
+
+    /** Flyover (layer 1, bridge) occupying the same 2D centerline as a surface road. */
+    fun flyoverOverSurface(
+        originLat: Double = ORIGIN_LAT,
+        originLon: Double = ORIGIN_LON,
+        lengthM: Double = LENGTH_M,
+        packageId: String = "fixture-flyover",
+    ): RoadGraph {
+        val surface = edge(
+            id = "surface",
+            fromId = 1L,
+            toId = 2L,
+            originLat = originLat,
+            originLon = originLon,
+            startEast = 0.0,
+            startNorth = 0.0,
+            endEast = 0.0,
+            endNorth = lengthM,
+            layer = 0,
+            oneway = true,
+        )
+        val flyover = edge(
+            id = "flyover",
+            fromId = 3L,
+            toId = 4L,
+            originLat = originLat,
+            originLon = originLon,
+            startEast = 0.0,
+            startNorth = 0.0,
+            endEast = 0.0,
+            endNorth = lengthM,
+            layer = 1,
+            bridge = true,
+            oneway = true,
+        )
+        return graphOf(packageId, listOf(surface, flyover))
     }
 
     fun snapshot(
@@ -127,6 +241,75 @@ internal object RoadFixtures {
         """.trimIndent()
     }
 
+    fun tunnelOsmXml(
+        originLat: Double = ORIGIN_LAT,
+        originLon: Double = ORIGIN_LON,
+        lengthM: Double = LENGTH_M,
+    ): String {
+        val a = Wgs84.offsetMetres(originLat, originLon, 0.0, 0.0)
+        val b = Wgs84.offsetMetres(originLat, originLon, lengthM, 0.0)
+        return """
+            <?xml version="1.0"?>
+            <osm version="0.6">
+              <node id="1" lat="${a.first}" lon="${a.second}"/>
+              <node id="2" lat="${b.first}" lon="${b.second}"/>
+              <way id="40">
+                <nd ref="1"/><nd ref="2"/>
+                <tag k="highway" v="primary"/>
+                <tag k="oneway" v="yes"/>
+                <tag k="tunnel" v="yes"/>
+                <tag k="layer" v="-1"/>
+              </way>
+            </osm>
+        """.trimIndent()
+    }
+
+    fun tJunctionOsmXml(
+        originLat: Double = ORIGIN_LAT,
+        originLon: Double = ORIGIN_LON,
+        armM: Double = 100.0,
+    ): String {
+        val j = Wgs84.offsetMetres(originLat, originLon, 0.0, 0.0)
+        val w = Wgs84.offsetMetres(originLat, originLon, 0.0, -armM)
+        val e = Wgs84.offsetMetres(originLat, originLon, 0.0, armM)
+        val s = Wgs84.offsetMetres(originLat, originLon, -armM, 0.0)
+        return """
+            <?xml version="1.0"?>
+            <osm version="0.6">
+              <node id="1" lat="${w.first}" lon="${w.second}"/>
+              <node id="3" lat="${j.first}" lon="${j.second}"/>
+              <node id="4" lat="${e.first}" lon="${e.second}"/>
+              <node id="5" lat="${s.first}" lon="${s.second}"/>
+              <way id="21">
+                <nd ref="1"/><nd ref="3"/>
+                <tag k="highway" v="residential"/>
+                <tag k="oneway" v="yes"/>
+              </way>
+              <way id="22">
+                <nd ref="3"/><nd ref="4"/>
+                <tag k="highway" v="residential"/>
+                <tag k="oneway" v="yes"/>
+              </way>
+              <way id="23">
+                <nd ref="3"/><nd ref="5"/>
+                <tag k="highway" v="residential"/>
+                <tag k="oneway" v="yes"/>
+              </way>
+            </osm>
+        """.trimIndent()
+    }
+
+    private fun graphOf(packageId: String, edges: List<GraphEdge>): RoadGraph {
+        val nodes = LinkedHashMap<Long, GraphNode>()
+        for (item in edges) {
+            val start = item.points.first()
+            val end = item.points.last()
+            nodes[item.fromNodeId] = GraphNode(item.fromNodeId, start.latitude, start.longitude)
+            nodes[item.toNodeId] = GraphNode(item.toNodeId, end.latitude, end.longitude)
+        }
+        return RoadGraph(packageId, nodes, edges)
+    }
+
     private fun edge(
         id: String,
         fromId: Long,
@@ -137,6 +320,10 @@ internal object RoadFixtures {
         startNorth: Double,
         endEast: Double,
         endNorth: Double,
+        layer: Int = 0,
+        bridge: Boolean = false,
+        tunnel: Boolean = false,
+        oneway: Boolean = false,
     ): GraphEdge {
         val a = Wgs84.offsetMetres(originLat, originLon, startNorth, startEast)
         val b = Wgs84.offsetMetres(originLat, originLon, endNorth, endEast)
@@ -153,6 +340,10 @@ internal object RoadFixtures {
             lengthM = length,
             segmentHeadingsRad = headings,
             highway = "residential",
+            layer = layer,
+            bridge = bridge,
+            tunnel = tunnel,
+            oneway = oneway,
         )
     }
 
@@ -168,6 +359,10 @@ internal object RoadFixtures {
             segmentHeadingsRad = headings,
             highway = edge.highway,
             osmWayId = edge.osmWayId,
+            layer = edge.layer,
+            bridge = edge.bridge,
+            tunnel = edge.tunnel,
+            oneway = false,
         )
     }
 }

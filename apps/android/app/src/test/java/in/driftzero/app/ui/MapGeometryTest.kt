@@ -63,4 +63,11 @@ class MapGeometryTest {
         assertEquals(15.0, MapGeometry.zoomForSpeed(14.5, 15.0), 0.0)
         assertEquals(16.0, MapGeometry.zoomForSpeed(13.0, 15.0), 0.0)
     }
+
+    @Test
+    fun followBearingIsNorthWhenSlowOrLocked() {
+        assertEquals(0.0, MapGeometry.followBearingDeg(1.5, headingRad = 1.0, northUp = false), 0.0)
+        assertEquals(0.0, MapGeometry.followBearingDeg(10.0, headingRad = 1.0, northUp = true), 0.0)
+        assertEquals(90.0, MapGeometry.followBearingDeg(10.0, headingRad = PI / 2.0, northUp = false), 1e-9)
+    }
 }

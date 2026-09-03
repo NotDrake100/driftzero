@@ -6,6 +6,6 @@ MapLibre Native plus OpenStreetMap and OpenFreeMap tiles draw streets. This is n
 
 IBM Plex fonts ship under the SIL Open Font License 1.1 (`apps/android/third_party/ibm-plex/LICENSE.txt`).
 
-The Android chrome (search, puck, GPS chip) is Compose written for this navigator. Contest IDs stay out of the driver-facing chrome.
+The Android chrome (search, puck, mode lamp) is Compose written for this navigator. Contest IDs stay out of the driver-facing chrome.
 
 Cursor agent skill files under `.cursor/skills/` are local editor tooling. They are gitignored and are not a shipped UI kit.

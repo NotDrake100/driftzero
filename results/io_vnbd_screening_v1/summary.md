@@ -15,6 +15,8 @@ GNSS is score-only after the blackout mask. No TimesFM. No vehicle ECU.
 
 `PYTHONPATH=ml/src ~/.venvs/driftzero-ml/bin/python -m driftzero_ml.screening --repo . --out results/io_vnbd_screening_v1`
 
+`PYTHONPATH=ml/src python3 -m driftzero_ml.screening --repo . --out results/io_vnbd_screening_v1 --physics-only`
+
 `PYTHONPATH=ml/src python3 -m driftzero_ml.eval_kotlin_replay --repo . --out results/io_vnbd_screening_v1/kotlin_replay`
 
 `PYTHONPATH=ml/src python3 -m driftzero_ml.eval_kotlin_replay --repo . --out results/io_vnbd_screening_v1/kotlin_replay --system kotlin_eskf_v2 --reexport --rerun`
@@ -46,6 +48,11 @@ GNSS is score-only after the blackout mask. No TimesFM. No vehicle ECU.
 | filter_only | 0.5531 | 1.4451 | 18.0091 | 182.4295 | 193.83 | 3.439 | 0.724 |
 | zupt_accel | 0.8636 | 2.1212 | 17.3780 | 180.3536 | 354.35 | 6.175 | 0.724 |
 | linear | 0.7132 | 2.5454 | 9.1404 | 11.1149 | 286.98 | 5.034 | 0.724 |
+| timesfm_coast | 0.6048 | 2.6191 | 18.2558 | 187.3969 | 234.47 | 3.555 | 0.616 |
+| persist_curve | 0.9727 | 2.3475 | 21.4333 | 205.5490 | 388.18 | 8.044 | 0.673 |
+| linear_curve | 0.7244 | 2.8721 | 18.1896 | 181.7062 | 259.81 | 5.011 | 0.724 |
+| persist_selfcal | 0.6220 | 1.7092 | 19.8706 | 204.0427 | 234.47 | 3.390 | 0.673 |
+| linear_selfcal | 0.6649 | 1.7888 | 18.2131 | 181.7031 | 256.67 | 4.034 | 0.724 |
 | gru | 0.7550 | 3.1158 | 19.3799 | 191.8346 | 292.76 | 4.847 | 0.741 |
 | gru_bump | 0.7304 | 3.3260 | 18.4571 | 183.1924 | 306.96 | 4.404 | 0.724 |
 | kotlin_eskf | 6.6863 | 130.9102 | 177.8337 | 225.9308 | 2669.27 | 26.764 | 1.633 |

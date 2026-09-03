@@ -1,11 +1,11 @@
 # Android application specification
 
-The `apps/android/app` module ships the travel map chrome plus a MapLibre Native street map (`AndroidView` `MapView`, OpenFreeMap liberty, bright fallback). Live pose comes from `PoseStore` / `DeadReckoningFilter` (strapdown INS plus ESKF). `PhoneImuSource` copies accel/gyro only. The 10 Hz tick runs `ZuptAccelMotionModel` into `ingestMotionPseudo`. Assemble packs `motion_student_v1/linear.json` into assets when that file exists. `learned_imu_v1/linear_dp.json` is not packed unless you pass `-Pdriftzero.packLearnedImu=true`; its train report is worse than freeze. `gru.json` is never packed and there is no Kotlin GRU runtime. No TimesFM and no ONNX Runtime in the APK. The hosted style is a stand-in until an installed PMTiles area package owns rendering. No Google Maps SDK.
+The `apps/android/app` module ships the travel map chrome plus a MapLibre Native street map (`AndroidView` `MapView`, OpenFreeMap liberty, bright fallback). Live pose comes from `PoseStore` / `DeadReckoningFilter` (strapdown INS plus ESKF). `PhoneImuSource` copies accel/gyro only. The 10 Hz tick runs `ZuptAccelMotionModel` into `ingestMotionPseudo`. Assemble packs `motion_student_v1/linear.json` into assets when that file exists. `learned_imu_v1/linear_dp.json` is not packed unless you pass `-Pdriftzero.packLearnedImu=true`; its train report is worse than freeze. `gru.json` is never packed and there is no Kotlin GRU runtime. No TimesFM and no ONNX Runtime in the APK. The hosted style is a stand-in until an installed PMTiles area package owns rendering. After a Ready pack is sideloaded, MapLibre loads local `tiles.pmtiles` via `pmtiles://file://` and local glyphs. Routing still uses public OSRM. No Google Maps SDK.
 
 ## Proposed identity
 
 - Application name: DriftZero
-- Package placeholder: `in.driftzero.app`
+- Package: `in.driftzero.app` (ships)
 - Minimum SDK: choose after a device survey; API 29 is a useful initial baseline because Android exposes the IRNSS constellation constant from that level.
 - Target SDK: current stable required by the chosen toolchain at implementation time.
 
@@ -15,7 +15,7 @@ The `apps/android/app` module ships the travel map chrome plus a MapLibre Native
 - Jetpack Compose for application UI, with the mapping SDK's supported surface integration.
 - Foreground service for an active navigation session.
 - MapLibre Native Android for the local vector map.
-- ONNX Runtime Mobile for the compact PyTorch-derived student, CPU/XNNPACK first.
+- JSON speed weights (`linear.json`) on device today. ONNX Runtime Mobile is planned. Nothing exports ONNX. Gradle has no ONNX runtime.
 - Room or a chunked binary/session format for metadata and replay index. Avoid writing one database row for every high-rate sensor sample if profiling shows contention.
 - Android Keystore-backed protection for sensitive local exports.
 
@@ -23,30 +23,32 @@ Pin versions after running a dependency and SDK compatibility check. Software ve
 
 ## Module target
 
+The live tree is one `apps/android/app` module plus `packages/navigation-core`. The split below is a proposed later layout, not the current Gradle graph. Do not add empty feature shells.
+
 ```text
-apps/android/
-  app/                 activity, navigation, permissions, DI
-  feature-map/         MapLibre surface and NavigationState rendering
-  feature-calibrate/   guided mount calibration flow
-  feature-replay/      judge mode, blackout controls, result viewer
-  sensor-android/      SensorManager, LocationManager, GNSS adapters
-  runtime-onnx/        student model loading and inference
-  area-packages/       PMTiles/graph package install and validation
-  trip-log/            local session capture and export
+apps/android/app/      activity, map, pose, trips, settings (what ships today)
+# proposed later, not present:
+  feature-map/
+  feature-calibrate/
+  feature-replay/
+  sensor-android/
+  runtime-onnx/        not started. No ONNX on the phone.
+  area-packages/
+  trip-log/
 ```
 
 The platform-neutral filter and map-matching logic belongs under `packages/`, not in an Activity or ViewModel.
 
 ## Runtime flow
 
-1. User installs or selects an offline area.
-2. App checks sensors and phone capability tier.
-3. User secures the phone and completes calibration.
-4. Foreground service starts sensor/GNSS capture.
-5. Android adapter emits canonical frames with monotonic timestamps.
+1. User may sideload an area pack. Until Ready, tiles, search, and routing use the network.
+2. App checks sensors. First-run still mount is a 5 s window, not a full calibration profile.
+3. User secures the phone and completes the still step when stopped.
+4. PoseStore starts IMU and GNSS capture. No separate foreground-service session yet.
+5. Android adapter copies frames with `SensorEvent.timestamp`.
 6. Navigation core emits immutable 10 Hz state.
-7. UI displays mode and confidence; logger records identical states.
-8. Session stop finalizes an integrity manifest.
+7. UI displays mode and confidence. Trip recording is opt-in in Settings.
+8. Signed integrity manifests are planned. Not implemented.
 
 ## Permission design
 
@@ -84,17 +86,17 @@ Search uses Photon, then Nominatim, biased to fused pose/GPS or the camera. Rout
 - Sensor timestamps are monotonic and callback arrival time is not substituted.
 - Axis transform fixtures pass for portrait and landscape default display rotation.
 - Permission denial has a clear fallback and no crash loop.
-- Airplane-mode area install replay has zero network calls.
+- Airplane-mode area install replay has zero network calls (planned. No Ready pack is bundled).
 - Killing and restoring the Activity does not reset the active navigation worker.
 - Model checksum/schema mismatch falls back safely.
 - PMTiles/graph corruption does not activate the package.
-- Two-hour replay has no unbounded queue or memory growth.
+- Two-hour replay has no unbounded queue or memory growth (planned. No soak report).
 - UI state transitions match logged `NavigationState`.
-- Reference phone sustains 10 Hz output with measured p95 gap.
+- Reference phone 10 Hz p95 gap (planned. `TickIntervals` can compute it. No phone measurement exists).
 
 ## NavIC integration
 
-`GnssLocationSource` registers `GnssStatus.Callback` and copies each satellite into `NavicMonitor`. When Android reports `CONSTELLATION_IRNSS`, logcat tag `DriftZeroNavIC` prints `IRNSS visible=… used=… GPS used=… Galileo used=…` on change. If any IRNSS SV is used in the fix, a small `NavIC N` chip appears next to GPS. Idle without that count stays map, search, GPS chip. Counts do not enter the filter. Do not imply that seeing IRNSS proves a trustworthy fix, anti-jam, or safety-of-life. Missing IRNSS does not mean NavIC failed. Details: `docs/refs/NAVIC.md`.
+`GnssLocationSource` registers `GnssStatus.Callback` and copies each satellite into `NavicMonitor`. When Android reports `CONSTELLATION_IRNSS`, logcat tag `DriftZeroNavIC` prints `IRNSS visible=… used=… GPS used=… Galileo used=…` on change. NavIC counts belong in the status sheet (`value_navic_counts`). `NavicMonitor.chipLabel` exists as a string builder. Do not compose it as an integrity lamp. Counts do not enter the filter. Seeing IRNSS is not a trustworthy fix, anti-jam, or safety-of-life. Missing IRNSS does not mean NavIC failed. Details: `docs/refs/NAVIC.md`.
 
 Tester:
 
@@ -102,5 +104,5 @@ Tester:
 adb logcat -s DriftZeroNavIC
 ```
 
-Outdoors, precise location on, India coverage, NavIC-capable chipset. Cross-check constellation counts in a GNSS status app. Hold GPS chip to clear NavIC during a simulated outage.
+Outdoors, Android precise-location permission on, India coverage, NavIC-capable chipset. Cross-check constellation counts in a GNSS status app. Hold GNSS on the mode lamp to clear NavIC during a simulated outage.
 

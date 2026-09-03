@@ -7,7 +7,9 @@ import csv
 import json
 import os
 import subprocess
+import time
 from collections import Counter
+from datetime import datetime, timezone
 from math import pi
 from pathlib import Path
 from statistics import mean, median
@@ -37,6 +39,7 @@ from driftzero_ml.screening import locked_blackouts
 GATED_CSV = Path("results/io_vnbd_screening_v1/metrics_per_interval.csv")
 KOTLIN_DIR = Path("results/io_vnbd_screening_v1/kotlin_replay")
 SENSITIVITY_INTERVAL = "S-Vta2:d50"
+REPLAY_HEADER_KEYS = ("declared_rate_hz", "clock_domain", "frame", "source_id")
 SUITE_GATES = {
     "mid": TruthGateConfig(),
     "d50": TruthGateConfig(min_path_length_m=40.0, min_unique_fixes=3),
@@ -74,26 +77,45 @@ def java_home() -> str:
     return probe.stdout.strip()
 
 
-def ensure_replay_binary(repo: Path, env: dict[str, str]) -> Path:
+def ensure_replay_binary(
+    repo: Path,
+    env: dict[str, str],
+    *,
+    force_rebuild: bool = False,
+    retries: int = 0,
+    retry_wait_s: float = 60.0,
+) -> Path:
     script = repo / "packages" / "navigation-core" / "build" / "install" / "navigation-core" / "bin" / "navigation-core"
-    if script.is_file():
+    if script.is_file() and not force_rebuild:
         return script
-    subprocess.run(
-        [str(repo / "gradlew"), ":navigation-core:installDist", "--offline"],
-        cwd=repo,
-        check=True,
-        env=env,
-    )
-    if not script.is_file():
-        subprocess.run(
-            [str(repo / "gradlew"), ":navigation-core:installDist"],
-            cwd=repo,
-            check=True,
-            env=env,
-        )
-    if not script.is_file():
-        raise FileNotFoundError(f"replay binary missing at {script}")
-    return script
+    last_error: Exception | None = None
+    attempts = max(1, 1 + retries)
+    for attempt in range(attempts):
+        try:
+            subprocess.run(
+                [str(repo / "gradlew"), ":navigation-core:installDist", "--offline"],
+                cwd=repo,
+                check=True,
+                env=env,
+            )
+            if script.is_file():
+                return script
+            subprocess.run(
+                [str(repo / "gradlew"), ":navigation-core:installDist"],
+                cwd=repo,
+                check=True,
+                env=env,
+            )
+            if script.is_file():
+                return script
+            last_error = FileNotFoundError(f"replay binary missing at {script}")
+        except subprocess.CalledProcessError as error:
+            last_error = error
+        if attempt + 1 < attempts:
+            time.sleep(retry_wait_s)
+    if last_error is not None:
+        raise last_error
+    raise FileNotFoundError(f"replay binary missing at {script}")
 
 
 def run_replay(
@@ -104,10 +126,34 @@ def run_replay(
     end_ns: int,
     log_path: Path,
     env: dict[str, str],
+    extra_args: Sequence[str] = (),
 ) -> dict:
     states.parent.mkdir(parents=True, exist_ok=True)
     log_path.parent.mkdir(parents=True, exist_ok=True)
     mask_start, mask_end = replay_mask_ns(start_ns, end_ns)
+    args = replay_cli_args(
+        binary,
+        frames,
+        states,
+        mask_start,
+        mask_end,
+        extra_args=extra_args,
+    )
+    result = subprocess.run(args, cwd=binary.parent, capture_output=True, text=True, env=env)
+    log_path.write_text(result.stdout + ("\n" + result.stderr if result.stderr else ""))
+    if result.returncode != 0:
+        raise RuntimeError(f"replay failed ({result.returncode}): {result.stderr or result.stdout}")
+    return _parse_replay_log(result.stdout)
+
+
+def replay_cli_args(
+    binary: Path,
+    frames: Path,
+    states: Path,
+    mask_start: int,
+    mask_end: int,
+    extra_args: Sequence[str] = (),
+) -> list[str]:
     args = [
         str(binary),
         "--input",
@@ -119,11 +165,120 @@ def run_replay(
         "--mask-end-ns",
         str(mask_end),
     ]
-    result = subprocess.run(args, cwd=binary.parent, capture_output=True, text=True, env=env)
-    log_path.write_text(result.stdout + ("\n" + result.stderr if result.stderr else ""))
-    if result.returncode != 0:
-        raise RuntimeError(f"replay failed ({result.returncode}): {result.stderr or result.stdout}")
-    return _parse_replay_log(result.stdout)
+    args.extend(str(item) for item in extra_args)
+    return args
+
+
+def slim_replay_header(header: dict) -> dict:
+    """Keep the four-key file header the Kotlin loader reads. Pick metadata is sidecar."""
+
+    return {key: header[key] for key in REPLAY_HEADER_KEYS}
+
+
+def exporter_git_meta(repo: Path) -> dict:
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    describe = subprocess.run(
+        ["git", "describe", "--always", "--dirty"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    porcelain = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return {
+        "git_commit": head.stdout.strip(),
+        "git_describe_dirty": describe.stdout.strip(),
+        "git_dirty": bool(porcelain.stdout.strip()),
+        "exported_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+
+
+def export_premask_frames(
+    repo: Path,
+    frames_dir: Path,
+    *,
+    manifest_path: Path | None = None,
+) -> dict:
+    """Write per-interval SensorFrame JSONL with the pre-mask gyro pick.
+
+    Does not write into kotlin_replay/frames. Schema of each JSONL header is the
+    four keys Replay reads. Pick, r, and fallback live in the sidecar manifest.
+    """
+
+    repo = repo.resolve()
+    frames_dir = frames_dir if frames_dir.is_absolute() else repo / frames_dir
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    gated = gated_interval_ids(repo / GATED_CSV)
+    root = repo / "data" / "raw" / "io_vnbd"
+    tables = {path.stem: path for path in screening_csv_paths(root)}
+    needed_trips = sorted({interval_id.split(":", 1)[0] for interval_id in gated})
+    git_meta = exporter_git_meta(repo)
+    intervals: list[dict] = []
+    for trip_id in needed_trips:
+        rows = load_smartphone_csv(tables[trip_id])
+        records = _time_ordered([eval_record(row) for row in rows])
+        aligned = alignment_from_records(records, trip_id)
+        if aligned is not None:
+            records = attach_alignment(records, aligned)
+        windows = {item.interval_id: item for item in locked_blackouts(records, trip_id)}
+        for interval_id in gated:
+            if interval_id.split(":", 1)[0] != trip_id:
+                continue
+            window = windows.get(interval_id)
+            if window is None:
+                raise RuntimeError(f"locked window missing for {interval_id}")
+            header, frames = export_sensor_frames(rows, mask_start_ns=window.start_ns)
+            safe_id = interval_id.replace(":", "_")
+            path = frames_dir / f"{safe_id}.jsonl"
+            write_sensorframe_jsonl(path, slim_replay_header(header), frames)
+            heading = header.get("heading_gyro") or {}
+            rewind = header.get("timestamp_rewind") or {}
+            intervals.append(
+                {
+                    "interval_id": interval_id,
+                    "trip_id": trip_id,
+                    "file": path.name,
+                    "start_ns": window.start_ns,
+                    "end_ns": window.end_ns,
+                    "axis": heading.get("axis"),
+                    "sign": heading.get("sign"),
+                    "r": heading.get("correlation"),
+                    "pair_count": heading.get("pair_count"),
+                    "reason": heading.get("reason"),
+                    "source": heading.get("source"),
+                    "fallback": heading.get("source") == "gravity_vertical_fallback",
+                    "best_axis": heading.get("best_axis"),
+                    "mask_start_ns": heading.get("mask_start_ns"),
+                    "frame_count": len(frames),
+                    "declared_rate_hz": header.get("declared_rate_hz"),
+                    "timestamp_rewind_dropped": rewind.get("dropped_rows", 0),
+                }
+            )
+            print(json.dumps({"exported": interval_id, "file": path.name, "heading_gyro": heading}), flush=True)
+    manifest = {
+        "schema": "sensorframe_jsonl_v1",
+        "header_keys": list(REPLAY_HEADER_KEYS),
+        "pick": "pre_mask",
+        "n_intervals": len(intervals),
+        "frames_dir": str(frames_dir.relative_to(repo)) if frames_dir.is_relative_to(repo) else str(frames_dir),
+        **git_meta,
+        "intervals": intervals,
+    }
+    dest = manifest_path or (frames_dir / "manifest.json")
+    dest.write_text(json.dumps(manifest, indent=2) + "\n")
+    return manifest
 
 
 def _parse_replay_log(text: str) -> dict[str, str]:
@@ -268,15 +423,36 @@ def load_truth_jsonl(path: Path) -> list[dict]:
     return rows
 
 
-def run(repo: Path, out_dir: Path, *, system: str = "kotlin_eskf", reexport: bool = False, rerun: bool = False) -> dict:
+def run(
+    repo: Path,
+    out_dir: Path,
+    *,
+    system: str = "kotlin_eskf",
+    reexport: bool = False,
+    rerun: bool = False,
+    frames_dir: Path | None = None,
+    states_dir: Path | None = None,
+    logs_dir: Path | None = None,
+    extra_replay_args: Sequence[str] = (),
+    skip_sensitivity: bool = False,
+    skip_export: bool = False,
+    coast_mode: str | None = None,
+    force_rebuild: bool = False,
+    rebuild_retries: int = 0,
+) -> dict:
     repo = repo.resolve()
     out_dir = out_dir if out_dir.is_absolute() else repo / out_dir
-    frames_dir = out_dir / "frames"
-    states_dir = out_dir / "states"
-    logs_dir = out_dir / "logs"
+    frames_dir = (frames_dir if frames_dir.is_absolute() else repo / frames_dir) if frames_dir is not None else out_dir / "frames"
+    states_dir = (states_dir if states_dir.is_absolute() else repo / states_dir) if states_dir is not None else out_dir / "states"
+    logs_dir = (logs_dir if logs_dir.is_absolute() else repo / logs_dir) if logs_dir is not None else out_dir / "logs"
     truth_dir = out_dir / "truth"
     for folder in (frames_dir, states_dir, logs_dir, truth_dir):
         folder.mkdir(parents=True, exist_ok=True)
+    replay_extra = list(extra_replay_args)
+    if coast_mode:
+        flag = f"--coast-mode={coast_mode}"
+        if flag not in replay_extra and "--coast-mode" not in replay_extra:
+            replay_extra.append(flag)
 
     gated = gated_interval_ids(repo / GATED_CSV)
     root = repo / "data" / "raw" / "io_vnbd"
@@ -286,31 +462,70 @@ def run(repo: Path, out_dir: Path, *, system: str = "kotlin_eskf", reexport: boo
     env = os.environ.copy()
     env["JAVA_HOME"] = java_home()
     env["PATH"] = str(Path(env["JAVA_HOME"]) / "bin") + os.pathsep + env.get("PATH", "")
-    binary = ensure_replay_binary(repo, env)
+    binary = ensure_replay_binary(
+        repo,
+        env,
+        force_rebuild=force_rebuild,
+        retries=rebuild_retries,
+    )
 
     trip_meta: dict[str, dict] = {}
     for trip_id in needed_trips:
         path = tables[trip_id]
         rows = load_smartphone_csv(path)
-        frame_path = frames_dir / f"{trip_id}.jsonl"
+        trip_frame_path = frames_dir / f"{trip_id}.jsonl"
         truth_path = truth_dir / f"{trip_id}.jsonl"
-        if frame_path.is_file() and truth_path.is_file() and not reexport:
-            header = json.loads(frame_path.read_text().splitlines()[0])
-            frame_count = max(0, sum(1 for line in frame_path.read_text().splitlines()[1:] if line.strip()))
-            gap_count = 0
-        else:
-            header, frames = export_sensor_frames(rows)
-            write_sensorframe_jsonl(frame_path, header, frames)
+        if not truth_path.is_file() or reexport:
             write_truth_jsonl(truth_path, rows)
-            frame_count = len(frames)
-            gap_count = imu_gap_count(frames)
         records = _time_ordered([eval_record(row) for row in rows])
         aligned = alignment_from_records(records, trip_id)
         if aligned is not None:
             records = attach_alignment(records, aligned)
         windows = {item.interval_id: item for item in locked_blackouts(records, trip_id)}
+        interval_frames: dict[str, Path] = {}
+        header = None
+        frame_count = 0
+        gap_count = 0
+        for interval_id, window in windows.items():
+            if interval_id not in gated:
+                continue
+            safe_id = interval_id.replace(":", "_")
+            interval_path = frames_dir / f"{safe_id}.jsonl"
+            if interval_path.is_file() and not reexport:
+                chosen = interval_path
+            elif skip_export:
+                raise FileNotFoundError(f"premask frames missing: {interval_path}")
+            elif trip_frame_path.is_file() and not reexport:
+                chosen = trip_frame_path
+            else:
+                header, frames = export_sensor_frames(rows, mask_start_ns=window.start_ns)
+                write_sensorframe_jsonl(interval_path, header, frames)
+                frame_count = len(frames)
+                gap_count = imu_gap_count(frames)
+                print(
+                    json.dumps(
+                        {
+                            "interval_id": interval_id,
+                            "heading_gyro": header.get("heading_gyro"),
+                            "notes": header.get("notes"),
+                            "timestamp_rewind": header.get("timestamp_rewind"),
+                            "official_row": header.get("official_row"),
+                        }
+                    ),
+                    flush=True,
+                )
+                chosen = interval_path
+            interval_frames[interval_id] = chosen
+            if header is None:
+                header = json.loads(chosen.read_text().splitlines()[0])
+                frame_count = max(0, sum(1 for line in chosen.read_text().splitlines()[1:] if line.strip()))
+        if header is None and trip_frame_path.is_file():
+            header = json.loads(trip_frame_path.read_text().splitlines()[0])
+        if header is None:
+            header = {"declared_rate_hz": 10.0}
         trip_meta[trip_id] = {
-            "frame_path": frame_path,
+            "frame_path": trip_frame_path if trip_frame_path.is_file() else next(iter(interval_frames.values()), trip_frame_path),
+            "interval_frames": interval_frames,
             "truth_path": truth_path,
             "windows": windows,
             "declared_rate_hz": header["declared_rate_hz"],
@@ -318,7 +533,7 @@ def run(repo: Path, out_dir: Path, *, system: str = "kotlin_eskf", reexport: boo
             "imu_gaps": gap_count,
         }
 
-    progress = out_dir / "progress.jsonl"
+    progress = out_dir / ("progress.jsonl" if system == "kotlin_eskf" else f"progress_{system}.jsonl")
     if progress.is_file():
         progress.unlink()
     scored: list[dict] = []
@@ -333,6 +548,7 @@ def run(repo: Path, out_dir: Path, *, system: str = "kotlin_eskf", reexport: boo
         if window is None:
             failures.append({"interval_id": interval_id, "reason": "locked window missing"})
             continue
+        frame_path = meta["interval_frames"].get(interval_id, meta["frame_path"])
         safe_id = interval_id.replace(":", "_")
         state_path = states_dir / f"{safe_id}.jsonl"
         log_path = logs_dir / f"{safe_id}.log"
@@ -347,12 +563,13 @@ def run(repo: Path, out_dir: Path, *, system: str = "kotlin_eskf", reexport: boo
             else:
                 replay_log = run_replay(
                     binary,
-                    meta["frame_path"],
+                    frame_path,
                     state_path,
                     window.start_ns,
                     window.end_ns,
                     log_path,
                     env,
+                    extra_args=replay_extra,
                 )
             states = load_navigation_state_jsonl(state_path)
             truth = load_truth_jsonl(meta["truth_path"])
@@ -388,7 +605,6 @@ def run(repo: Path, out_dir: Path, *, system: str = "kotlin_eskf", reexport: boo
                 "replay": replay_log,
             }
         )
-        progress = out_dir / "progress.jsonl"
         with progress.open("a") as handle:
             handle.write(
                 json.dumps(
@@ -402,13 +618,14 @@ def run(repo: Path, out_dir: Path, *, system: str = "kotlin_eskf", reexport: boo
             )
 
     sensitivity = None
-    if SENSITIVITY_INTERVAL in gated:
+    if not skip_sensitivity and SENSITIVITY_INTERVAL in gated:
         trip_id = SENSITIVITY_INTERVAL.split(":", 1)[0]
         meta = trip_meta[trip_id]
         window = meta["windows"][SENSITIVITY_INTERVAL]
-        raw_header = json.loads((meta["frame_path"]).read_text().splitlines()[0])
+        raw_path = meta["interval_frames"].get(SENSITIVITY_INTERVAL, meta["frame_path"])
+        raw_header = json.loads(raw_path.read_text().splitlines()[0])
         cropped = []
-        for line in meta["frame_path"].read_text().splitlines()[1:]:
+        for line in raw_path.read_text().splitlines()[1:]:
             if not line.strip():
                 continue
             obj = json.loads(line)
@@ -429,6 +646,7 @@ def run(repo: Path, out_dir: Path, *, system: str = "kotlin_eskf", reexport: boo
                 window.end_ns,
                 log_path,
                 env,
+                extra_args=replay_extra,
             )
             states = load_navigation_state_jsonl(state_path)
             truth = load_truth_jsonl(meta["truth_path"])
@@ -444,6 +662,8 @@ def run(repo: Path, out_dir: Path, *, system: str = "kotlin_eskf", reexport: boo
             sensitivity = {
                 "interval_id": SENSITIVITY_INTERVAL,
                 "hold_last_hz": 100.0,
+                "official_row": False,
+                "sensitivity_kind": "hold_last_imu",
                 "metrics": metrics.to_dict(),
                 "replay": replay_log,
             }
@@ -458,6 +678,11 @@ def run(repo: Path, out_dir: Path, *, system: str = "kotlin_eskf", reexport: boo
         "trips": len(needed_trips),
         "intervals_requested": len(gated),
         "intervals_scored": len(scored),
+        "coast_mode": coast_mode,
+        "student": "off",
+        "persist_speed_pseudo": False,
+        "source_frames": str(frames_dir.relative_to(repo)) if frames_dir.is_relative_to(repo) else str(frames_dir),
+        "extra_replay_args": replay_extra,
         "failures": failures,
         "summary": summary,
         "modes": dict(modes_all),
@@ -535,13 +760,40 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--system", default="kotlin_eskf")
     parser.add_argument("--reexport", action="store_true")
     parser.add_argument("--rerun", action="store_true")
+    parser.add_argument("--frames-dir", type=Path, default=None)
+    parser.add_argument("--states-dir", type=Path, default=None)
+    parser.add_argument("--logs-dir", type=Path, default=None)
+    parser.add_argument("--coast-mode", default=None)
+    parser.add_argument("--skip-sensitivity", action="store_true")
+    parser.add_argument("--skip-export", action="store_true")
+    parser.add_argument("--force-rebuild", action="store_true")
+    parser.add_argument("--rebuild-retries", type=int, default=0)
+    parser.add_argument("--export-premask-only", action="store_true")
+    parser.add_argument(
+        "--premask-frames-dir",
+        type=Path,
+        default=KOTLIN_DIR / "frames_premask",
+    )
     args = parser.parse_args(argv)
+    repo = args.repo.resolve()
+    if args.export_premask_only:
+        manifest = export_premask_frames(repo, args.premask_frames_dir)
+        print(json.dumps({k: manifest[k] for k in manifest if k != "intervals"}, indent=2))
+        return 0
     payload = run(
-        args.repo.resolve(),
+        repo,
         args.out,
         system=args.system,
         reexport=args.reexport,
         rerun=args.rerun,
+        frames_dir=args.frames_dir,
+        states_dir=args.states_dir,
+        logs_dir=args.logs_dir,
+        skip_sensitivity=args.skip_sensitivity,
+        skip_export=args.skip_export,
+        coast_mode=args.coast_mode,
+        force_rebuild=args.force_rebuild,
+        rebuild_retries=args.rebuild_retries,
     )
     print(json.dumps({k: payload[k] for k in payload if k != "per_interval"}, indent=2))
     return 0

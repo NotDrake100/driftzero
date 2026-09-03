@@ -266,4 +266,176 @@ class HmmRoadMatcherTest {
         assertNull(match["display_longitude_deg"])
         assertTrue(match.containsKey("road_segment_id"))
     }
+
+    @Test
+    fun parallelRoadsThirtyMetresApartAreAmbiguous() {
+        val graph = RoadFixtures.parallelRoads(sepM = 30.0)
+        val matcher = HmmRoadMatcher()
+        val path = matcher.matchSequence(
+            (1..6).map { i ->
+                RoadFixtures.atOffset(
+                    northM = i * 25.0,
+                    eastM = 15.0,
+                    headingRad = 0.0,
+                    timestampNs = i * 1_000_000_000L,
+                )
+            },
+            graph,
+        )
+        val last = path.last()
+        assertEquals(MapMatchStatus.AMBIGUOUS, last.match.status)
+        assertTrue(last.bestPosterior < 0.55 || last.secondPosterior > 0.65 * last.bestPosterior)
+        assertTrue(last.secondPosterior > 0.25)
+        val ids = setOf(last.match.roadSegmentId, last.secondRoadSegmentId)
+        assertTrue(ids.toString(), ids.contains("west") && ids.contains("east"))
+        val aid = RoadHeadingAid.decide(last, filterHeadingRad = 0.0, speedMps = 12.0)
+        assertNull(aid.prior)
+        assertEquals(RoadHeadingSkipReason.NOT_MATCHED, aid.skipReason)
+    }
+
+    @Test
+    fun flyoverOverSurfaceSplitsPosterior() {
+        val graph = RoadFixtures.flyoverOverSurface()
+        val matcher = HmmRoadMatcher()
+        val path = matcher.matchSequence(
+            (1..6).map { i ->
+                RoadFixtures.atOffset(
+                    northM = i * 25.0,
+                    eastM = 0.0,
+                    headingRad = 0.0,
+                    timestampNs = i * 1_000_000_000L,
+                )
+            },
+            graph,
+        )
+        val last = path.last()
+        assertEquals(MapMatchStatus.AMBIGUOUS, last.match.status)
+        assertTrue(last.secondPosterior > 0.25)
+        val ids = setOf(last.match.roadSegmentId, last.secondRoadSegmentId)
+        assertTrue(ids.toString(), ids.contains("surface") && ids.contains("flyover"))
+        assertNull(RoadHeadingAid.decide(last, 0.0, 12.0).prior)
+    }
+
+    @Test
+    fun junctionApproachIsNearJunction() {
+        val graph = RoadFixtures.tJunction()
+        assertEquals(3, graph.degreeOf(3L))
+        assertTrue(graph.isJunction(3L))
+        assertEquals(1, graph.degreeOf(1L))
+        val matcher = HmmRoadMatcher()
+        val near = matcher.update(
+            RoadFixtures.atOffset(
+                northM = 0.0,
+                eastM = -15.0,
+                headingRad = PI / 2.0,
+                timestampNs = 1_000_000_000L,
+            ),
+            graph,
+        )
+        assertEquals(MapMatchStatus.MATCHED, near.match.status)
+        assertEquals("west", near.match.roadSegmentId)
+        assertTrue(near.nearJunction)
+        assertNotNull(near.junctionDistanceM)
+        assertTrue(near.junctionDistanceM!! <= 25.0)
+        val aid = RoadHeadingAid.decide(near, PI / 2.0, 12.0)
+        assertNull(aid.prior)
+        assertEquals(RoadHeadingSkipReason.NEAR_JUNCTION, aid.skipReason)
+    }
+
+    @Test
+    fun farFromJunctionIsNotNearJunction() {
+        val graph = RoadFixtures.tJunction()
+        val matcher = HmmRoadMatcher()
+        val far = matcher.update(
+            RoadFixtures.atOffset(
+                northM = 0.0,
+                eastM = -80.0,
+                headingRad = PI / 2.0,
+                timestampNs = 1_000_000_000L,
+            ),
+            graph,
+        )
+        assertEquals(MapMatchStatus.MATCHED, far.match.status)
+        assertEquals("west", far.match.roadSegmentId)
+        assertTrue(!far.nearJunction)
+        val aid = RoadHeadingAid.decide(far, PI / 2.0, 12.0)
+        assertNotNull(aid.prior)
+        assertEquals(PI / 2.0, aid.prior!!.edgeBearingRad, 0.08)
+    }
+
+    @Test
+    fun tunnelEdgeIsFlagged() {
+        val graph = RoadFixtures.singleRoad(tunnel = true, layer = -1)
+        assertTrue(graph.edges.single().tunnel)
+        assertEquals(-1, graph.edges.single().layer)
+        val matcher = HmmRoadMatcher()
+        val last = matcher.matchSequence(
+            (1..5).map { i ->
+                RoadFixtures.atOffset(i * 20.0, 0.0, timestampNs = i * 1_000_000_000L)
+            },
+            graph,
+        ).last()
+        assertEquals(MapMatchStatus.MATCHED, last.match.status)
+        assertTrue(last.onTunnel)
+        assertEquals(-1, last.layer)
+        assertTrue(!last.onBridge)
+    }
+
+    @Test
+    fun uTurnOnTwoWayCenterlineStaysOnThatRoad() {
+        val graph = RoadFixtures.singleRoad(oneway = false)
+        val matcher = HmmRoadMatcher()
+        val north = (1..5).map { i ->
+            RoadFixtures.atOffset(
+                northM = i * 20.0,
+                eastM = 0.0,
+                headingRad = 0.0,
+                timestampNs = i * 1_000_000_000L,
+            )
+        }
+        val south = (1..5).map { i ->
+            RoadFixtures.atOffset(
+                northM = 100.0 - i * 20.0,
+                eastM = 0.0,
+                headingRad = PI,
+                timestampNs = (5L + i) * 1_000_000_000L,
+            )
+        }
+        val path = matcher.matchSequence(north + south, graph)
+        val northIds = path.take(5).map { it.match.roadSegmentId }.toSet()
+        val southIds = path.takeLast(5).map { it.match.roadSegmentId }.toSet()
+        assertEquals(setOf("road"), northIds)
+        assertEquals(setOf("road:rev"), southIds)
+        assertTrue(path.takeLast(3).all { it.match.status == MapMatchStatus.MATCHED })
+    }
+
+    @Test
+    fun onewayDoesNotAllowReverseTransition() {
+        val graph = RoadFixtures.singleRoad(oneway = true)
+        assertTrue(graph.edges.single().oneway)
+        val matcher = HmmRoadMatcher()
+        matcher.matchSequence(
+            (1..5).map { i ->
+                RoadFixtures.atOffset(i * 20.0, 0.0, headingRad = 0.0, timestampNs = i * 1_000_000_000L)
+            },
+            graph,
+        )
+        val reversed = (1..5).map { i ->
+            matcher.update(
+                RoadFixtures.atOffset(
+                    northM = 100.0 - i * 20.0,
+                    eastM = 0.0,
+                    headingRad = PI,
+                    timestampNs = (5L + i) * 1_000_000_000L,
+                ),
+                graph,
+            )
+        }
+        val last = reversed.last()
+        assertTrue(
+            last.toString(),
+            last.match.status != MapMatchStatus.MATCHED || last.match.roadSegmentId != "road",
+        )
+        assertEquals(0, graph.outgoing[2L]?.size ?: 0)
+    }
 }

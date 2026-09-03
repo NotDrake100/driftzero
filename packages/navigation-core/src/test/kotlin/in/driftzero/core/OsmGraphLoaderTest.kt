@@ -3,7 +3,6 @@ package `in`.driftzero.core
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.ByteArrayOutputStream
 
 class OsmGraphLoaderTest {
     @Test
@@ -91,119 +90,64 @@ class OsmGraphLoaderTest {
         assertTrue(path.all { it.match.status == MapMatchStatus.MATCHED })
         assertTrue(path.map { it.match.roadSegmentId }.distinct().size == 1)
     }
-}
 
-private data class PbfWay(
-    val id: Long,
-    val refs: List<Long>,
-    val tags: Map<String, String>,
-)
-
-private object OsmPbfWriter {
-    fun write(
-        nodes: List<Triple<Long, Double, Double>>,
-        ways: List<PbfWay>,
-    ): ByteArray {
-        val strings = LinkedHashSet<String>().apply {
-            add("")
-            ways.forEach { way ->
-                way.tags.forEach { (k, v) ->
-                    add(k)
-                    add(v)
-                }
-            }
-        }.toList()
-        val index = strings.withIndex().associate { it.value to it.index }
-        val group = ByteArrayOutputStream()
-        for ((id, lat, lon) in nodes) {
-            val node = ByteArrayOutputStream()
-            writeSint(node, 1, id)
-            writeSint(node, 8, (lat * 1e7).toLong())
-            writeSint(node, 9, (lon * 1e7).toLong())
-            writeLen(group, 1, node.toByteArray())
-        }
-        for (way in ways) {
-            val msg = ByteArrayOutputStream()
-            writeVarintField(msg, 1, way.id)
-            writePackedU32(msg, 2, way.tags.keys.map { index.getValue(it) })
-            writePackedU32(msg, 3, way.tags.values.map { index.getValue(it) })
-            var prev = 0L
-            val deltas = way.refs.map { ref ->
-                val d = ref - prev
-                prev = ref
-                d
-            }
-            writePackedSint(msg, 8, deltas)
-            writeLen(group, 3, msg.toByteArray())
-        }
-        val table = ByteArrayOutputStream()
-        for (s in strings) {
-            writeLen(table, 1, s.toByteArray(Charsets.UTF_8))
-        }
-        val block = ByteArrayOutputStream()
-        writeLen(block, 1, table.toByteArray())
-        writeLen(block, 2, group.toByteArray())
-        val blob = ByteArrayOutputStream()
-        writeLen(blob, 1, block.toByteArray())
-        val blobBytes = blob.toByteArray()
-        val header = ByteArrayOutputStream()
-        writeLen(header, 1, "OSMData".toByteArray(Charsets.UTF_8))
-        writeVarintField(header, 3, blobBytes.size.toLong())
-        val headerBytes = header.toByteArray()
-        val out = ByteArrayOutputStream()
-        writeInt32Be(out, headerBytes.size)
-        out.write(headerBytes)
-        out.write(blobBytes)
-        return out.toByteArray()
+    @Test
+    fun tunnelAndLayerTagsAreStored() {
+        val graph = OsmGraphLoader.loadXml(RoadFixtures.tunnelOsmXml(), "tunnel-pack")
+        assertEquals(1, graph.edges.size)
+        val edge = graph.edges.single()
+        assertTrue(edge.tunnel)
+        assertTrue(!edge.bridge)
+        assertEquals(-1, edge.layer)
+        assertTrue(edge.oneway)
+        assertEquals("primary", edge.highway)
     }
 
-    private fun writeInt32Be(out: ByteArrayOutputStream, value: Int) {
-        out.write((value ushr 24) and 0xff)
-        out.write((value ushr 16) and 0xff)
-        out.write((value ushr 8) and 0xff)
-        out.write(value and 0xff)
+    @Test
+    fun onewayFalseStoresTwoDirectedEdges() {
+        val graph = OsmGraphLoader.loadXml(RoadFixtures.parallelOsmXml(oneway = false), "two-way-flag")
+        assertTrue(graph.edges.all { !it.oneway })
+        assertEquals(4, graph.edges.size)
     }
 
-    private fun writeKey(out: ByteArrayOutputStream, field: Int, wire: Int) {
-        writeVarint(out, ((field shl 3) or wire).toLong())
+    @Test
+    fun tJunctionNodeHasDegreeThree() {
+        val graph = OsmGraphLoader.loadXml(RoadFixtures.tJunctionOsmXml(), "t-xml")
+        assertEquals(3, graph.degreeOf(3L))
+        assertTrue(graph.isJunction(3L))
+        assertEquals(1, graph.degreeOf(1L))
+        assertTrue(graph.edges.all { it.oneway })
     }
 
-    private fun writeVarint(out: ByteArrayOutputStream, raw: Long) {
-        var value = raw
-        while (true) {
-            if (value and 0x7fL.inv() == 0L) {
-                out.write(value.toInt())
-                return
-            }
-            out.write(((value and 0x7fL).toInt()) or 0x80)
-            value = value ushr 7
-        }
-    }
-
-    private fun writeVarintField(out: ByteArrayOutputStream, field: Int, value: Long) {
-        writeKey(out, field, 0)
-        writeVarint(out, value)
-    }
-
-    private fun writeSint(out: ByteArrayOutputStream, field: Int, value: Long) {
-        writeVarintField(out, field, (value shl 1) xor (value shr 63))
-    }
-
-    private fun writeLen(out: ByteArrayOutputStream, field: Int, bytes: ByteArray) {
-        writeKey(out, field, 2)
-        writeVarint(out, bytes.size.toLong())
-        out.write(bytes)
-    }
-
-    private fun writePackedU32(out: ByteArrayOutputStream, field: Int, values: List<Int>) {
-        val inner = ByteArrayOutputStream()
-        values.forEach { writeVarint(inner, it.toLong()) }
-        writeLen(out, field, inner.toByteArray())
-    }
-
-    private fun writePackedSint(out: ByteArrayOutputStream, field: Int, values: List<Long>) {
-        val inner = ByteArrayOutputStream()
-        values.forEach { writeVarint(inner, (it shl 1) xor (it shr 63)) }
-        writeLen(out, field, inner.toByteArray())
+    @Test
+    fun pbfStoresTunnelLayerAndOneway() {
+        val originLat = 51.5
+        val originLon = -0.12
+        val a = Wgs84.offsetMetres(originLat, originLon, 0.0, 0.0)
+        val b = Wgs84.offsetMetres(originLat, originLon, 200.0, 0.0)
+        val nodes = listOf(
+            Triple(1L, a.first, a.second),
+            Triple(2L, b.first, b.second),
+        )
+        val ways = listOf(
+            PbfWay(
+                40L,
+                listOf(1L, 2L),
+                mapOf(
+                    "highway" to "primary",
+                    "oneway" to "yes",
+                    "tunnel" to "yes",
+                    "layer" to "-1",
+                    "bridge" to "no",
+                ),
+            ),
+        )
+        val graph = OsmGraphLoader.load(OsmPbfWriter.write(nodes, ways), "pbf-tunnel", OsmFormat.PBF)
+        assertEquals(1, graph.edges.size)
+        val edge = graph.edges.single()
+        assertTrue(edge.tunnel)
+        assertTrue(!edge.bridge)
+        assertEquals(-1, edge.layer)
+        assertTrue(edge.oneway)
     }
 }

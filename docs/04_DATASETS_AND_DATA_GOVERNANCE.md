@@ -8,7 +8,7 @@
 | High | [Google Smartphone Decimeter Challenge 2023](https://www.kaggle.com/competitions/smartphone-decimeter-2023/data) | Phone diversity, raw GNSS plus inertial behavior, precise ground truth | Competition collection conditions differ from target roads |
 | High | [UrbanNav](https://github.com/IPNL-POLYU/UrbanNavDataset) | Urban-canyon GNSS and multisensor/reference diagnostics | Sensor rigs and cities differ from standalone phone deployment |
 | Supporting | [KITTI](https://www.cvlibs.net/datasets/kitti/) | Filter sanity and reproduction of vehicle-IMU methods | Not representative of consumer smartphone MEMS |
-| Decisive | DriftZero India pilot | Generalization across Indian roads, phones, mounts, and vehicles | Requires consent, safety protocol, metadata quality, and careful ground truth |
+| Decisive | DriftZero India collection (planned) | Generalization across Indian roads, phones, mounts, and vehicles | No dataset exists yet. Pune drives are P2 in `docs/07_RESEARCH_AND_ROADMAP.md`. Requires consent, safety protocol, metadata quality, and careful ground truth |
 
 The [IO-VNBD data paper](https://doi.org/10.1016/j.dib.2021.106885) reports about 58 hours and 4,400 km of smartphone data, with additional vehicle data, across the UK, Nigeria, and France. The repository contains synchronized and unsynchronized collections. Freeze the exact subset and commit its manifest because repository structure and links can change.
 
@@ -103,7 +103,9 @@ At the blackout start, record the last accepted GNSS update. During the interval
 
 Do not report centimetre-scale conclusions against metre-scale phone GNSS labels.
 
-## 7. India pilot collection
+## 7. India collection (planned)
+
+No India trip files exist in this repository. Owner records eight Pune drives in docs/07 P2.
 
 ### Minimum matrix
 

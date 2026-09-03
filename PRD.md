@@ -13,11 +13,13 @@
 | Date | 2026-09-02 |
 | SIH deadline | 2026-09-20 |
 
+Status as of 2026-09-03: this file is a requirements document. Targets below are not measured results. Screening numbers live only in [results/io_vnbd_screening_v1/summary.md](results/io_vnbd_screening_v1/summary.md). The official median drift gate of 0.10 is not met. Streets, search, and routing use the network until a Ready area pack is installed. There is no India pilot dataset, no battery report, no signed bundle, and no live 200 Hz external IMU run (synthetic 200 Hz replay tests exist). TimesFM 3.0 is designed, not run, until `results/timesfm/` exists. 3.0 weights cannot ship. Distillation from 3.0 needs a license read. 2.5 is Apache-2.0 and is the fallback teacher.
+
 ## 1. Executive summary
 
 Modern phone navigation can become unreliable in tunnels, underground parking, flyovers, dense urban streets, forests, or during RF interference. A normal application may freeze the marker, jump to a parallel road, or teleport when GNSS returns. Dedicated inertial systems avoid this but are too expensive for mass deployment, while vehicle-bus access is unavailable or inconsistent across India's heterogeneous fleet.
 
-DriftZero is a standalone Android navigation engine that estimates vehicle motion using only sensors already present in a phone. It combines calibrated inertial measurements, a small learned speed and attitude model, a probabilistic navigation filter, vehicle kinematic constraints, GNSS health checks, and offline road-network matching. A Google Maps-like interface communicates current mode and confidence without overwhelming the driver. The same core exposes a generic sensor interface for higher-rate external IMUs, satisfying the broader edge-engine requirement without making external hardware part of the consumer product.
+DriftZero is a standalone Android navigation engine that estimates vehicle motion using only sensors already present in a phone. The intended stack is a 15-state ESKF, optional packed `linear.json` speed student, vehicle constraints, GNSS health modes, and a display-only HMM matcher after a Ready area pack. Streets, search, and routing use the network until that pack exists. The same core accepts a generic `SensorFrame` stream. A live 200 Hz external IMU run is planned. Only synthetic 200 Hz tests exist.
 
 The product is designed for Indian roads and operational realities: mixed vehicles, two-wheelers, old vehicles without a usable diagnostic port, variable phone quality, potholes and speed breakers, irregular mounting, intermittent data connectivity, dense flyovers, service roads, tunnels, and privacy-sensitive government use.
 
@@ -31,8 +33,8 @@ When GNSS degrades, drivers and field operators need continuous, understandable 
 - road and direction consistency without inappropriate snapping;
 - an explicit warning as uncertainty grows;
 - a continuous, non-teleporting recovery when GNSS returns;
-- offline operation for the map, model, and navigation engine;
-- no vehicle modification, special antenna, or network dependency.
+- offline map, model, and engine after a Ready area pack is installed;
+- no vehicle modification or special antenna. Network is still required for tiles, search, and routing until a pack exists.
 
 ### 2.2 Why current phone-only approaches fail
 
@@ -189,7 +191,9 @@ The navigation core shall accept a generic `SensorFrame` stream independent of A
 
 ## 7. TimesFM 3 requirement and experiment
 
-TimesFM 3 is used as an experimentally gated research component:
+TimesFM 3.0 is a designed, not run, desktop experiment until `results/timesfm/` exists. 3.0 is current (`google/timesfm-3.0-pytorch`). 3.0 weights use `timesfm-non-commercial-license-v1.0` (non-commercial, non-production) and cannot ship. Distillation from 3.0 needs a license read. 2.5 weights remain Apache-2.0 and are the fallback teacher. The official SIH26168 text does not mention TimesFM.
+
+If the experiment is run, the intended steps are:
 
 1. Convert synchronized history into multivariate channels such as vehicle-frame acceleration, angular rate, vibration energy, recent accepted GNSS innovations, speed estimates, stop probability, and map curvature.
 2. Ask TimesFM 3 for short-horizon point and quantile forecasts of forward speed, yaw rate, innovation trend, or drift-risk proxies.
@@ -198,9 +202,11 @@ TimesFM 3 is used as an experimentally gated research component:
 5. If and only if it adds held-out value, distill its soft trajectories or quantile information into a compact causal student.
 6. Export only the independent student to the app. Keep TimesFM optional and outside the production dependency graph.
 
-This makes the foundation model meaningful without pretending that a large desktop model belongs in a low-latency mobile control loop.
+This keeps the foundation model out of the phone loop. No TimesFM result exists in this repository.
 
 ## 8. Non-functional requirements
+
+None of these targets has a measured artifact in `results/` as of 2026-09-03. They are gates, not claims.
 
 | ID | Requirement | Initial target |
 |---|---|---|
@@ -229,7 +235,7 @@ The official benchmark target is dead-reckoning drift below 10 percent of distan
 - No ground-truth GNSS or future data in blackout inputs.
 - Recovery jump p95 below the declared UI threshold and no instantaneous large snap.
 - 10 Hz output and target latency on at least one reference mid-range Android phone.
-- India pilot scenarios include tunnel/underpass, parking, urban canyon, rough road, stop-go, and phone remounting.
+- Planned India collection (Pune drives, owner, Sep 5 to 8): underpass, basement, flyover with service road, stop-go, remount. No India dataset exists yet.
 - Every metric links to a replayable trajectory and configuration.
 
 ### Metrics
@@ -280,13 +286,13 @@ Full clear-sky GNSS can be retained as score-only truth for artificial blackouts
 - Generate packages in CI or a build script from a pinned OSM snapshot and publish hashes.
 - Do not bulk-download the public OSM tile server for offline use.
 
-Map matching uses a bounded online HMM with a rolling Viterbi beam. Emission likelihood includes covariance-aware distance and heading. Transition likelihood compares dead-reckoned displacement with path distance and topology. Layer, tunnel, bridge, access, one-way, and turn restrictions reduce flyover and service-road mistakes. The matcher must return an unmatched or ambiguous state when evidence is weak.
+Map matching uses a bounded online HMM with a rolling Viterbi beam. Emission likelihood includes covariance-aware distance and heading. Transition likelihood compares dead-reckoned displacement with path distance and topology. Layer, tunnel, and bridge attributes are planned (docs/07 P4). Oneway and highway class are stored today. The matcher must return an unmatched or ambiguous state when evidence is weak.
 
 ## 12. UX specification
 
 ### Primary navigation screen
 
-- Full-screen offline map.
+- Full-screen map. Offline tiles after a Ready pack. Hosted OpenFreeMap until then.
 - Blue dot for fused estimate; heading cone uses uncertainty-aware width.
 - Confidence halo grows as uncertainty increases.
 - Compact chip: `GNSS`, `Assisted`, `Dead reckoning`, `Reacquiring`, or `Low confidence`.
@@ -333,7 +339,7 @@ Offline diagnostic events include sensor availability, state transitions, reject
 
 ## 16. Demo success story
 
-The final video begins with a real Indian navigation problem, demonstrates an ordinary marker degrading at a tunnel or simulated blackout, then shows DriftZero continuing with visible confidence. The audience sees no external hardware and airplane mode remains enabled. Judge mode reveals the sensor pipeline, outage state, road hypotheses, and metrics. A recovery sequence shows gradual GNSS re-entry without a jump. The close explains the TimesFM teacher/student experiment, offline privacy, external IMU interface, India data plan, and honest limitations.
+Planned for Sep 16 to 19 (docs/07 P5). Not recorded. Airplane-mode video needs a Ready Pune pack. Do not write a drift number into the script until `results/` has that number. TimesFM stays "designed, not run" unless `results/timesfm/` exists. Emulator screenshots are not phone results.
 
 The five-step phone test is in `PRODUCT.md`.
 

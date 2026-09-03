@@ -35,7 +35,23 @@ data class ReplayExecution(
  * [DeadReckoningFilter.setGnssHeld] for every timestamp in the interval so
  * still-ZUPT does not zero a moving coast. `--declared-rate-hz` overrides
  * the file header. `--config name=value` overrides an [InsConfig] Double field
- * (camelCase or snake_case). Same input bytes yield the same output bytes.
+ * (camelCase or snake_case). `--coast-mode=strapdown|yaw_speed_hold` selects
+ * [InsConfig.coastMode]. `--persist-speed-pseudo` injects last accepted GNSS
+ * speed through [DeadReckoningFilter.ingestMotionPseudo] while GNSS is held
+ * (R std 1 m/s). Off by default. `--coast-stop-detect` enables the vibration
+ * ZUPT during yaw-speed-hold. `--coast-restart=held_speed|accel_burst` selects
+ * resume after that stop. `--weak-heading-policy=integrate|hold_course` selects
+ * yaw behaviour when the heading-gyro pick is weak. `--heading-pick-quality=`
+ * `weak|accepted|<file>` overrides gyro quality flags. `--coast-latch-gnss-speed`
+ * latches last reported GNSS speed if it is within 2 s of coast start.
+ * `--gnss-reseed-after-s=T` re-seeds pose after a unique-fix gap of at least T seconds,
+ * while coasting. `--gnss-reseed-while-fused` also allows that reseed during fused GNSS.
+ * `--coast-honest-p` grows coast position P from held-speed uncertainty.
+ * `--coast-speed-decay` decays held speed toward `coastSpeedDecayTargetMps`.
+ * `--student-forward-speed` enables the gated learned forward-speed update. Default off.
+ * `--engine` routes consume through
+ * [DeadReckoningEngine] so a later student can be injected. Default remains
+ * consume-only. Same input bytes yield the same output bytes.
  * No wall clock and no randomness are used in the loop.
  *
  * IO-VNBD frames are produced by `ml/` as aligned, unit-checked SensorFrame
@@ -83,11 +99,14 @@ object Replay {
             is ReplayLoadResult.Failed -> throw ReplayFailedException(loaded.error.toString())
         }
         val filter = DeadReckoningFilter(args.config)
+        args.headingPickWeak?.let { filter.setHeadingPickWeak(it, forced = true) }
         val consumed = ArrayList<SensorFrame>()
         val states = runFilter(
             frames = ready.source.frames,
             filter = filter,
             mask = args.mask,
+            persistSpeedPseudo = args.persistSpeedPseudo,
+            useEngine = args.useEngine,
             onConsume = { consumed.add(it) },
         )
         val run = summaryOf(states, consumed.size, countMasked(ready.source.frames, args.mask))
@@ -98,10 +117,15 @@ object Replay {
         frames: List<SensorFrame>,
         filter: DeadReckoningFilter = DeadReckoningFilter(),
         mask: GnssMaskInterval? = null,
+        persistSpeedPseudo: Boolean = false,
+        persistSpeedStdMps: Double = PERSIST_SPEED_PSEUDO_STD_MPS,
+        useEngine: Boolean = false,
         onConsume: ((SensorFrame) -> Unit)? = null,
     ): List<NavigationState> {
         val states = ArrayList<NavigationState>()
         var lastEmitNs = -1L
+        var lastGnssSpeedMps: Double? = null
+        val engine = if (useEngine) DeadReckoningEngine(filter) else null
         for (frame in frames) {
             if (mask != null) {
                 filter.setGnssHeld(mask.contains(frame.timestamp.value))
@@ -109,11 +133,44 @@ object Replay {
                     continue
                 }
             }
+            if (frame.kind == SensorKind.GNSS_FIX && frame.quality.available) {
+                val speed = (frame.payload as FixPayload).fix.speedMps?.value
+                if (speed != null) {
+                    lastGnssSpeedMps = speed
+                }
+            }
             onConsume?.invoke(frame)
+            if (engine != null) {
+                val pose = engine.ingestForReplay(frame) ?: continue
+                if (persistSpeedPseudo && filter.isGnssHeld()) {
+                    val speed = lastGnssSpeedMps
+                    if (speed != null) {
+                        filter.ingestMotionPseudo(
+                            persistSpeedMeasurement(speed, persistSpeedStdMps),
+                            frame.timestamp,
+                        )
+                    }
+                }
+                states.add(if (persistSpeedPseudo && filter.isGnssHeld()) {
+                    filter.poseAt(frame.timestamp) ?: pose
+                } else {
+                    pose
+                })
+                continue
+            }
             filter.consume(frame)
             val timestampNs = frame.timestamp.value
             if (lastEmitNs >= 0L && timestampNs - lastEmitNs < PERIOD_NS) {
                 continue
+            }
+            if (persistSpeedPseudo && filter.isGnssHeld()) {
+                val speed = lastGnssSpeedMps
+                if (speed != null) {
+                    filter.ingestMotionPseudo(
+                        persistSpeedMeasurement(speed, persistSpeedStdMps),
+                        frame.timestamp,
+                    )
+                }
             }
             val pose = filter.poseAt(frame.timestamp) ?: continue
             lastEmitNs = timestampNs
@@ -146,6 +203,19 @@ object Replay {
         var maskEnd: Long? = null
         var declaredRateHz: Double? = null
         val overrides = LinkedHashMap<String, Double>()
+        var coastMode = CoastMode.STRAPDOWN
+        var persistSpeedPseudo = false
+        var coastStopDetect = false
+        var coastRestart = CoastRestart.HELD_SPEED
+        var useEngine = false
+        var weakHeadingPolicy = WeakHeadingPolicy.INTEGRATE
+        var headingPickWeak: Boolean? = null
+        var coastLatchGnssSpeed = false
+        var gnssReseedAfterS = 0.0
+        var gnssReseedWhileFused = false
+        var coastHonestP = false
+        var coastSpeedDecay = false
+        var studentForwardSpeed = false
         var index = 0
         while (index < args.size) {
             val token = args[index]
@@ -156,6 +226,23 @@ object Replay {
                 "--mask-start-ns" -> maskStart = readValue(args, index, inline).also { if (inline == null) index++ }.toLong()
                 "--mask-end-ns" -> maskEnd = readValue(args, index, inline).also { if (inline == null) index++ }.toLong()
                 "--declared-rate-hz" -> declaredRateHz = readValue(args, index, inline).also { if (inline == null) index++ }.toDouble()
+                "--coast-mode" -> coastMode = parseCoastMode(readValue(args, index, inline).also { if (inline == null) index++ })
+                "--persist-speed-pseudo" -> persistSpeedPseudo = inline?.toBoolean() ?: true
+                "--coast-stop-detect" -> coastStopDetect = inline?.toBoolean() ?: true
+                "--coast-restart" -> coastRestart = parseCoastRestart(readValue(args, index, inline).also { if (inline == null) index++ })
+                "--engine" -> useEngine = inline?.toBoolean() ?: true
+                "--weak-heading-policy" -> weakHeadingPolicy = parseWeakHeadingPolicy(
+                    readValue(args, index, inline).also { if (inline == null) index++ },
+                )
+                "--heading-pick-quality" -> headingPickWeak = parseHeadingPickQuality(
+                    readValue(args, index, inline).also { if (inline == null) index++ },
+                )
+                "--coast-latch-gnss-speed" -> coastLatchGnssSpeed = inline?.toBoolean() ?: true
+                "--gnss-reseed-after-s" -> gnssReseedAfterS = readValue(args, index, inline).also { if (inline == null) index++ }.toDouble()
+                "--gnss-reseed-while-fused" -> gnssReseedWhileFused = inline?.toBoolean() ?: true
+                "--coast-honest-p" -> coastHonestP = inline?.toBoolean() ?: true
+                "--coast-speed-decay" -> coastSpeedDecay = inline?.toBoolean() ?: true
+                "--student-forward-speed" -> studentForwardSpeed = inline?.toBoolean() ?: true
                 "--config" -> {
                     val spec = readValue(args, index, inline).also { if (inline == null) index++ }
                     val eq = spec.indexOf('=')
@@ -178,7 +265,21 @@ object Replay {
             output = outputPath,
             mask = mask,
             declaredRateHz = declaredRateHz,
-            config = InsConfig().withOverrides(overrides),
+            config = InsConfig(
+                coastMode = coastMode,
+                coastStopDetect = coastStopDetect,
+                coastRestart = coastRestart,
+                weakHeadingPolicy = weakHeadingPolicy,
+                coastLatchGnssSpeed = coastLatchGnssSpeed,
+                gnssReseedAfterS = gnssReseedAfterS,
+                gnssReseedWhileFused = gnssReseedWhileFused,
+                coastHonestP = coastHonestP,
+                coastSpeedDecay = coastSpeedDecay,
+                studentForwardSpeed = studentForwardSpeed,
+            ).withOverrides(overrides),
+            persistSpeedPseudo = persistSpeedPseudo,
+            useEngine = useEngine,
+            headingPickWeak = headingPickWeak,
         )
     }
 
@@ -236,6 +337,7 @@ object Replay {
     }
 
     private val PERIOD_NS: Long = (1_000_000_000.0 / DeadReckoningFilter.OUTPUT_HZ).toLong()
+    const val PERSIST_SPEED_PSEUDO_STD_MPS: Double = 1.0
 }
 
 data class ReplayCliArgs(
@@ -244,6 +346,9 @@ data class ReplayCliArgs(
     val mask: GnssMaskInterval? = null,
     val declaredRateHz: Double? = null,
     val config: InsConfig = InsConfig(),
+    val persistSpeedPseudo: Boolean = false,
+    val useEngine: Boolean = false,
+    val headingPickWeak: Boolean? = null,
 )
 
 internal class ReplayFailedException(message: String) : Exception(message)
@@ -288,8 +393,106 @@ private fun InsConfig.overrideField(name: String, value: Double): InsConfig {
         "displacementchi2gate" -> copy(displacementChi2Gate = value)
         "displacementoverlaprscale" -> copy(displacementOverlapRScale = value)
         "displacementgategrowm" -> copy(displacementGateGrowM = value)
+        "gnssgaterejectsbeforeinflate" -> copy(gnssGateRejectsBeforeInflate = value.toInt().also { n ->
+            require(n >= 1 && kotlin.math.abs(value - n) < 1e-9) { "gnssGateRejectsBeforeInflate must be an integer >= 1" }
+        })
+        "gnssgateinflatemaxsigmam" -> copy(gnssGateInflateMaxSigmaM = value)
+        "gnssgateinflate" -> copy(gnssGateInflate = value != 0.0)
+        "coaststopdetect" -> copy(coastStopDetect = value != 0.0)
+        "coaststopaccelvar" -> copy(coastStopAccelVar = value)
+        "coaststopgyroradps" -> copy(coastStopGyroRadps = value)
+        "coaststopholds" -> copy(coastStopHoldS = value)
+        "coaststoprestartdebounces" -> copy(coastStopRestartDebounceS = value)
+        "coastrestart" -> copy(
+            coastRestart = if (value == 0.0) CoastRestart.HELD_SPEED else CoastRestart.ACCEL_BURST,
+        )
+        "coastrestartbursts" -> copy(coastRestartBurstS = value)
+        "coastrestartaccelclipmps2" -> copy(coastRestartAccelClipMps2 = value)
+        "roadheadingchi2gate" -> copy(roadHeadingChi2Gate = value)
+        "weakheadingpolicy" -> copy(
+            weakHeadingPolicy = if (value == 0.0) WeakHeadingPolicy.INTEGRATE else WeakHeadingPolicy.HOLD_COURSE,
+        )
+        "weakheadinggrowradps" -> copy(weakHeadingGrowRadps = value)
+        "coastlatchgnssspeed" -> copy(coastLatchGnssSpeed = value != 0.0)
+        "coastlatchgnssmaxs" -> copy(coastLatchGnssMaxS = value)
+        "coaststoprequirestoppedprefix" -> copy(coastStopRequireStoppedPrefix = value != 0.0)
+        "coaststopmovingk" -> copy(coastStopMovingK = value)
+        "coaststopmovingminmps" -> copy(coastStopMovingMinMps = value)
+        "coaststopstoppedmaxmps" -> copy(coastStopStoppedMaxMps = value)
+        "gnssreseedafters" -> copy(gnssReseedAfterS = value)
+        "gnssreseedwhilefused" -> copy(gnssReseedWhileFused = value != 0.0)
+        "gnssreseedheadingmotionm" -> copy(gnssReseedHeadingMotionM = value)
+        "gnssreseedslowmps" -> copy(gnssReseedSlowMps = value)
+        "gnssreseedslowyawstdrad" -> copy(gnssReseedSlowYawStdRad = value)
+        "coasthonestp" -> copy(coastHonestP = value != 0.0)
+        "coastspeedrwmps" -> copy(coastSpeedRwMps = value)
+        "coastheadingrwradps" -> copy(coastHeadingRwRadps = value)
+        "studentforwardspeed" -> copy(studentForwardSpeed = value != 0.0)
+        "studentspeedchi2gate" -> copy(studentSpeedChi2Gate = value)
+        "studentspeedsigmafloormps" -> copy(studentSpeedSigmaFloorMps = value)
+        "coastspeeddecay" -> copy(coastSpeedDecay = value != 0.0)
+        "coastspeeddecaytaus" -> copy(coastSpeedDecayTauS = value)
+        "coastspeeddecaytargetmps" -> copy(coastSpeedDecayTargetMps = value)
+        "staleafters" -> copy(staleAfterS = value)
         else -> throw IllegalArgumentException("unknown InsConfig field: $name")
     }
+}
+
+internal fun parseCoastMode(raw: String): CoastMode {
+    return when (raw.replace("-", "_").uppercase()) {
+        "STRAPDOWN" -> CoastMode.STRAPDOWN
+        "YAW_SPEED_HOLD" -> CoastMode.YAW_SPEED_HOLD
+        else -> throw IllegalArgumentException("unknown coast mode: $raw")
+    }
+}
+
+internal fun parseCoastRestart(raw: String): CoastRestart {
+    return when (raw.replace("-", "_").uppercase()) {
+        "HELD_SPEED", "A" -> CoastRestart.HELD_SPEED
+        "ACCEL_BURST", "B" -> CoastRestart.ACCEL_BURST
+        else -> throw IllegalArgumentException("unknown coast restart: $raw")
+    }
+}
+
+internal fun parseWeakHeadingPolicy(raw: String): WeakHeadingPolicy {
+    return when (raw.replace("-", "_").uppercase()) {
+        "INTEGRATE" -> WeakHeadingPolicy.INTEGRATE
+        "HOLD_COURSE" -> WeakHeadingPolicy.HOLD_COURSE
+        else -> throw IllegalArgumentException("unknown weak heading policy: $raw")
+    }
+}
+
+internal fun parseHeadingPickQuality(raw: String): Boolean {
+    val trimmed = raw.trim()
+    val key = trimmed.replace("-", "_").lowercase()
+    when (key) {
+        "weak", "fallback", "few_hops", "insufficient_fixes", "weak_corr" -> return true
+        "accepted", "strong", "ok", "integrate" -> return false
+    }
+    val path = Path.of(trimmed)
+    require(Files.isRegularFile(path)) { "unknown heading pick quality: $raw" }
+    val text = Files.readString(path, StandardCharsets.UTF_8).trim()
+    if (text.startsWith("{")) {
+        val fallback = Regex(""""fallback"\s*:\s*(true|false)""").find(text)?.groupValues?.get(1)
+        if (fallback != null) {
+            return fallback == "true"
+        }
+        val reason = Regex(""""reason"\s*:\s*"([^"]+)"""").find(text)?.groupValues?.get(1)
+        if (reason != null) {
+            return parseHeadingPickQuality(reason)
+        }
+    }
+    return parseHeadingPickQuality(text.trim('"'))
+}
+
+private fun persistSpeedMeasurement(speedMps: Double, stdMps: Double): MotionPseudoMeasurement {
+    val sigma = if (stdMps.isFinite() && stdMps > 0.0) stdMps else Replay.PERSIST_SPEED_PSEUDO_STD_MPS
+    return MotionPseudoMeasurement(
+        forwardSpeed = MetresPerSecond(speedMps),
+        yawRateRadps = 0.0,
+        stopProbability = 0.0,
+        logSpeedVariance = kotlin.math.ln(sigma * sigma),
+    )
 }
 
 private fun normalizeConfigName(name: String): String =

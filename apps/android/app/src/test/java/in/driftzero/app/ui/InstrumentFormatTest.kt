@@ -65,6 +65,8 @@ class InstrumentFormatTest {
         assertEquals("48 kB", InstrumentFormat.formatBytes(48_000L))
         assertEquals("1.2 GB", InstrumentFormat.formatBytes(1_200_000_000L))
         assertEquals("0.91", InstrumentFormat.formatConfidence(0.912))
+        assertEquals("92%", InstrumentFormat.formatPercent(0.92))
+        assertEquals("80%", InstrumentFormat.formatPercent(0.80))
     }
 
     @Test

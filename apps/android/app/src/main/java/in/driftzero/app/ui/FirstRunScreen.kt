@@ -47,15 +47,24 @@ internal fun FirstRunScreen(
         }
     }
     when (step) {
-        0 -> ScreenScaffold(title = stringResource(R.string.firstrun_location_title), onBack = onFinished) {
+        0 -> ScreenScaffold(
+            title = stringResource(R.string.firstrun_location_title),
+            onBack = { step = 1 },
+        ) {
             BasicText(
                 text = if (denied) {
                     stringResource(R.string.firstrun_location_denied)
                 } else {
-                    stringResource(R.string.firstrun_location_body)
+                    stringResource(R.string.firstrun_what)
                 },
                 style = InstrumentTheme.type.body,
             )
+            if (!denied) {
+                BasicText(
+                    text = stringResource(R.string.firstrun_why_location),
+                    style = InstrumentTheme.type.body,
+                )
+            }
             PrimaryButton(
                 label = stringResource(if (denied) R.string.action_continue else R.string.action_allow),
                 onClick = {
@@ -79,76 +88,70 @@ internal fun FirstRunScreen(
             if (!denied) {
                 SecondaryButton(
                     label = stringResource(R.string.action_not_now),
-                    onClick = {
-                        denied = true
-                    },
+                    onClick = { denied = true },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
-        1 -> SensorStep(onContinue = { step = 2 })
-        else -> MountStep(speedMps = speedMps, onFinished = onFinished)
-    }
-}
-
-@Composable
-private fun SensorStep(onContinue: () -> Unit) {
-    val context = LocalContext.current
-    val manager = remember { context.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
-    val accel = manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null
-    val gyro = manager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null
-    val mag = manager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) != null
-    val gnss = context.packageManager.hasSystemFeature(PackageManager.FEATURE_LOCATION_GPS)
-    ScreenScaffold(title = stringResource(R.string.firstrun_sensors_title), onBack = onContinue) {
-        ListRow(stringResource(R.string.firstrun_sensor_accel), present(accel))
-        ListRow(stringResource(R.string.firstrun_sensor_gyro), present(gyro))
-        ListRow(stringResource(R.string.firstrun_sensor_mag), present(mag))
-        ListRow(stringResource(R.string.firstrun_sensor_gnss), present(gnss))
-        if (!gyro) {
-            BasicText(text = stringResource(R.string.firstrun_no_gyro), style = InstrumentTheme.type.caption)
-        }
-        if (!accel) {
-            BasicText(text = stringResource(R.string.firstrun_no_accel), style = InstrumentTheme.type.caption)
-        }
-        PrimaryButton(
-            label = stringResource(R.string.action_continue),
-            onClick = onContinue,
-            modifier = Modifier.fillMaxWidth(),
+        else -> MountStep(
+            speedMps = speedMps,
+            onBack = { step = 0 },
+            onFinished = onFinished,
         )
     }
 }
 
 @Composable
-private fun present(ok: Boolean): String =
-    stringResource(if (ok) R.string.value_present else R.string.value_missing)
-
-@Composable
-private fun MountStep(speedMps: Double?, onFinished: () -> Unit) {
+private fun MountStep(
+    speedMps: Double?,
+    onBack: () -> Unit,
+    onFinished: () -> Unit,
+) {
     val context = LocalContext.current
     val store = remember { CalibrationStore.open(context) }
-    val existing = remember { store.read() }
     val manager = remember { context.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
     val hasGyro = manager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null
     val hasAccel = manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null
     val cal = remember { StationaryCalibrator() }
     var status by remember { mutableStateOf<CalibrationStatus>(CalibrationStatus.Still) }
     var running by remember { mutableStateOf(false) }
-    var note by remember { mutableStateOf<String?>(null) }
-    val tooFast = (speedMps ?: 0.0) > 1.0
+    var progressPct by remember { mutableIntStateOf(0) }
+    var startedNs by remember { mutableStateOf(0L) }
+    val samples = remember { StillSampleClock() }
+    val tooFast = FirstRunMount.tooFast(speedMps)
+    val missingSensors = !hasAccel || !hasGyro
+    val missing = when {
+        !hasAccel -> stringResource(R.string.firstrun_no_accel)
+        !hasGyro -> stringResource(R.string.firstrun_no_gyro)
+        else -> null
+    }
+
+    fun startWindow() {
+        cal.reset()
+        samples.reset()
+        startedNs = SystemClock.elapsedRealtimeNanos()
+        status = CalibrationStatus.Still
+        progressPct = 0
+        running = true
+    }
+
     DisposableEffect(running) {
         if (!running || !hasAccel) {
             return@DisposableEffect onDispose { }
         }
         val listener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
-                if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
-                    cal.ingestAccel(
-                        event.timestamp,
-                        event.values[0].toDouble(),
-                        event.values[1].toDouble(),
-                        event.values[2].toDouble(),
-                    )
+                if (event.sensor.type != Sensor.TYPE_ACCELEROMETER) {
+                    return
                 }
+                val ts = event.timestamp
+                cal.ingestAccel(
+                    ts,
+                    event.values[0].toDouble(),
+                    event.values[1].toDouble(),
+                    event.values[2].toDouble(),
+                )
+                samples.onSample(ts)
             }
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
         }
@@ -159,21 +162,50 @@ private fun MountStep(speedMps: Double?, onFinished: () -> Unit) {
         )
         onDispose { manager.unregisterListener(listener) }
     }
+    LaunchedEffect(Unit) {
+        if (!tooFast && hasAccel && hasGyro) {
+            startWindow()
+        }
+    }
+    LaunchedEffect(tooFast, running) {
+        if (FirstRunMount.abortBecauseMoving(tooFast, running)) {
+            running = false
+            status = CalibrationStatus.FailedMoving
+        }
+    }
     LaunchedEffect(running) {
         if (!running) {
             return@LaunchedEffect
         }
         while (running) {
-            status = cal.evaluate(SystemClock.elapsedRealtimeNanos(), hasGyro)
-            if (status is CalibrationStatus.Done ||
-                status is CalibrationStatus.FailedShort ||
-                status is CalibrationStatus.FailedMoving ||
-                status is CalibrationStatus.FailedNoGyro
+            val now = SystemClock.elapsedRealtimeNanos()
+            val next = if (FirstRunMount.timedOutWithoutSamples(samples.lastNs, startedNs, now)) {
+                CalibrationStatus.FailedShort
+            } else {
+                cal.evaluate(
+                    FirstRunMount.evaluateNowNs(samples.firstNs, samples.lastNs, startedNs, now),
+                    hasGyro,
+                )
+            }
+            status = next
+            progressPct = FirstRunMount.displayProgress(
+                running = true,
+                startedWallNs = startedNs,
+                wallNs = now,
+                firstSampleNs = samples.firstNs,
+                lastSampleNs = samples.lastNs,
+                status = next,
+            )
+            if (next is CalibrationStatus.Done ||
+                next is CalibrationStatus.FailedShort ||
+                next is CalibrationStatus.FailedMoving ||
+                next is CalibrationStatus.FailedNoGyro
             ) {
                 running = false
-                val done = status as? CalibrationStatus.Done
-                if (done != null) {
-                    store.write(done.profile)
+                if (FirstRunMount.shouldWriteProfile(next) && next is CalibrationStatus.Done) {
+                    store.write(next.profile)
+                    progressPct = 100
+                    onFinished()
                 }
             }
             delay(100)
@@ -182,51 +214,34 @@ private fun MountStep(speedMps: Double?, onFinished: () -> Unit) {
     val word = when (val s = status) {
         CalibrationStatus.Still -> stringResource(R.string.calib_still)
         CalibrationStatus.Moving -> stringResource(R.string.calib_moving)
-        is CalibrationStatus.Done -> stringResource(
-            R.string.calib_done,
-            s.tiltDeg.toInt().toString(),
-        )
+        is CalibrationStatus.Done -> stringResource(R.string.calib_done, s.tiltDeg.toInt().toString())
         CalibrationStatus.FailedShort -> stringResource(R.string.calib_failed_short)
         CalibrationStatus.FailedMoving -> stringResource(R.string.calib_failed_moving)
         CalibrationStatus.FailedNoGyro -> stringResource(R.string.calib_failed_no_gyro)
     }
-    val canSkip = existing != null
-    ScreenScaffold(title = stringResource(R.string.firstrun_mount_title), onBack = onFinished) {
-        BasicText(text = stringResource(R.string.firstrun_mount_body), style = InstrumentTheme.type.body)
+    ScreenScaffold(title = stringResource(R.string.firstrun_mount_title), onBack = onBack) {
+        BasicText(text = stringResource(R.string.firstrun_mount_still), style = InstrumentTheme.type.body)
+        if (missing != null) {
+            BasicText(text = missing, style = InstrumentTheme.type.caption)
+        }
         BasicText(text = word, style = InstrumentTheme.type.readout)
+        BasicText(text = "$progressPct%", style = InstrumentTheme.type.readout)
         if (tooFast) {
             BasicText(text = stringResource(R.string.firstrun_mount_moving), style = InstrumentTheme.type.caption)
         }
-        if (note != null) {
-            BasicText(text = note!!, style = InstrumentTheme.type.caption)
-        }
-        PrimaryButton(
-            label = stringResource(
-                if (status is CalibrationStatus.Done) R.string.action_done else R.string.action_start,
-            ),
-            onClick = {
-                if (status is CalibrationStatus.Done) {
-                    onFinished()
-                    return@PrimaryButton
-                }
-                if (tooFast) {
-                    note = context.getString(R.string.firstrun_mount_moving)
-                    return@PrimaryButton
-                }
-                cal.reset()
-                status = CalibrationStatus.Still
-                running = true
-                note = null
-            },
-            enabled = !running,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (canSkip) {
-            SecondaryButton(
-                label = stringResource(R.string.action_skip),
+        when (FirstRunMount.primaryAction(status, missingSensors, running)) {
+            MountPrimaryAction.FINISH -> PrimaryButton(
+                label = stringResource(R.string.action_done),
                 onClick = onFinished,
                 modifier = Modifier.fillMaxWidth(),
             )
+            MountPrimaryAction.START, MountPrimaryAction.RETRY -> PrimaryButton(
+                label = stringResource(R.string.action_start),
+                onClick = { startWindow() },
+                enabled = !tooFast,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            MountPrimaryAction.NONE -> Unit
         }
     }
 }

@@ -15,35 +15,79 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import `in`.driftzero.app.maps.AreaPackStore
 import `in`.driftzero.core.DeadReckoningFilter
 import `in`.driftzero.core.MotionPseudoRuntime
-import `in`.driftzero.core.OsmGraphLoader
 import `in`.driftzero.core.ZuptAccelMotionModel
-import java.io.File
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 
-internal fun hasLocationPermission(context: Context): Boolean {
-    val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-    val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
-    return fine == PackageManager.PERMISSION_GRANTED || coarse == PackageManager.PERMISSION_GRANTED
+/** App location grant. Coarse-only is not a GNSS fix. */
+enum class LocationGrant {
+    NONE,
+    COARSE,
+    FINE,
 }
 
-internal const val FUSED_PROVIDER = "fused"
+internal fun hasLocationPermission(context: Context): Boolean =
+    readLocationGrant(context) != LocationGrant.NONE
+
+internal fun hasPreciseLocation(context: Context): Boolean =
+    readLocationGrant(context) == LocationGrant.FINE
+
+internal fun readLocationGrant(context: Context): LocationGrant = readLocationGrant(
+    fineGranted = ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_FINE_LOCATION,
+    ) == PackageManager.PERMISSION_GRANTED,
+    coarseGranted = ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_COARSE_LOCATION,
+    ) == PackageManager.PERMISSION_GRANTED,
+)
+
+internal fun readLocationGrant(fineGranted: Boolean, coarseGranted: Boolean): LocationGrant = when {
+    fineGranted -> LocationGrant.FINE
+    coarseGranted -> LocationGrant.COARSE
+    else -> LocationGrant.NONE
+}
+
 internal const val GPS_PROVIDER = "gps"
 internal const val NETWORK_PROVIDER = "network"
+internal const val FUSED_PROVIDER = "fused"
+
+internal data class LastKnownFix(
+    val provider: String,
+    val elapsedRealtimeNanos: Long,
+    val latitude: Double,
+    val longitude: Double,
+)
+
+/**
+ * GPS first so emulator `geo fix` wins. Otherwise the newest fused/network
+ * sample. Live empty plus a last-known sample still produces a fix.
+ */
+internal fun pickLastKnownFix(samples: List<LastKnownFix>): LastKnownFix? {
+    if (samples.isEmpty()) {
+        return null
+    }
+    samples.firstOrNull { it.provider == GPS_PROVIDER }?.let { return it }
+    return samples.maxByOrNull { it.elapsedRealtimeNanos }
+}
 
 internal fun gnssFixProviders(sdkInt: Int, available: Collection<String>): List<String> {
     val wanted = ArrayList<String>(3)
-    if (sdkInt >= 31 && available.contains(FUSED_PROVIDER)) {
-        wanted += FUSED_PROVIDER
-    }
     if (available.contains(GPS_PROVIDER)) {
         wanted += GPS_PROVIDER
     }
     if (available.contains(NETWORK_PROVIDER)) {
         wanted += NETWORK_PROVIDER
+    }
+    if (available.contains(FUSED_PROVIDER) || sdkInt >= 31) {
+        if (FUSED_PROVIDER !in wanted) {
+            wanted += FUSED_PROVIDER
+        }
     }
     return wanted
 }
@@ -59,15 +103,22 @@ internal fun newestLastKnownLocation(context: Context): Location? {
     } catch (_: Exception) {
         emptyList()
     }
-    val candidates = ArrayList<Location>(3)
+    val found = ArrayList<Pair<LastKnownFix, Location>>(3)
     for (provider in gnssFixProviders(Build.VERSION.SDK_INT, available)) {
         try {
-            manager.getLastKnownLocation(provider)?.let { candidates += it }
+            val loc = manager.getLastKnownLocation(provider) ?: continue
+            found += LastKnownFix(
+                provider = loc.provider ?: provider,
+                elapsedRealtimeNanos = loc.elapsedRealtimeNanos,
+                latitude = loc.latitude,
+                longitude = loc.longitude,
+            ) to loc
         } catch (_: SecurityException) {
         } catch (_: IllegalArgumentException) {
         }
     }
-    return candidates.maxByOrNull { it.elapsedRealtimeNanos }
+    val chosen = pickLastKnownFix(found.map { it.first }) ?: return null
+    return found.firstOrNull { it.first == chosen }?.second
 }
 
 /**
@@ -80,25 +131,15 @@ internal fun newestLastKnownLocation(context: Context): Location? {
 fun rememberPoseStore(): PoseStore {
     val context = LocalContext.current
     val store = remember {
-        val poses = PoseStore(
+        PoseStore(
+            filter = PoseStore.liveFilter(),
             clockNs = { SystemClock.elapsedRealtimeNanos() },
             motion = MotionPseudoRuntime(
                 model = ZuptAccelMotionModel(MotionStudentAssets.load(context.applicationContext)),
                 displacement = LearnedImuAssets.load(context.applicationContext),
             ),
+            profiles = PrefsMountProfileStore.open(context.applicationContext),
         )
-        val packs = AreaPackStore(File(context.applicationContext.filesDir, "area-packs"))
-        val graphFile = packs.graphFile(packs.active())
-        if (graphFile != null) {
-            try {
-                poses.setRoadGraph(
-                    OsmGraphLoader.load(graphFile.toPath(), packs.active()?.manifest?.id?.value ?: graphFile.name),
-                )
-            } catch (_: Exception) {
-                // Dummy or non-OSM graph.bin stays unused. Puck stays on ESKF.
-            }
-        }
-        poses
     }
     val gpsOff by store.simulateGpsOff.collectAsState()
     val replaying by store.replayActive.collectAsState()
@@ -110,12 +151,26 @@ fun rememberPoseStore(): PoseStore {
         val source = GnssLocationSource(context, store)
         val imu = PhoneImuSource(context, store)
         imu.start()
+        var lastPollElapsedMs = 0L
+        var gnssStarted = false
         try {
             while (isActive) {
                 if (!gpsOff && hasLocationPermission(context)) {
-                    source.start()
+                    if (!gnssStarted) {
+                        gnssStarted = withContext(Dispatchers.Main.immediate) {
+                            source.start()
+                        }
+                    }
+                    val nowMs = SystemClock.elapsedRealtime()
+                    if (nowMs - lastPollElapsedMs >= 1_000L) {
+                        withContext(Dispatchers.IO) {
+                            source.pollLastKnown()
+                        }
+                        lastPollElapsedMs = nowMs
+                    }
                 } else {
                     source.stop()
+                    gnssStarted = false
                 }
                 store.tick()
                 delay(periodMs)

@@ -68,6 +68,23 @@ def unique_fix_records(records: Sequence[dict]) -> list[dict]:
     return [records[i] for i in unique_fix_indices(records)]
 
 
+def unique_fix_median_spacing_s(records: Sequence[dict] | Sequence[int]) -> float | None:
+    """Median seconds between consecutive unique GNSS fixes. None if fewer than 2."""
+
+    if records and isinstance(records[0], dict):
+        stamps = [int(row["timestamp_ns"]) for row in unique_fix_records(records)]  # type: ignore[index]
+    else:
+        stamps = [int(item) for item in records]
+    dts: list[float] = []
+    for earlier, later in zip(stamps, stamps[1:]):
+        dt = (later - earlier) / 1_000_000_000.0
+        if dt > 0.0:
+            dts.append(dt)
+    if not dts:
+        return None
+    return median(dts)
+
+
 def course_rad(a: dict, b: dict) -> float | None:
     """North-zero, east-positive heading. None if the segment is shorter than 1 mm."""
 

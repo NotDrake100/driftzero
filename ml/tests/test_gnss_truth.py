@@ -13,6 +13,7 @@ from driftzero_ml.gnss_truth import (
     course_rad,
     score_epochs,
     seed_heading_rad,
+    unique_fix_median_spacing_s,
 )
 from driftzero_ml.student.linear import LinearMotionStudent
 
@@ -73,6 +74,17 @@ class HeadingSeedTests(unittest.TestCase):
         heading = seed_heading_rad(history)
         self.assertIsNotNone(heading)
         self.assertTrue(abs((heading or 0.0) - math.pi / 2.0) < 1e-9)
+
+    def test_unique_fix_median_spacing(self) -> None:
+        rows = [
+            {"timestamp_ns": 0, "latitude_deg": 52.0, "longitude_deg": -1.7},
+            {"timestamp_ns": 1_000_000_000, "latitude_deg": 52.0001, "longitude_deg": -1.7},
+            {"timestamp_ns": 2_000_000_000, "latitude_deg": 52.0002, "longitude_deg": -1.7},
+            {"timestamp_ns": 11_000_000_000, "latitude_deg": 52.0003, "longitude_deg": -1.7},
+        ]
+        self.assertAlmostEqual(unique_fix_median_spacing_s(rows) or 0.0, 1.0)
+        self.assertAlmostEqual(unique_fix_median_spacing_s([0, 9_000_000_000, 18_000_000_000]) or 0.0, 9.0)
+        self.assertIsNone(unique_fix_median_spacing_s([0]))
 
 
 class StaleTruthTests(unittest.TestCase):

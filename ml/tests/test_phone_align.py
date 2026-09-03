@@ -4,6 +4,7 @@ from math import cos, radians, sin
 
 from driftzero_ml.features.phone_align import (
     estimate_alignment,
+    heading_gyro_decision,
     heading_gyro_radps,
     rotate_vector,
     select_heading_gyro,
@@ -58,6 +59,35 @@ class PhoneAlignTests(unittest.TestCase):
         self.assertGreater(abs(pick.correlation), 0.25)
         self.assertAlmostEqual(pick.sign, -1.0)
         self.assertAlmostEqual(heading_gyro_radps((0.01, rate, -0.02), pick), -rate)
+
+    def test_heading_gyro_mask_excludes_blackout_hops(self) -> None:
+        gyros: list[tuple[int, float, float, float]] = []
+        fixes: list[tuple[int, float, float]] = []
+        lat = 52.0
+        lon = -1.7
+        heading = 0.0
+        rate = 0.12
+        straight = 16
+        for index in range(straight + 12):
+            stamp = index * 1_000_000_000
+            fixes.append((stamp, lat, lon))
+            pitch = rate if index >= straight else 0.0
+            for step in range(10):
+                gyros.append((stamp + step * 100_000_000, 0.01, pitch, -0.02))
+            north = 12.0 * cos(heading)
+            east = 12.0 * sin(heading)
+            lat += (north / EARTH_MEAN_RADIUS_M) * (180.0 / 3.141592653589793)
+            lon += (east / (EARTH_MEAN_RADIUS_M * cos(radians(lat)))) * (180.0 / 3.141592653589793)
+            if index >= straight:
+                heading += rate
+        mask_start = straight * 1_000_000_000
+        whole = heading_gyro_decision(gyros, fixes)
+        pre = heading_gyro_decision(gyros, fixes, mask_start_ns=mask_start)
+        self.assertIsNotNone(whole.pick)
+        assert whole.pick is not None
+        self.assertEqual(whole.pick.axis, "pitch")
+        self.assertIsNone(pre.pick)
+        self.assertIn(pre.reason, {"few_hops", "no_heading_rate", "weak_corr"})
 
 
 if __name__ == "__main__":

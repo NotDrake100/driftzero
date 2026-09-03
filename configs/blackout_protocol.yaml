@@ -1,9 +1,12 @@
+# Documentation only. No Kotlin or Python path loads this file today.
+# Screening v1 lives in results/io_vnbd_screening_v1/summary.md.
+# minimum_truth_quality is not implemented as a loader check (docs/07 D4).
 schema_version: "1.0.0"
 protocol_id: ioh_vnbd_blackouts_v1
 seed: 26168
 selection:
   operate_on_complete_trips: true
-  minimum_truth_quality: valid
+  minimum_truth_quality: valid  # documentation only. Not enforced by a loader.
   minimum_sensor_coverage_fraction: 0.99
   stratify_by: [duration, distance, speed_band, turn_presence, stop_presence]
 suites:

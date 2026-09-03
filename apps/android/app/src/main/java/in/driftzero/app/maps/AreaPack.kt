@@ -37,6 +37,7 @@ data class AreaPackManifest(
     val schemaVersion: Int = 1,
     val label: String? = null,
     val osmSource: String? = null,
+    val osmSnapshot: String? = null,
     val pmtilesSha256: String? = null,
     val graphSha256: String? = null,
     val bytes: Long? = null,

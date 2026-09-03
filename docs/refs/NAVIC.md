@@ -40,10 +40,10 @@ adb logcat -s DriftZeroNavIC
 
 Expect a line like `IRNSS visible=3 used=2 GPS used=8 Galileo used=4` when the OS classifies IRNSS SVs. `visible=2 used=0` means the chipset listed IRNSS but did not use them in the current fix.
 
-3. On-screen chip **only if** `used > 0`: a small panel next to GPS, text `NavIC 3`. No lamp, no SIH copy, no "lock" or "safe". Idle with no IRNSS used-in-fix stays map, search, GPS chip, locate.
+3. On-screen counts belong in the status sheet (`%1$d visible, %2$d used`). `NavicMonitor.chipLabel` can format `NavIC N` when used > 0. That is a count, not a lock. Do not compose it as integrity. Idle chrome is the mode lamp (GNSS / Assisted / Dead reckoning / Reacquiring / Low confidence), not a GPS chip.
 4. Cross-check with a GNSS status app that shows constellation (GPSTest or equivalent). Match `IRNSS` / NavIC counts. Do not treat a mismatch as DriftZero "losing NavIC". We display Android's `usedInFix` for that constellation.
 
-Hold the GPS chip to simulate GPS off. The NavIC chip and the log snapshot clear. IMU coast continues. That is a demo hold, not a jamming test.
+Hold GNSS on the mode lamp to simulate GPS off. NavIC counts and the log snapshot clear. IMU coast continues. That is a demo hold, not a jamming test. Example log numbers above are format only.
 
 ## ISRO FAQ limits (do not talk past these)
 
@@ -51,7 +51,7 @@ Source: [ISRO Navigation FAQ](https://www.isro.gov.in/FAQ_Navigation.html), fetc
 
 Names (FAQ Q1): NavIC (Navigation with Indian Constellation) is the operational name. IRNSS was the earlier name. Android's constant is still `IRNSS`. We log `IRNSS` and label the chip `NavIC`.
 
-GPS is not a generic word for satellite navigation (FAQ Q3, Q4). GNSS is. Our GPS chip is the phone provider lamp, not a claim that only GPS is used.
+GPS is not a generic word for satellite navigation (FAQ Q3, Q4). GNSS is. The mode lamp is the provider state, not a claim that only GPS is used.
 
 FAQ Q16, quoted in substance:
 
@@ -76,7 +76,7 @@ Because ISRO already said NavIC does not provide integrity and does not support 
 - proof the measurement is unjammed or unspoofed
 - proof the horizontal protection level is acceptable for aviation or any certified use
 
-A phone in India can list IRNSS, use three of them, and still have a 20 m urban fix, a multipath bounce, or a fused location that mixed in a cell estimate. The chip `NavIC 3` is a count. It is not a green board.
+A phone in India can list IRNSS, use three of them, and still have a 20 m urban fix, a multipath bounce, or a fused location that mixed in a cell estimate. A `NavIC 3` string is a count. It is not a green board.
 
 Missing `CONSTELLATION_IRNSS` on a supported API level usually means the chipset or GNSS HAL did not report that constellation. It does not mean NavIC satellites are down, and it does not mean the app failed a NavIC requirement.
 

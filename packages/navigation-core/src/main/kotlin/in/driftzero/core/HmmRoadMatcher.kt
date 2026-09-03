@@ -1,6 +1,7 @@
 package `in`.driftzero.core
 
 import java.util.PriorityQueue
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.ln
@@ -16,7 +17,9 @@ import kotlin.math.min
  * Viterbi is log-space with a bounded beam.
  *
  * The ESKF lat/lon is never overwritten. [MapMatchResult.displayPose] is the
- * centerline projection for the map overlay only.
+ * centerline projection for the map overlay only. Tunnel edges set
+ * [MapMatchResult.onTunnel] so a GNSS gap can be treated as physical, not as
+ * a reason to snap. Junction proximity is [MapMatchResult.nearJunction].
  */
 class HmmRoadMatcher(
     private val config: HmmMatchConfig = HmmMatchConfig(),
@@ -201,6 +204,9 @@ class HmmRoadMatcher(
             return distTerm
         }
         val dHead = headingDeltaRad(observation.headingRad, hit.headingRad)
+        if (dHead > PI / 2.0) {
+            return UNLIKELY
+        }
         return distTerm + weight * (-0.5 * (dHead / config.sigmaHeadingRad) * (dHead / config.sigmaHeadingRad))
     }
 
@@ -267,11 +273,19 @@ class HmmRoadMatcher(
             val along = to.alongM - from.alongM
             return if (along >= -1.0) max(0.0, along) else null
         }
+        if (isReversePair(fromEdge, toEdge)) {
+            val fromAlongUndirected = from.alongM
+            val toAlongUndirected = (toEdge.lengthM - to.alongM).coerceAtLeast(0.0)
+            return abs(toAlongUndirected - fromAlongUndirected)
+        }
         val remain = (fromEdge.lengthM - from.alongM).coerceAtLeast(0.0)
         val cutoff = greatCircle + config.maxRouteSlackM
         val via = shortestPathM(graph, fromEdge.toNodeId, toEdge.fromNodeId, cutoff) ?: return null
         return remain + via + to.alongM
     }
+
+    private fun isReversePair(a: GraphEdge, b: GraphEdge): Boolean =
+        a.fromNodeId == b.toNodeId && a.toNodeId == b.fromNodeId && a.fromNodeId != a.toNodeId
 
     private fun shortestPathM(
         graph: RoadGraph,
@@ -336,6 +350,8 @@ class HmmRoadMatcher(
         val bestP = posteriors.getOrElse(chosenIndex) { posteriors.maxOrNull() ?: 0.0 }
         val ranked = posteriors.sortedDescending()
         val second = ranked.getOrElse(1) { 0.0 }
+        val rankedIdx = posteriors.indices.sortedByDescending { posteriors[it] }
+        val secondState = rankedIdx.getOrNull(1)?.let { column.states[it] }
         val hit = chosen.candidate.hit
         val status = when {
             hit == null -> MapMatchStatus.UNMATCHED
@@ -350,16 +366,27 @@ class HmmRoadMatcher(
             MapMatchStatus.NO_MAP -> 0.0
         }
         val display = hit?.let { toDisplay(it, graph) }
+        val edge = hit?.let { graph.edges[it.edgeIndex] }
+        val junctionM = hit?.let { distanceToJunctionM(it.latitudeDeg, it.longitudeDeg, graph.edges[it.edgeIndex], graph) }
+        val nearJunction = junctionM != null && junctionM <= config.junctionRadiusM
         return MapMatchResult(
             match = MapMatch(
                 status = status,
                 confidence = confidence,
-                roadSegmentId = hit?.let { graph.edges[it.edgeIndex].id },
+                roadSegmentId = edge?.id,
             ),
             displayPose = display,
             candidateEntropy = entropy,
             candidateCount = column.states.size,
             packageId = graph.packageId,
+            bestPosterior = bestP.coerceIn(0.0, 1.0),
+            secondPosterior = second.coerceIn(0.0, 1.0),
+            secondRoadSegmentId = secondState?.candidate?.hit?.let { graph.edges[it.edgeIndex].id },
+            nearJunction = nearJunction,
+            junctionDistanceM = junctionM,
+            onTunnel = edge?.tunnel == true,
+            onBridge = edge?.bridge == true,
+            layer = edge?.layer ?: 0,
         )
     }
 
@@ -410,7 +437,16 @@ class HmmRoadMatcher(
             index,
             graph.edges[index],
         )
-        return previous.copy(displayPose = toDisplay(hit, graph))
+        val edge = graph.edges[index]
+        val junctionM = distanceToJunctionM(hit.latitudeDeg, hit.longitudeDeg, edge, graph)
+        return previous.copy(
+            displayPose = toDisplay(hit, graph),
+            nearJunction = junctionM != null && junctionM <= config.junctionRadiusM,
+            junctionDistanceM = junctionM,
+            onTunnel = edge.tunnel,
+            onBridge = edge.bridge,
+            layer = edge.layer,
+        )
     }
 
     private fun searchRadiusM(horizontal95M: Double): Double {

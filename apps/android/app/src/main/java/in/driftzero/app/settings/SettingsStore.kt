@@ -22,6 +22,7 @@ data class AppSettings(
     val audioOnLowConfidence: Boolean = false,
     val recordTrips: Boolean = false,
     val firstRunDone: Boolean = false,
+    val labUnlocked: Boolean = false,
 )
 
 /** SharedPreferences-backed settings. Every value has a default; nothing is inferred. */
@@ -39,6 +40,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
             .putBoolean(KEY_AUDIO, next.audioOnLowConfidence)
             .putBoolean(KEY_RECORD, next.recordTrips)
             .putBoolean(KEY_FIRST_RUN_DONE, next.firstRunDone)
+            .putBoolean(KEY_LAB, next.labUnlocked)
             .apply()
         _settings.value = next
     }
@@ -51,6 +53,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
         audioOnLowConfidence = prefs.getBoolean(KEY_AUDIO, false),
         recordTrips = prefs.getBoolean(KEY_RECORD, false),
         firstRunDone = prefs.getBoolean(KEY_FIRST_RUN_DONE, false),
+        labUnlocked = prefs.getBoolean(KEY_LAB, false),
     )
 
     companion object {
@@ -62,6 +65,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
         private const val KEY_AUDIO = "audio_low_confidence"
         private const val KEY_RECORD = "record_trips"
         private const val KEY_FIRST_RUN_DONE = "first_run_done"
+        private const val KEY_LAB = "lab_unlocked"
 
         fun open(context: Context): SettingsStore =
             SettingsStore(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE))

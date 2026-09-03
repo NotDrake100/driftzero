@@ -26,6 +26,8 @@ data/area-packs/**
 !data/area-packs/README.md
 results/*
 !results/.gitkeep
+!results/emulator/
+!results/emulator/README.md
 secrets.properties
 .DS_Store
 .cursor/skills/

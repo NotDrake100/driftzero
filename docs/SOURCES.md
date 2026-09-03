@@ -11,7 +11,9 @@ Retrieved and checked on 2026-09-02 unless noted. Independent fetch log for offi
 
 ## Foundation model and edge inference
 
-- [Google Research TimesFM repository](https://github.com/google-research/timesfm), TimesFM 3 release, API, multivariate/covariate behavior, and terms pointers.
+TimesFM 3.0 is designed, not run, until `results/timesfm/` exists. 3.0 weights cannot ship. Distillation from 3.0 needs a license read. 2.5 is Apache-2.0. ONNX Runtime is a later option. Nothing in this repo exports ONNX.
+
+- [Google Research TimesFM repository](https://github.com/google-research/timesfm), TimesFM 3.0 release, API, multivariate/covariate behavior, and terms pointers.
 - [TimesFM 3 official model card](https://huggingface.co/google/timesfm-3.0-pytorch), architecture and checkpoint details.
 - [TimesFM 3 checkpoint files](https://huggingface.co/google/timesfm-3.0-pytorch/tree/main), artifact size evidence.
 - [ONNX Runtime Mobile](https://onnxruntime.ai/docs/tutorials/mobile/), Android deployment options.

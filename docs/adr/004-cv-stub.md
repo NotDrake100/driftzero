@@ -12,7 +12,7 @@ The live map puck froze when LocationManager stopped. The product needs the own-
 
 `PoseStore` is the UI-readable pose at 10 Hz. MapLibre draws the puck from that pose, not from the default location engine.
 
-When GNSS age is over 2 s, or ingest is held (Simulate GPS off), the estimator coasts on last velocity. The chip reads "No GPS, estimating". Long-press the GPS chip to stop consuming LocationManager while the 10 Hz pose loop keeps running.
+When GNSS age is over 2 s, or ingest is held (Hold GNSS), the estimator coasts. The mode lamp reads Dead reckoning (or Low confidence if the radius exceeds 120 m). Long-press the mode lamp, or use Hold GNSS in Judge, to stop consuming LocationManager while the 10 Hz pose loop keeps running.
 
 This coast is last course and speed (plus IMU if present). It is not a claim of a finished ESKF product, even when `DeadReckoningFilter` is the live engine.
 

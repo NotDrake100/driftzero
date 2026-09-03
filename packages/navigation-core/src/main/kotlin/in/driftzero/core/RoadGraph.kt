@@ -16,9 +16,19 @@ class RoadGraph(
 
     val outgoing: Map<Long, IntArray> = buildOutgoing(edges)
 
+    /**
+     * Undirected neighbor count. A through-road shape node is 2. A T-junction
+     * or crossing is >= 3. Used by the matcher as the junction test.
+     */
+    val undirectedDegree: Map<Long, Int> = buildUndirectedDegree(edges)
+
     internal val grid: EdgeGrid = EdgeGrid.build(nodes, edges)
 
     fun isEmpty(): Boolean = edges.isEmpty()
+
+    fun degreeOf(nodeId: Long): Int = undirectedDegree[nodeId] ?: 0
+
+    fun isJunction(nodeId: Long, minDegree: Int = 3): Boolean = degreeOf(nodeId) >= minDegree
 
     companion object {
         fun empty(packageId: String = "empty"): RoadGraph =
@@ -42,6 +52,13 @@ data class GraphEdge(
     val segmentHeadingsRad: DoubleArray,
     val highway: String,
     val osmWayId: Long? = null,
+    /** OSM `layer`, 0 when untagged. Flyover vs surface. */
+    val layer: Int = 0,
+    val bridge: Boolean = false,
+    /** OSM tunnel. Matcher exposes this so GNSS age can be treated as physical. */
+    val tunnel: Boolean = false,
+    /** True when this directed edge is the only legal direction of the OSM way. */
+    val oneway: Boolean = false,
 ) {
     init {
         require(id.isNotEmpty())
@@ -95,10 +112,22 @@ data class MapMatchResult(
     val candidateEntropy: Double = 0.0,
     val candidateCount: Int = 0,
     val packageId: String? = null,
+    val bestPosterior: Double = 0.0,
+    val secondPosterior: Double = 0.0,
+    val secondRoadSegmentId: String? = null,
+    /** True when the chosen centerline is within [HmmMatchConfig.junctionRadiusM] of a degree >= 3 node. */
+    val nearJunction: Boolean = false,
+    val junctionDistanceM: Double? = null,
+    val onTunnel: Boolean = false,
+    val onBridge: Boolean = false,
+    val layer: Int = 0,
 ) {
     init {
         require(candidateEntropy.isFinite() && candidateEntropy >= 0.0)
         require(candidateCount >= 0)
+        require(bestPosterior in 0.0..1.0)
+        require(secondPosterior in 0.0..1.0)
+        junctionDistanceM?.let { require(it.isFinite() && it >= 0.0) }
     }
 }
 
@@ -126,6 +155,8 @@ data class HmmMatchConfig(
     val maxDijkstraNodes: Int = 256,
     /** Newson and Krumm §4.1: drop HMM steps closer than this to the last kept point. */
     val minMoveMetres: Double = 2.0,
+    /** Distance to a degree >= 3 node that marks [MapMatchResult.nearJunction]. Default 25 m. */
+    val junctionRadiusM: Double = 25.0,
 ) {
     init {
         require(beamWidth >= 1)
@@ -140,6 +171,7 @@ data class HmmMatchConfig(
         require(maxRouteSlackM > 0.0 && maxSpeedMps > 0.0)
         require(maxDijkstraNodes >= 8)
         require(minMoveMetres >= 0.0 && minMoveMetres.isFinite())
+        require(junctionRadiusM.isFinite() && junctionRadiusM >= 0.0)
         require(
             listOf(
                 minSearchRadiusM, maxSearchRadiusM, sigmaZMetres, betaMetres,
@@ -182,4 +214,19 @@ private fun buildOutgoing(edges: List<GraphEdge>): Map<Long, IntArray> {
         buckets.getOrPut(edge.fromNodeId) { ArrayList() }.add(index)
     }
     return buckets.mapValues { (_, list) -> list.toIntArray() }
+}
+
+private fun buildUndirectedDegree(edges: List<GraphEdge>): Map<Long, Int> {
+    val neighbors = HashMap<Long, MutableSet<Long>>()
+    fun link(a: Long, b: Long) {
+        if (a == b) {
+            return
+        }
+        neighbors.getOrPut(a) { HashSet() }.add(b)
+        neighbors.getOrPut(b) { HashSet() }.add(a)
+    }
+    for (edge in edges) {
+        link(edge.fromNodeId, edge.toNodeId)
+    }
+    return neighbors.mapValues { it.value.size }
 }

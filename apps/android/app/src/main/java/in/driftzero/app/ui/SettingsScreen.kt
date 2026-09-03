@@ -97,5 +97,10 @@ internal fun SettingsScreen(
             )
         }
         BasicText(text = stringResource(R.string.settings_privacy), style = InstrumentTheme.type.caption)
+        ToggleRow(
+            label = stringResource(R.string.about_lab_title),
+            on = settings.labUnlocked,
+            onToggle = { onChange(settings.copy(labUnlocked = !settings.labUnlocked)) },
+        )
     }
 }

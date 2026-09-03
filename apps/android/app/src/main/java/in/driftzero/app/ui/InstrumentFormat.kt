@@ -1,6 +1,7 @@
 package `in`.driftzero.app.ui
 
 import `in`.driftzero.app.settings.SpeedUnit
+import `in`.driftzero.core.RouteStep
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
@@ -99,6 +100,10 @@ object InstrumentFormat {
 
     fun formatConfidence(value: Double): String = String.format(Locale.US, "%.2f", value.coerceIn(0.0, 1.0))
 
+    /** Unit interval to a whole percent. `0.92` reads `92%`. */
+    fun formatPercent(fraction: Double): String =
+        "${(fraction.coerceIn(0.0, 1.0) * 100.0).roundToInt()}%"
+
     fun formatClock(wallMs: Long, zone: TimeZone = TimeZone.getDefault()): String {
         val cal = Calendar.getInstance(zone)
         cal.timeInMillis = wallMs.coerceAtLeast(0L)
@@ -127,6 +132,7 @@ data class TravelRoute(
     val points: List<TravelLatLng>,
     val distanceM: Double,
     val durationS: Double,
+    val steps: List<RouteStep> = emptyList(),
 )
 
 data class TravelLatLng(

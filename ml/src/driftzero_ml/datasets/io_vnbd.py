@@ -6,6 +6,7 @@ import csv
 import math
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Sequence
 
 from driftzero_ml.metrics import EARTH_MEAN_RADIUS_M
 from driftzero_ml.gnss_truth import (
@@ -217,16 +218,50 @@ def load_smartphone_csv(
     return _apply_speed_unit(rows, declared_unit, resolved)
 
 
-def keep_nondecreasing_rows(rows: list[SmartphoneRow]) -> list[SmartphoneRow]:
-    """Drop samples whose TIME SINCE START jumps backward. Do not reorder."""
+@dataclass(frozen=True)
+class TimestampRewind:
+    """Rows dropped because TIME SINCE START jumped backward. Do not reorder."""
+
+    dropped_rows: int
+    kept_rows: int
+    source_rows: int
+    first_rewind_ns: int
+    suffix: bool
+
+
+def trim_nondecreasing_rows(rows: Sequence[SmartphoneRow]) -> tuple[list[SmartphoneRow], TimestampRewind | None]:
+    """Keep a non-decreasing prefix/stream. Report when a rewind discards rows."""
 
     kept: list[SmartphoneRow] = []
     last_ns: int | None = None
+    dropped = 0
+    first_rewind_ns: int | None = None
+    kept_after_rewind = 0
     for row in rows:
         if last_ns is not None and row.timestamp_ns < last_ns:
+            dropped += 1
+            if first_rewind_ns is None:
+                first_rewind_ns = int(row.timestamp_ns)
             continue
+        if first_rewind_ns is not None:
+            kept_after_rewind += 1
         kept.append(row)
         last_ns = row.timestamp_ns
+    if dropped == 0 or first_rewind_ns is None:
+        return kept, None
+    return kept, TimestampRewind(
+        dropped_rows=dropped,
+        kept_rows=len(kept),
+        source_rows=len(rows),
+        first_rewind_ns=first_rewind_ns,
+        suffix=kept_after_rewind == 0,
+    )
+
+
+def keep_nondecreasing_rows(rows: list[SmartphoneRow]) -> list[SmartphoneRow]:
+    """Drop samples whose TIME SINCE START jumps backward. Do not reorder."""
+
+    kept, _ = trim_nondecreasing_rows(rows)
     return kept
 
 

@@ -4,9 +4,9 @@ No third-party or participant raw data is committed here.
 
 Create versioned fetch and integrity manifests, then place local files under ignored `data/raw/`. Processed outputs go under `data/interim/` and `data/processed/`. See `docs/04_DATASETS_AND_DATA_GOVERNANCE.md`.
 
-## First required artifact
+## Screening manifest
 
-Create `data/manifests/io_vnbd_screening_v1.yaml` containing:
+`data/manifests/io_vnbd_screening_v1.yaml` exists. It should contain:
 
 - canonical source URL and retrieval time;
 - repository/data revision where possible;
@@ -22,5 +22,5 @@ Local inventory (no raw CSVs opened in an editor): `results/io_vnbd_screening_v1
 
 ## Sensitive data
 
-Indian pilot routes can expose home, work, or operational locations. Store them encrypted outside Git, restrict access, keep consent metadata, and export only with deliberate redaction.
+No India pilot dataset exists yet. Planned Pune drives (docs/07 P2) can expose home, work, or operational locations. Store them encrypted outside Git, restrict access, keep consent metadata, and export only with deliberate redaction.
 

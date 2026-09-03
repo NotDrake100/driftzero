@@ -11,4 +11,4 @@ Read:
 - `docs/01_SIH_REQUIREMENTS_TRACEABILITY.md` for claims;
 - `docs/SOURCES.md` for citation cards.
 
-Do not replace missing metrics with estimates. Use a visible placeholder during editing until the locked evaluator produces the value.
+Do not replace missing metrics with estimates. Use a visible placeholder during editing until the locked evaluator produces the value. Emulator screenshots live in `results/emulator/`. They are emulator, mock GPS, fake IMU. They are not phone results. TimesFM is designed, not run.

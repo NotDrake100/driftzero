@@ -24,4 +24,4 @@ Do not bulk-download `tile.openstreetmap.org`. The OSM tile usage policy forbids
 
 ## Research extras
 
-TimesFM 3, PyTorch, and optional dataset loaders are desktop-only. They are not APK dependencies. Review each checkpoint and dataset license before training or redistribution.
+TimesFM is desktop-only and is not an APK dependency. A desktop run is in `results/timesfm/`. Verdict: reject. timesfm_coast drift p50 0.6048, worse than persist 0.5168. TimesFM 3.0 weights use `timesfm-non-commercial-license-v1.0`. Research desktop use is allowed. The checkpoint cannot ship. Distillation was not attempted. 2.5 weights remain Apache-2.0. PyTorch and optional dataset loaders are also desktop-only. Review each checkpoint and dataset license before training or redistribution.

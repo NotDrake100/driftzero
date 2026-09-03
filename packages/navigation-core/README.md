@@ -11,13 +11,13 @@ It implements a strapdown INS in the local-tangent n-frame (ENU) and a 15-state 
 - Android phone sensors and GNSS;
 - deterministic session replay;
 - IO-VNBD importer/replay;
-- generic external IMU stream around 200 Hz.
+- file replay of a declared-rate IMU stream. The adapter accepts 10 Hz, 100 Hz, or 200 Hz. Only synthetic 200 Hz tests exist. No live FOG or external IMU run is in `results/`.
 
 Each adapter declares units, axes, time base, expected rate, calibration source, and quality mapping.
 
 ### File replay (FR-11, FR-12, SIH-26)
 
-`ReplaySensorSource` reads one `SensorFrame` JSON object per line. An optional first line may be a header object with `declared_rate_hz`, `clock_domain`, `frame`, and `source_id`. Otherwise those fields come from the first IMU frame and the IMU period. Units are the contract strings (`m/s^2`, `rad/s`, `uT`). Timestamps are integer nanoseconds. The adapter does not care whether the file is 10 Hz, 100 Hz, or 200 Hz.
+`ReplaySensorSource` reads one `SensorFrame` JSON object per line. An optional first line may be a header object with `declared_rate_hz`, `clock_domain`, `frame`, and `source_id`. Otherwise those fields come from the first IMU frame and the IMU period. Units are the contract strings (`m/s^2`, `rad/s`, `uT`). Timestamps are integer nanoseconds. The adapter does not care whether the file is 10 Hz, 100 Hz, or 200 Hz. Rate independence is tested on synthetic constant-velocity trips (`ReplaySensorSourceTest.twoHundredHzTrajectoryMatchesOneHundredHz`). That is not a FOG demonstration.
 
 IO-VNBD frames are produced by the Python side (`ml/`) as aligned, unit-checked SensorFrame JSONL. This adapter stays dataset-agnostic. Hidden truth GNSS is never present in the input during a mask. Scoring is Python (`ml/src/driftzero_ml/eval_navstate.py`).
 
@@ -84,6 +84,6 @@ Given the same ordered sensor frames, map/model/config artifacts, and initial st
 1. Math and coordinate unit tests.
 2. Synthetic sensor fixtures with exact truth.
 3. State-machine transition tests.
-4. Recorded trip regression tests.
-5. Cross-language parity against Python reference.
-6. Android soak and performance tests.
+4. Recorded trip regression tests (planned for Pune JSONL; IO-VNBD Kotlin replay is scored in `results/io_vnbd_screening_v1/`).
+5. Cross-language parity against Python reference (SensorFrame export plus `eval_navstate`).
+6. Android soak and performance tests (planned. No battery or p95-gap report exists).

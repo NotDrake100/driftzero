@@ -3,3 +3,7 @@ numpy==2.5.2
 matplotlib==3.11.1
 pyyaml==6.0.3
 torch==2.14.0
+# 3.0.1 ships TimesFM 3.0 and the 2.5 torch API (TimesFM_2p5_200M_torch).
+# 2.5 weights: google/timesfm-2.5-200m-pytorch, Apache-2.0.
+# 3.0 weights: google/timesfm-3.0-pytorch, timesfm-non-commercial-license-v1.0, not shippable.
+timesfm==3.0.1

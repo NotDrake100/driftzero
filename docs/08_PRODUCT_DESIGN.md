@@ -2,11 +2,11 @@
 
 About-sheet and India-paragraph facts: check `docs/refs/SIH26168_EVIDENCE.md` (fetched 2026-09-03) before shipping `about_india`.
 
-Status: production-path spec for the Android app. Written 2026-09-03 against the tree at that date. Every number on screen comes from `NavigationState` (`contracts/navigation_state.schema.json`), `NavicMonitor`, `AreaPackStore`, or a pure function named in section 12. Nothing here is a mock.
+Status: production-path spec for the Android app. Written 2026-09-03 against the tree at that date. Live readouts come from `NavigationState`, `NavicMonitor`, `AreaPackStore`, or a named formatter. Example speeds, ages, radii, pack megabytes, and p95 gaps in this file are format samples, not measured phone results. No battery report. No Ready Pune pack. TimesFM is designed, not run.
 
 Binding rules: `.cursor/rules/design-anti-vibecode.mdc`, `android.mdc`, `code-quality.mdc`, `core.mdc`, PRD sections 12, 13, 16, 18.
 
-Implementation status as of 2026-09-03 (phases from the phase plan in section 14): A to G are in the tree. D status sheet (`BottomInstrument`, `StatusCopy`, `reasonText`). E Judge overlay (trails, mode strip, Hold GNSS, p95). F first run (`StationaryCalibrator`, `MountMonitor`), offline areas, settings, About (`about_india` from `docs/refs/SIH26168_EVIDENCE.md`). G trip record, list, delete, export, and replay through existing `ReplaySensorSource`. Camera start stays live GNSS, then last trusted fix, then world 20, 0. No city default.
+Implementation status as of 2026-09-03 (phases from the phase plan in section 14): A to G are in the tree. D status sheet (`BottomInstrument`, `StatusCopy`, `reasonText`). E Judge overlay (trails, mode strip, Hold GNSS, p95). F first run (`StationaryCalibrator`, `MountMonitor`), offline areas, settings, About (`about_india` from `docs/refs/SIH26168_EVIDENCE.md`). G trip record, list, delete, export, and replay through existing `ReplaySensorSource`. Camera start stays live GNSS, then last trusted fix, then world 20, 0. No city default. If the first live fix of a session is more than 300 m from the stored last fix, the camera recenters onto the live fix and overwrites last fix.
 
 ## 1. Thesis
 
@@ -14,9 +14,9 @@ DriftZero is a field instrument that keeps a blue own-vehicle mark honest when s
 
 ## 2. Why India needs this
 
-India operates NavIC, its own regional constellation, and GAGAN, its GPS augmentation for aviation. Neither helps a phone that cannot see the sky. Civil NavIC signals are in L5 and S band, with an interoperable L1 signal only from the NVS-01 satellite onward (launched 29 May 2023), and phone support depends on the chipset: Qualcomm and MediaTek added NavIC to selected SoCs, Qualcomm announced L1 support for select platforms for the second half of 2024 with commercial devices in 2025, and the government told Parliament that "60+" smartphone models support NavIC ([ISRO ICG-17 update](https://www.unoosa.org/documents/pdf/icg/2023/ICG-17/icg17.01.05.pdf), [GPS World on Qualcomm L1](https://www.gpsworld.com/qualcomm-chipsets-support-navic-l1-signals/), [Swarajya on the Parliament reply](https://swarajyamag.com/news-brief/indias-desi-gps-navic-capability-present-in-over-10000-trains-30000-fishing-vessels-15-lakh-vehicles-and-over-60-smartphones)). ISRO's own FAQ states that NavIC does not provide integrity information and does not support safety-of-life operations, and that GAGAN augments GPS ([ISRO Navigation FAQ](https://www.isro.gov.in/FAQ_Navigation.html), summarised in `docs/refs/NAVIC.md`). A perfect constellation still cannot see inside the 9.02 km Atal Tunnel ([BRO](https://marvels.bro.gov.in/AtalTunnel/OverView)), the 2.07 km twin tunnels of the Mumbai Coastal Road ([Wikipedia](https://en.wikipedia.org/wiki/Coastal_Road_(Mumbai))), a mall basement in Bengaluru, a Delhi underpass, a Western Ghats forest road, or a Hyderabad flyover stack where the matcher must choose between deck and service road. Google Maps' answer on Android is Bluetooth tunnel beacons, which only work in tunnels that have beacons installed ([The Verge, Jan 2024](https://www.theverge.com/2024/1/16/24039896/google-maps-android-tunnels-bluetooth-beacons)). DriftZero is the layer that carries any GNSS the phone already uses (GPS, NavIC, GAGAN-corrected GPS) through those gaps on an ordinary Android phone, offline, with a confidence radius in metres and a plain reason for every degradation. It shows NavIC visibility as a count when Android reports `CONSTELLATION_IRNSS` ([Android GnssStatus](https://developer.android.com/reference/android/location/GnssStatus#CONSTELLATION_IRNSS)). It does not claim integrity, anti-jam, or anti-spoof.
+India operates NavIC, its own regional constellation, and GAGAN, its GPS augmentation for aviation. Neither helps a phone that cannot see the sky. Civil NavIC signals are in L5 and S band, with an interoperable L1 signal from NVS-01 onward (launched 29 May 2023). Qualcomm announced NavIC L1 on select platforms from the second half of 2024 ([GPS World](https://www.gpsworld.com/qualcomm-chipsets-support-navic-l1-signals/), fetched in `docs/refs/SIH26168_EVIDENCE.md`). A primary MediaTek announcement and a gazetted DoT phone mandate were not independently verified on 2026-09-03. Do not cite a "60+" smartphone count. ISRO's FAQ states that NavIC does not provide integrity information and does not support safety-of-life operations, and that GAGAN augments GPS ([ISRO Navigation FAQ](https://www.isro.gov.in/FAQ_Navigation.html)). Named Indian gaps (Atal Tunnel, Mumbai Coastal Road tunnels, basement, underpass, forest road, flyover stack) are problem examples, not DriftZero field results. Google Maps on Android can use Bluetooth tunnel beacons where installed ([The Verge, Jan 2024](https://www.theverge.com/2024/1/16/24039896/google-maps-android-tunnels-bluetooth-beacons)). DriftZero is meant to carry phone GNSS (GPS, NavIC visibility, GAGAN-corrected GPS when the chipset uses it) through those gaps. Streets and routing stay on the network until a Ready pack is installed. NavIC visibility is a count when Android reports `CONSTELLATION_IRNSS`. It does not claim integrity, anti-jam, or anti-spoof.
 
-This paragraph is the About sheet copy (`about_india`) and the first pitch slide.
+About-sheet copy is `strings.xml` `about_india`, which is the shorter ISRO-backed paragraph. This section is the pitch background. Do not paste unverified MediaTek or "60+" counts into About.
 
 ## 3. What adjacent products do, and what DriftZero takes
 
@@ -24,10 +24,10 @@ This paragraph is the About sheet copy (`about_india`) and the first pitch slide
 |---|---|---|---|
 | Google Maps | Blue dot, light blue circle "you could be anywhere within", grey dot when location is unknown, calibration prompt when the beam is wide | [Google Maps Help](https://support.google.com/maps/answer/2839911?co=GENIE.Platform%3DAndroid&hl=en) | Adopt blue puck and metre-true halo. Reject the silent grey dot: DriftZero names the mode and the reason instead. Adopt "beam narrows as heading certainty improves" as the cone rule. |
 | Google Maps and Waze tunnels | Bluetooth beacons, off by default, only where installed | [The Verge](https://www.theverge.com/2024/1/16/24039896/google-maps-android-tunnels-bluetooth-beacons) | Reject infrastructure dependence. DriftZero coasts on IMU plus road graph. |
-| Apple Maps | Motion sensors and map matching continue the dot through tunnels, with user reports of freezes and rerouting | [Apple discussions](https://discussions.apple.com/thread/253838387) | Adopt continuation. Add what Apple hides: the mode lamp, the radius, and no reroute while `DEAD_RECKONING` or `LOW_CONFIDENCE`. |
-| Garmin G1000 | Yellow `DR` annunciation over the own-aircraft symbol and on the HSI, `GPS NAV LOST` alert, deviation bar removed, automatic return when GPS is valid | [G1000 guide, Dead Reckoning](https://garmin.manymanuals.com/navigators/software-version-0552-05/users-guide-17932/73) | Adopt directly. The lamp is the annunciation, amber not yellow for contrast, the reason line is the alert, and turn guidance suppresses lane-level claims in DR. Automatic return via `REACQUIRING`. |
-| Emlid Flow, survey controllers | Solution status `SINGLE`, `FLOAT`, `FIX` shown at top right at all times, RMS shown next to the value, collection gated on fix type | [Emlid docs](https://docs.emlid.com/emlid-studio/reference/glossary/) | Adopt the always-visible status word plus number pairing (`12 m 95%`). Adopt gating: route recalculation and lane text only in `GNSS_FUSED`. |
-| OsmAnd, Organic Maps | Region downloads listed with size, stored on device, work fully offline, no expiry (Organic) | [OsmAnd](https://github.com/osmandapp/Osmand), [Organic Maps](https://github.com/organicmaps/organicmaps/) | Adopt the installed-packs list with exact bytes. Add honesty they do not need: a line that says streets and routing still come from the network until a pack is Ready. |
+| Apple Maps | Vendor tunnel dead-reckoning page not opened on 2026-09-03 | `docs/refs/SIH26168_EVIDENCE.md` section F, could not verify | Adopt continuation as a product choice. Add the mode lamp and radius. Do not cite Apple strings. |
+| Garmin automotive DR | Current Garmin auto page not opened. An old StreetPilot 2650 manual describes vehicle-wired DR | `docs/refs/SIH26168_EVIDENCE.md` section F | Adopt a named DR lamp. Do not cite G1000 as a fetched source. |
+| Survey controllers | Emlid glossary timed out on 2026-09-03 | `docs/refs/SIH26168_EVIDENCE.md` section F | Adopt always-visible status word plus number. Do not cite Emlid RMS as verified. |
+| OsmAnd, Organic Maps | OsmAnd docs describe region downloads with size. Organic Maps homepage timed out on 2026-09-03 | [OsmAnd maps docs](https://osmand.net/docs/user/personal/maps), Organic Maps could not verify | Adopt the installed-packs list with exact bytes when a pack exists. Say streets and routing still come from the network until a pack is Ready. |
 
 Rejected across the board: Material You purple, translucent panels over the map, badges above headlines, decorative motion, a boolean "GPS on/off" chip that hides four of the five modes.
 
@@ -36,7 +36,7 @@ Rejected across the board: Material You purple, translucent panels over the map,
 One Activity, one `Screen` state, no navigation library.
 
 ```text
-FirstRun (once, or when no valid calibration profile)
+FirstRun (once). Still-mount is a 5 s window, not a full calibration profile.
   Location permission -> Sensor check -> Mount and calibrate
 Map (home)
   StreetMap (puck, halo, cone, route casing and fill, matched road, destination)
@@ -61,13 +61,10 @@ Back always returns to Map. Nothing opens a modal over the map while a route is 
 
 ### 4.1 First run
 
-Implemented: `FirstRunScreen`. `SettingsStore.firstRunDone` is set when the flow finishes.
+Implemented: `FirstRunScreen`. `SettingsStore.firstRunDone` is set when the flow finishes. Two screens only. Legal and third-party copy lives on About.
 
-Three full-screen steps on the chassis colour. Each has a title (Plex Sans semibold 24), one paragraph, one primary button, and at most one secondary text button.
-
-1. Location. Title `Precise location`. Body `The blue mark starts from a satellite fix. Precise location stays on this phone.` Primary `Allow`. Secondary `Not now`. Denied path: body changes to `Map opens without a fix. The blue mark waits for location.` Primary `Continue`.
-2. Sensors. Title `Phone sensors`. Rows: `Accelerometer`, `Gyroscope`, `Magnetometer`, `GNSS` each with `Present` or `Missing` in mono. Missing gyroscope adds a caution row `Dead reckoning limited to speed and last heading`. Missing accelerometer blocks dead reckoning: caution `Dead reckoning unavailable on this phone`. Primary `Continue`.
-3. Mount and calibrate. Title `Mount the phone`. Body `Fix the phone in its mount. Keep the vehicle still for 5 seconds.` A progress bar (0 to 100, mono) and a quality word from `CalibrationResult`: `Still`, `Moving`, `Done 0.3 deg`. Primary `Start`, then `Done` when complete. Secondary `Skip` only when a valid profile exists for the current mount (gravity direction within 10 degrees of the stored profile). Never asks the driver to do this while moving: the step refuses to start when speed exceeds 1 m/s and says `Stop the vehicle first`.
+1. What it does. Title `DriftZero`. Body: `The blue mark keeps moving when satellites drop out.` Then `Precise location seeds that mark. It stays on this phone.` Primary `Allow`. Secondary `Not now`. Denied path: body changes to `Map opens without a fix. The blue mark waits for location.` Primary `Continue`.
+2. Mount and still. Title `Mount the phone`. Body `Fix the phone in its mount. Keep the vehicle still for 5 seconds.` Progress percent and a quality word: `Still`, `Moving`, `Done`. Starts on entry when the vehicle is stopped. Opens the map when the 5 s window succeeds. One caution line only when a sensor is missing. Refuses to start when speed exceeds 1 m/s and says `Stop the vehicle first`.
 
 ### 4.2 Main map
 
@@ -123,8 +120,8 @@ Expanded rows, each 48 dp, label `caption` left, value mono right:
 | Sensors | `Accel, gyro ok`, `No IMU 0.6 s`, `ZUPT`, `NHC` | `health.sensorOk`, `health.flags` |
 | Model | `Speed student`, `Heuristic speed`, `Filter only` | `health.modelOk`, `FLAG_MOTION_PSEUDO`, `provenance.modelVersion` |
 | NavIC | `3 visible, 2 used`, `Not reported by chipset` | `NavicMonitor.visibility` |
-| Area pack | `example-india, 412 MB`, `None. Streets and routing from network` | `AreaPackStore.active()` |
-| Output rate | `p95 gap 108 ms` | `TickIntervals` ring buffer, only when 20+ samples exist |
+| Area pack | Ready pack id and measured bytes, or `None. Streets and routing from network` | `AreaPackStore.active()`. `example-india, 412 MB` is a formatter sample. No such pack exists. |
+| Output rate | `p95 gap` from `TickIntervals` when 20+ samples exist | No phone p95-gap report exists. `108 ms` in tests is a formatter fixture. |
 
 Links row at the bottom: `Trips`, `Offline areas`, `Settings`, `About`. Long-press on the collapsed line opens Judge.
 
@@ -132,7 +129,7 @@ Links row at the bottom: `Trips`, `Offline areas`, `Settings`, `About`. Long-pre
 
 Implemented: `JudgeOverlay.kt`. Lamp long-press still holds GNSS under 8 m/s. Judge Hold GNSS has no speed gate. Trails are display only.
 
-Opens over the map; the sheet collapses. Adds: raw GNSS trail (dotted 2 dp `inkDim`, 600 points), fused trail (solid 3 dp marker blue, 600 points), a 60 s mode strip (one 2 dp column per 10 Hz sample, lamp colour), a `Hold GNSS` toggle button with `Held 32 s, 410 m dead reckoned` while held, `p95 output gap 108 ms` from real tick intervals, and a `Close` button. Nothing in Judge writes into the filter. Raw GNSS is display only and is labelled `Phone GNSS (not an input while held)`. Ground truth from a dataset is never drawn on the phone; that belongs to the desktop report.
+Opens over the map; the sheet collapses. Adds: raw GNSS trail (dotted 2 dp `inkDim`, 600 points), fused trail (solid 3 dp marker blue, 600 points), a 60 s mode strip (one 2 dp column per 10 Hz sample, lamp colour), a `Hold GNSS` toggle with live held seconds and coasted metres, `p95 output gap` from `TickIntervals` when 20+ samples exist (no phone report yet), and a `Close` button. `Held 32 s, 410 m` and `108 ms` in older drafts are format samples. Nothing in Judge writes into the filter. Raw GNSS is display only and is labelled `Phone GNSS (not an input while held)`. Ground truth from a dataset is never drawn on the phone; that belongs to the desktop report.
 
 ### 4.8 Trips
 
@@ -178,7 +175,8 @@ All targets at least 48 dp. Pressed state is a darker solid fill (`panelPressed`
 
 ## 6. States and transitions
 
-- Entering a blackout: `gnssHealth.lastTrustedFixAgeS` passes `STALE_AFTER_S` (2 s) or the hold is armed. Lamp goes amber `Dead reckoning`, halo stroke turns dashed, haptic tick once (if enabled), reason `No fix for 2 s` counts up. Route rows freeze their last value. No reroute.
+- Entering a blackout: `gnssHealth.lastTrustedFixAgeS` passes `STALE_AFTER_S` (2 s) or the hold is armed. Lamp goes amber `Dead reckoning`, halo stroke turns dashed, haptic tick once (if enabled). The collapsed strip replaces speed with `No fix 12 s` and `140 m coasted`, then the 95 percent radius. A hollow `Last fix` mark stays at the last trusted GNSS so the puck leaving that point is visible. Route rows freeze their last value. No reroute.
+- Recovery: on `REACQUIRING` a thin line from the pre-fix estimate to the accepted fix is drawn for 3 s, then removed. The filter applies the Kalman correction in one step. The line is the visible correction. The interpolator still bounds the puck motion.
 - Growing uncertainty: the halo polygon is rebuilt each frame from `horizontal95`. The cone widens with `heading95Rad`. Speed keeps showing because it is estimated, not measured; the sheet says so with the Model row.
 - `LOW_CONFIDENCE`: `horizontal95 > 120 m` (`InsConfig.lowConfidenceRadiusM`). Lamp red, reason `Radius 130 m over 120 m limit`, optional audio cue once, lane-level text is suppressed, the route line stays but the puck is not snapped (`puckLatitudeDeg` only uses the matched pose when `MATCHED`).
 - `GNSS_DEGRADED` and `REACQUIRING`: produced by the filter after this change (ADR 006). Degraded when the last accepted fix is fresher than 2 s but its accuracy exceeds 30 m or a fix was innovation-gated in the last 5 s. Reacquiring when a plausible fix arrives after a coast and fewer than 3 consecutive gated-in fixes have been accepted. The display pose blends via `PuckInterpolator`; the filter itself applies the Kalman correction in one step, which is correct, and the interpolator bounds what the eye sees to 0.5 s.
@@ -276,14 +274,10 @@ In `strings.xml` as of 2026-09-03: `app_name` through `search_network`, `action_
 | `judge_fused_trail` | DriftZero fused |
 | `judge_held_status` | Held %1$s s, %2$s m dead reckoned |
 | `judge_mode_strip` | Mode, last 60 s |
-| `firstrun_location_title` | Precise location |
-| `firstrun_location_body` | The blue mark starts from a satellite fix. Precise location stays on this phone. |
+| `firstrun_location_title` | DriftZero |
+| `firstrun_what` | The blue mark keeps moving when satellites drop out. |
+| `firstrun_why_location` | Precise location seeds that mark. It stays on this phone. |
 | `firstrun_location_denied` | Map opens without a fix. The blue mark waits for location. |
-| `firstrun_sensors_title` | Phone sensors |
-| `firstrun_sensor_accel` | Accelerometer |
-| `firstrun_sensor_gyro` | Gyroscope |
-| `firstrun_sensor_mag` | Magnetometer |
-| `firstrun_sensor_gnss` | GNSS |
 | `firstrun_no_gyro` | Dead reckoning limited to speed and last heading |
 | `firstrun_no_accel` | Dead reckoning unavailable on this phone |
 | `firstrun_mount_title` | Mount the phone |
@@ -450,7 +444,9 @@ Corners 4 dp (chips, buttons), 8 dp (sheet, lists), 24 dp (search pill only). Co
 
 Implemented as of 2026-09-03: colour roles (`InstrumentPaletteSet`, `InstrumentPalette.DAY` and `NIGHT`, `InstrumentColors`), type roles (`InstrumentType`), `DriftZeroTheme(night, reduceMotion)`, the CompositionLocals `LocalInstrumentColors`, `LocalInstrumentType`, `LocalInstrumentNight`, `LocalReduceMotion`, `values/colors.xml`, `values-night/colors.xml`, `values/themes.xml`, `values-night/themes.xml`, `Theme.DriftZero.Splash`, `travelClickable` pressed state, `ModeLamp`. Named components `PrimaryButton`, `SecondaryButton`, `InstrumentSheet`, `ListRow`, `TextField`, `Toggle` are not implemented; see phase plan (D, F). `InstrumentContrastTest` asserts the pairs in section 10 for both palettes.
 
-## 14. Implementation plan (phase two)
+## 14. Implementation plan (historical phase two)
+
+This section is the 2026-09-03 UI build list. Later status is in the header. Owner schedule is `docs/07_RESEARCH_AND_ROADMAP.md` section 3.4. Do not read the remaining "not started" lines as current.
 
 Order matters; the build must be green after each step.
 
@@ -475,19 +471,12 @@ Deleted as of 2026-09-03: `TravelHud.kt` and `TravelHudTest.kt` (folded into `In
 
 ## 15. Sources
 
-- ISRO ICG-17 NavIC and GAGAN update: https://www.unoosa.org/documents/pdf/icg/2023/ICG-17/icg17.01.05.pdf
+- Fetch log: `docs/refs/SIH26168_EVIDENCE.md` (2026-09-03)
 - ISRO Navigation FAQ: https://www.isro.gov.in/FAQ_Navigation.html
 - GPS World, Qualcomm NavIC L1: https://www.gpsworld.com/qualcomm-chipsets-support-navic-l1-signals/
-- Swarajya, Parliament reply on NavIC devices: https://swarajyamag.com/news-brief/indias-desi-gps-navic-capability-present-in-over-10000-trains-30000-fishing-vessels-15-lakh-vehicles-and-over-60-smartphones
 - Android GnssStatus: https://developer.android.com/reference/android/location/GnssStatus#CONSTELLATION_IRNSS
-- Atal Tunnel, BRO: https://marvels.bro.gov.in/AtalTunnel/OverView
-- Mumbai Coastal Road: https://en.wikipedia.org/wiki/Coastal_Road_(Mumbai)
 - Google Maps Help, location accuracy: https://support.google.com/maps/answer/2839911?co=GENIE.Platform%3DAndroid&hl=en
 - The Verge, Google Maps tunnel beacons: https://www.theverge.com/2024/1/16/24039896/google-maps-android-tunnels-bluetooth-beacons
-- Apple Support Communities, tunnel rerouting: https://discussions.apple.com/thread/253838387
-- Garmin G1000 Dead Reckoning: https://garmin.manymanuals.com/navigators/software-version-0552-05/users-guide-17932/73
-- Emlid glossary, solution status and RMS: https://docs.emlid.com/emlid-studio/reference/glossary/
-- OsmAnd: https://github.com/osmandapp/Osmand
-- Organic Maps: https://github.com/organicmaps/organicmaps/
-- Android SplashScreen: https://developer.android.com/develop/ui/views/launch/splash-screen
+- OsmAnd maps docs: https://osmand.net/docs/user/personal/maps
 - OpenFreeMap styles: https://tiles.openfreemap.org/styles/liberty and https://tiles.openfreemap.org/styles/dark
+- Not independently verified on 2026-09-03: Swarajya "60+" phone count, MediaTek primary page, Apple Maps tunnel vendor docs, current Garmin auto DR page, Emlid glossary, Organic Maps homepage. Do not cite those as product facts.

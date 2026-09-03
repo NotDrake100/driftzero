@@ -8,8 +8,10 @@ import android.hardware.SensorManager
 import `in`.driftzero.core.Nanoseconds
 
 /**
- * Copies accelerometer and gyroscope [SensorEvent]s into [PoseStore].
- * No inference, disk, or UI work runs in the callback.
+ * Copies accelerometer, gyroscope, and magnetometer [SensorEvent]s into
+ * [PoseStore]. Accel is m/s^2, gyro is rad/s, mag is microtesla (uT). All
+ * three are [in.driftzero.core.VectorFrame.ANDROID_DEVICE]. Mag is captured
+ * and unused in fusion. No inference, disk, or UI work runs in the callback.
  */
 class PhoneImuSource(
     context: Context,
@@ -18,6 +20,7 @@ class PhoneImuSource(
     private val manager = context.applicationContext.getSystemService(SensorManager::class.java)
     private val accel = manager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     private val gyro = manager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+    private val mag = manager?.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
     private var running: Boolean = false
 
     fun start() {
@@ -28,6 +31,7 @@ class PhoneImuSource(
         running = true
         accel?.let { sensors.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
         gyro?.let { sensors.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
+        mag?.let { sensors.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
     }
 
     fun stop() {
@@ -53,6 +57,8 @@ class PhoneImuSource(
         when (event.sensor.type) {
             Sensor.TYPE_ACCELEROMETER -> store.ingestAccel(stamp, x, y, z)
             Sensor.TYPE_GYROSCOPE -> store.ingestGyro(stamp, x, y, z)
+            Sensor.TYPE_MAGNETIC_FIELD ->
+                store.ingestMagnetometer(stamp, x, y, z, accuracyCode = event.accuracy)
             else -> Unit
         }
     }

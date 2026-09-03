@@ -1,5 +1,6 @@
 package `in`.driftzero.app.ui
 
+import `in`.driftzero.core.Wgs84
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -28,6 +29,78 @@ class CameraStartTest {
         assertEquals(51.5074, start.latitudeDeg, 0.0001)
         assertEquals(-0.1278, start.longitudeDeg, 0.0001)
         assertTrue(start.isStreetLevel)
+    }
+
+    @Test
+    fun startAndFollowUseLiveWhenTwoKmFromLastFix() {
+        val lastFix = TravelLatLng(10.0, 20.0)
+        val offset = Wgs84.offsetMetres(
+            lastFix.latitudeDeg,
+            lastFix.longitudeDeg,
+            northM = 2_000.0,
+            eastM = 0.0,
+        )
+        val live = TravelLatLng(offset.first, offset.second)
+        val start = CameraStartResolver.resolve(liveGps = live, lastFix = lastFix)
+        assertEquals(live.latitudeDeg, start.latitudeDeg, 1e-9)
+        assertEquals(live.longitudeDeg, start.longitudeDeg, 1e-9)
+        assertEquals(live, CameraStartResolver.preferredFix(liveGps = live, lastFix = lastFix))
+        assertTrue(
+            CameraStartResolver.shouldRecenterOnLive(
+                liveGps = live,
+                lastFix = lastFix,
+                alreadyRecentred = false,
+            ),
+        )
+        assertFalse(
+            CameraStartResolver.shouldRecenterOnLive(
+                liveGps = live,
+                lastFix = lastFix,
+                alreadyRecentred = true,
+            ),
+        )
+    }
+
+    @Test
+    fun startUsesLastFixWhenLiveMissing() {
+        val lastFix = TravelLatLng(12.0, 77.0)
+        val start = CameraStartResolver.resolve(liveGps = null, lastFix = lastFix)
+        assertEquals(lastFix.latitudeDeg, start.latitudeDeg, 1e-9)
+        assertEquals(lastFix.longitudeDeg, start.longitudeDeg, 1e-9)
+        assertEquals(lastFix, CameraStartResolver.preferredFix(liveGps = null, lastFix = lastFix))
+        assertFalse(
+            CameraStartResolver.shouldRecenterOnLive(
+                liveGps = null,
+                lastFix = lastFix,
+                alreadyRecentred = false,
+            ),
+        )
+    }
+
+    @Test
+    fun nearbyLiveDoesNotJumpOffLastFix() {
+        val lastFix = TravelLatLng(10.0, 20.0)
+        val offset = Wgs84.offsetMetres(
+            lastFix.latitudeDeg,
+            lastFix.longitudeDeg,
+            northM = 50.0,
+            eastM = 0.0,
+        )
+        val live = TravelLatLng(offset.first, offset.second)
+        assertFalse(
+            CameraStartResolver.shouldRecenterOnLive(
+                liveGps = live,
+                lastFix = lastFix,
+                alreadyRecentred = false,
+            ),
+        )
+        assertTrue(
+            CameraStartResolver.shouldRecenterOnLive(
+                liveGps = live,
+                lastFix = null,
+                alreadyRecentred = false,
+            ),
+        )
     }
 
     @Test

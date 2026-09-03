@@ -84,7 +84,8 @@ internal fun parseOsrmRoute(body: String): TravelRoute? {
     if (points.size < 2) {
         return null
     }
-    return TravelRoute(points = points, distanceM = distance, durationS = duration)
+    val steps = parseOsrmSteps(route, points)
+    return TravelRoute(points = points, distanceM = distance, durationS = duration, steps = steps)
 }
 
 internal fun parseNominatimPlaces(body: String): List<TravelPlace>? {
@@ -92,30 +93,45 @@ internal fun parseNominatimPlaces(body: String): List<TravelPlace>? {
     val items = root.arr() ?: return null
     val places = ArrayList<TravelPlace>(items.size)
     for (item in items) {
-        val lat = item.at("lat")?.numOrStr() ?: continue
-        val lon = item.at("lon")?.numOrStr() ?: continue
-        if (lat !in -90.0..90.0 || lon !in -180.0..180.0) {
-            continue
-        }
-        val display = item.at("display_name")?.str()?.takeIf { it.isNotBlank() }
-        val name = item.at("name")?.str()?.takeIf { it.isNotBlank() }
-            ?: display?.substringBefore(',')?.trim()?.takeIf { it.isNotEmpty() }
-            ?: continue
-        val detail = display
-            ?.split(',')
-            ?.map { it.trim() }
-            ?.filter { it.isNotEmpty() && it != name }
-            ?.take(3)
-            ?.joinToString(", ")
-            .orEmpty()
-        places += TravelPlace(
-            name = name,
-            detail = detail,
-            latitudeDeg = lat,
-            longitudeDeg = lon,
-        )
+        nominatimPlace(item)?.let { places += it }
     }
     return places
+}
+
+internal fun parseNominatimReverse(body: String): TravelPlace? {
+    val root = parseJson(body) ?: return null
+    root.arr()?.let { items ->
+        for (item in items) {
+            nominatimPlace(item)?.let { return it }
+        }
+        return null
+    }
+    return nominatimPlace(root)
+}
+
+private fun nominatimPlace(item: JsonVal): TravelPlace? {
+    val lat = item.at("lat")?.numOrStr() ?: return null
+    val lon = item.at("lon")?.numOrStr() ?: return null
+    if (lat !in -90.0..90.0 || lon !in -180.0..180.0) {
+        return null
+    }
+    val display = item.at("display_name")?.str()?.takeIf { it.isNotBlank() }
+    val name = item.at("name")?.str()?.takeIf { it.isNotBlank() }
+        ?: display?.substringBefore(',')?.trim()?.takeIf { it.isNotEmpty() }
+        ?: return null
+    val detail = display
+        ?.split(',')
+        ?.map { it.trim() }
+        ?.filter { it.isNotEmpty() && it != name }
+        ?.take(3)
+        ?.joinToString(", ")
+        .orEmpty()
+    return TravelPlace(
+        name = name,
+        detail = detail,
+        latitudeDeg = lat,
+        longitudeDeg = lon,
+    )
 }
 
 private class JsonParse(private val src: String) {

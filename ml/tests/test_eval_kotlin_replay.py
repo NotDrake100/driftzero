@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
-from driftzero_ml.eval_kotlin_replay import replay_mask_ns
+from driftzero_ml.eval_kotlin_replay import replay_cli_args, replay_mask_ns, slim_replay_header
 
 
 class ReplayMaskTests(unittest.TestCase):
@@ -19,6 +20,34 @@ class ReplayMaskTests(unittest.TestCase):
 
     def test_empty_window_unchanged(self) -> None:
         self.assertEqual(replay_mask_ns(10, 10), (10, 10))
+
+    def test_replay_cli_args_append_coast_mode(self) -> None:
+        args = replay_cli_args(
+            Path("/bin/navigation-core"),
+            Path("/tmp/in.jsonl"),
+            Path("/tmp/out.jsonl"),
+            11,
+            21,
+            extra_args=("--coast-mode=yaw_speed_hold",),
+        )
+        self.assertEqual(args[-1], "--coast-mode=yaw_speed_hold")
+        self.assertIn("--mask-start-ns", args)
+
+    def test_slim_replay_header_keeps_four_keys(self) -> None:
+        slim = slim_replay_header(
+            {
+                "declared_rate_hz": 10.0,
+                "clock_domain": "elapsed_realtime_ns",
+                "frame": "unspecified",
+                "source_id": "S-Vta2",
+                "heading_gyro": {"axis": "pitch"},
+                "notes": ["x"],
+            }
+        )
+        self.assertEqual(
+            set(slim),
+            {"declared_rate_hz", "clock_domain", "frame", "source_id"},
+        )
 
 
 if __name__ == "__main__":

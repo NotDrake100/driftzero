@@ -155,6 +155,10 @@ object OsmGraphLoader {
                     continue
                 }
                 val oneway = parseOneway(way.tags)
+                val layer = parseLayer(way.tags)
+                val bridge = isOsmTrue(way.tags["bridge"])
+                val tunnel = isOsmTrue(way.tags["tunnel"])
+                val onewayEdge = oneway != Oneway.BOTH
                 val baseId = "way/${way.id}:$seg"
                 fun add(id: String, pts: List<GeoPoint>, hdgs: DoubleArray, fromId: Long, toId: Long) {
                     val edge = GraphEdge(
@@ -166,6 +170,10 @@ object OsmGraphLoader {
                         segmentHeadingsRad = hdgs,
                         highway = way.tags.getValue("highway"),
                         osmWayId = way.id,
+                        layer = layer,
+                        bridge = bridge,
+                        tunnel = tunnel,
+                        oneway = onewayEdge,
                     )
                     if (bbox == null || edgeTouchesBbox(edge, bbox)) {
                         edges.add(edge)
@@ -225,6 +233,20 @@ object OsmGraphLoader {
             "yes", "true", "1" -> Oneway.FORWARD
             "-1", "reverse" -> Oneway.REVERSE
             else -> Oneway.BOTH
+        }
+    }
+
+    private fun parseLayer(tags: Map<String, String>): Int =
+        tags["layer"]?.toIntOrNull() ?: 0
+
+    /** OSM flag: absent / no / false / 0 is false. Any other tagged value is true. */
+    private fun isOsmTrue(value: String?): Boolean {
+        if (value == null) {
+            return false
+        }
+        return when (value.lowercase()) {
+            "no", "false", "0" -> false
+            else -> true
         }
     }
 
@@ -446,7 +468,6 @@ object OsmGraphLoader {
         val lon = 1e-9 * (lonOffset + granularity.toLong() * lonRaw)
         if (!lat.isFinite() || !lon.isFinite()) return
         if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return
-        if (bbox != null && !bbox.contains(lat, lon)) return
         nodes[id] = GraphNode(id, LatitudeDeg(lat), LongitudeDeg(lon))
     }
 

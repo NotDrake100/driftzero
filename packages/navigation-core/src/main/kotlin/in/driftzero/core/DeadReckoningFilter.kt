@@ -6,8 +6,10 @@ import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.exp
+import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -19,6 +21,19 @@ import kotlin.math.sqrt
  * ([NFrameMechanization], Groves §5.4, Titterton §3.5.3). GNSS updates when
  * the fix is healthy and younger than [STALE_AFTER_S]. Otherwise propagate
  * only (dead reckoning).
+ *
+ * [InsConfig.coastMode] selects the coast model. [CoastMode.STRAPDOWN] keeps
+ * full specific-force integration (v1/v2). [CoastMode.YAW_SPEED_HOLD] holds
+ * horizontal speed and yaws from the gravity-vertical gyro while coasting.
+ * Optional [InsConfig.coastStopDetect] ZUPTs from IMU vibration while held
+ * speed would otherwise skip still-ZUPT. [InsConfig.weakHeadingPolicy]
+ * HOLD_COURSE zeros yaw rate when the heading-gyro pick is weak.
+ * [InsConfig.coastLatchGnssSpeed] latches a recent reported GNSS speed
+ * (including accuracy-ok fixes the position gate rejected). After a unique-fix
+ * gap of at least [InsConfig.gnssReseedAfterS] a sanity-ok GNSS re-seeds pose
+ * instead of gating, except while already fused unless
+ * [InsConfig.gnssReseedWhileFused]. The 15-state ESKF remains so ZUPT, NHC, and
+ * [applyRoadHeading] still land. NHC runs only in [VectorFrame.VEHICLE_FLU].
  *
  * [MotionModel] is not owned here. [MotionPseudoRuntime] infers on the 10 Hz
  * worker and injects [MotionPseudoMeasurement] through [ingestMotionPseudo]
@@ -79,18 +94,109 @@ class DeadReckoningFilter(
     private var coastedSinceFix: Boolean = false
     private var reacquiredFixes: Int = 0
     private var lastGatedGnssNs: Long = -1L
-    private var speedBeforeHold: Double = 0.0
+    private var speedBeforeCoast: Double = 0.0
+    private var coastSnapshotTaken: Boolean = false
+    private var heldSpeedMps: Double = 0.0
+    private var coastHeadingRad: Double = 0.0
+    private var lastAcceptedGnssSpeedMps: Double? = null
+    private var lastAcceptedGnssSpeedNs: Long = -1L
+    private var lastReportedGnssSpeedMps: Double? = null
+    private var lastReportedGnssSpeedNs: Long = -1L
+    private var consecutiveGnssGates: Int = 0
+    private var gnssGateInflated: Boolean = false
+    private var resumeSpeedMps: Double = 0.0
+    private var coastStopped: Boolean = false
+    private var quietSinceNs: Long = -1L
+    private var noisySinceNs: Long = -1L
+    private var burstUntilNs: Long = -1L
+    private var resumeInhibitUntilNs: Long = -1L
+    private var coastStopArmed: Boolean = !config.coastStopRequireStoppedPrefix
+    private var stopCalibrated: Boolean = false
+    private var coastStopDisarmed: Boolean = false
+    private var effectiveStopAccelVar: Double = config.coastStopAccelVar
+    private var effectiveStopGyroRadps: Double = config.coastStopGyroRadps
+    private var headingPickWeak: Boolean = false
+    private var headingPickForced: Boolean = false
+    private var coastElapsedS: Double = 0.0
+    private var lastGnssReseed: Boolean = false
+    private var lastGnssAdmit: String = ""
+    private var lastWouldAdmitWithoutReseed: Boolean = false
+    private var lastAcceptedUniqueNs: Long = -1L
+    private var lastAcceptedUniqueLat: Double = 0.0
+    private var lastAcceptedUniqueLon: Double = 0.0
+    /** Phone IMU still for the live path. Replay leaves this false. */
+    private var imuStill: Boolean = false
+    private val gnssTrail: ArrayDeque<TrailFix> = ArrayDeque()
+    private val vib: ArrayDeque<VibSample> = ArrayDeque()
+    private val prefixStoppedVars: ArrayList<Double> = ArrayList()
+    private val prefixMovingVars: ArrayList<Double> = ArrayList()
+    private val prefixStoppedGyros: ArrayList<Double> = ArrayList()
+    private val prefixMovingGyros: ArrayList<Double> = ArrayList()
 
     fun setGnssHeld(held: Boolean) {
         synchronized(lock) {
             if (held && !gnssHeld) {
-                speedBeforeHold = hypot(ve, vn)
+                if (config.coastLatchGnssSpeed) {
+                    coastSnapshotTaken = false
+                }
+                captureCoastSnapshot()
             }
             gnssHeld = held
+            if (!held && !isCoasting(timeNs)) {
+                coastSnapshotTaken = false
+            }
         }
     }
 
     fun isGnssHeld(): Boolean = synchronized(lock) { gnssHeld }
+
+    /**
+     * Live-phone table still. When true, still-ZUPT is not skipped for a
+     * held vehicle speed, GNSS velocity is ignored, and ZUPT holds position.
+     */
+    fun setImuStill(still: Boolean) {
+        synchronized(lock) {
+            imuStill = still
+        }
+    }
+
+    /** GNSS age (s) before [NavigationMode.DEAD_RECKONING] unless GNSS is held. */
+    fun gnssStaleAfterS(): Double = synchronized(lock) { config.staleAfterS }
+
+    /**
+     * A live fix arrived but was not applied (table still vs jumpy indoor
+     * GNSS). Keeps GNSS age fresh so a few-second drop is not a tunnel.
+     */
+    fun noteGnssHeartbeat(timestamp: Nanoseconds) {
+        synchronized(lock) {
+            if (!initialized || gnssHeld) {
+                return
+            }
+            lastTrustedGnssNs = timestamp.value
+        }
+    }
+
+    /**
+     * Heading-gyro pick quality for [WeakHeadingPolicy.HOLD_COURSE].
+     * [forced] true means Replay CLI wins over gyro quality flags.
+     */
+    fun setHeadingPickWeak(weak: Boolean, forced: Boolean = true) {
+        synchronized(lock) {
+            headingPickWeak = weak
+            headingPickForced = forced
+        }
+    }
+
+    fun noteQualityFlags(flags: Set<String>) {
+        synchronized(lock) {
+            if (headingPickForced) {
+                return
+            }
+            if (flags.contains(FLAG_HEADING_PICK_WEAK)) {
+                headingPickWeak = true
+            }
+        }
+    }
 
     fun ingestAccel(
         timestamp: Nanoseconds,
@@ -131,6 +237,10 @@ class DeadReckoningFilter(
             if (gnssHeld) {
                 return
             }
+            recordReportedGnssSpeed(fix)
+            if (fix.horizontalAccuracyM <= config.maxGnssAccuracyM) {
+                rememberFix(fix)
+            }
             if (!initialized) {
                 initializeFromGnss(fix)
                 return
@@ -161,7 +271,6 @@ class DeadReckoningFilter(
             if (!numericalOk) {
                 return
             }
-            lastPseudo = true
             applyMotionPseudo(meas)
         }
     }
@@ -187,6 +296,70 @@ class DeadReckoningFilter(
         }
     }
 
+    /**
+     * 1-dof road heading update for a later matcher (Stream D). Joseph form.
+     * Applied only while coasting. Position is restored after inject so the
+     * bearing never snaps lat/lon. [speedHintMps] may rotate held speed onto
+     * the accepted heading. Chi-square gate is [InsConfig.roadHeadingChi2Gate]
+     * (default 6.63, 99th percentile, 1 dof).
+     */
+    fun applyRoadHeading(
+        bearingRad: Double,
+        stdRad: Double,
+        speedHintMps: Double?,
+    ): RoadHeadingResult {
+        synchronized(lock) {
+            if (!initialized || !numericalOk) {
+                return RoadHeadingResult(accepted = false, reason = RoadHeadingReason.NOT_INITIALIZED)
+            }
+            if (!isCoasting(timeNs)) {
+                return RoadHeadingResult(accepted = false, reason = RoadHeadingReason.NOT_COASTING)
+            }
+            if (!bearingRad.isFinite() || !stdRad.isFinite() || stdRad <= 0.0) {
+                return RoadHeadingResult(accepted = false, reason = RoadHeadingReason.INVALID_STD)
+            }
+            val speed = hypot(ve, vn)
+            val heading = headingRad(speed)
+            val nu = wrapPi(bearingRad - heading)
+            hRow.fill(0.0)
+            hRow[EskfDim.ITH + 2] = 1.0
+            residual[0] = nu
+            rMeas.fill(0.0)
+            rMeas[0] = stdRad * stdRad
+            val chi2 = innovationChiSquared(p, hRow, residual, rMeas, 1, joseph)
+                ?: return RoadHeadingResult(accepted = false, reason = RoadHeadingReason.NUMERICAL)
+            if (chi2 > config.roadHeadingChi2Gate) {
+                return RoadHeadingResult(accepted = false, reason = RoadHeadingReason.CHI2_REJECT, chi2 = chi2)
+            }
+            val east0 = eastM
+            val north0 = northM
+            val up0 = upM
+            if (!josephUpdate(p, hRow, residual, rMeas, 1, dx, joseph)) {
+                numericalOk = false
+                return RoadHeadingResult(accepted = false, reason = RoadHeadingReason.NUMERICAL, chi2 = chi2)
+            }
+            val dYaw = dx[8]
+            inject()
+            eastM = east0
+            northM = north0
+            upM = up0
+            val newHeading = wrapHeadingRad(heading + dYaw)
+            val mag = when {
+                speedHintMps != null && speedHintMps.isFinite() && speedHintMps >= 0.0 -> speedHintMps
+                else -> hypot(ve, vn).let { if (it >= 0.05) it else speed }
+            }
+            ve = mag * sin(newHeading)
+            vn = mag * cos(newHeading)
+            if (config.coastMode == CoastMode.YAW_SPEED_HOLD) {
+                coastHeadingRad = newHeading
+                heldSpeedMps = mag
+                vu = 0.0
+            }
+            lastHeadingRad = newHeading
+            return RoadHeadingResult(accepted = true, reason = RoadHeadingReason.ACCEPTED, chi2 = chi2)
+        }
+    }
+
     fun consume(frame: SensorFrame) {
         if (!frame.quality.available) {
             return
@@ -197,6 +370,7 @@ class DeadReckoningFilter(
                 ingestAccel(frame.timestamp, v.x, v.y, v.z, v.frame)
             }
             SensorKind.GYROSCOPE -> {
+                noteQualityFlags(frame.quality.flags)
                 val v = (frame.payload as VectorPayload).vector
                 ingestGyro(frame.timestamp, v.x, v.y, v.z, v.frame)
             }
@@ -232,6 +406,10 @@ class DeadReckoningFilter(
             ba = Vec3.ZERO
             bg = Vec3.ZERO
             lastTrustedGnssNs = -1L
+            lastAcceptedUniqueNs = -1L
+            lastAcceptedUniqueLat = 0.0
+            lastAcceptedUniqueLon = 0.0
+            imuStill = false
             lastImuNs = -1L
             accelHistCount = 0
             lastZupt = false
@@ -247,9 +425,41 @@ class DeadReckoningFilter(
             coastedSinceFix = false
             reacquiredFixes = 0
             lastGatedGnssNs = -1L
-            speedBeforeHold = 0.0
+            speedBeforeCoast = 0.0
+            coastSnapshotTaken = false
+            heldSpeedMps = 0.0
+            coastHeadingRad = 0.0
+            lastAcceptedGnssSpeedMps = null
+            lastAcceptedGnssSpeedNs = -1L
+            lastReportedGnssSpeedMps = null
+            lastReportedGnssSpeedNs = -1L
+            consecutiveGnssGates = 0
+            gnssGateInflated = false
+            resumeSpeedMps = 0.0
+            coastStopped = false
+            quietSinceNs = -1L
+            noisySinceNs = -1L
+            burstUntilNs = -1L
+            resumeInhibitUntilNs = -1L
+            coastStopArmed = !config.coastStopRequireStoppedPrefix
+            stopCalibrated = false
+            coastStopDisarmed = false
+            effectiveStopAccelVar = config.coastStopAccelVar
+            effectiveStopGyroRadps = config.coastStopGyroRadps
+            headingPickWeak = false
+            headingPickForced = false
+            coastElapsedS = 0.0
+            lastGnssReseed = false
+            lastGnssAdmit = ""
+            lastWouldAdmitWithoutReseed = false
+            gnssTrail.clear()
+            vib.clear()
+            prefixStoppedVars.clear()
+            prefixMovingVars.clear()
+            prefixStoppedGyros.clear()
+            prefixMovingGyros.clear()
             p.zero()
-            if (reason == ResetReason.USER) {
+            if (reason == ResetReason.USER || reason == ResetReason.REMOUNT) {
                 gnssHeld = false
             }
         }
@@ -264,12 +474,8 @@ class DeadReckoningFilter(
             if (!initialized || !numericalOk) {
                 return null
             }
-            val ageS = if (lastTrustedGnssNs < 0L) {
-                (now.value - timeNs).coerceAtLeast(0L) / NS_PER_S
-            } else {
-                (now.value - lastTrustedGnssNs).coerceAtLeast(0L) / NS_PER_S
-            }
-            val coasting = gnssHeld || ageS > STALE_AFTER_S
+            val ageS = gnssAgeS(now.value)
+            val coasting = isCoasting(now.value)
             val horizVar = max(p[0, 0] + p[1, 1], 0.0)
             val horizontal95 = 2.0 * sqrt(horizVar)
             val heading95 = 2.0 * sqrt(max(p[EskfDim.ITH + 2, EskfDim.ITH + 2], 0.0))
@@ -301,6 +507,7 @@ class DeadReckoningFilter(
                 if (coasting) add(RISK_STALE_GNSS)
                 if (lastHorizAccM > config.degradedAccuracyM && !coasting) add(RISK_POOR_ACCURACY)
                 if (gatedRecently) add(RISK_GATED_FIX)
+                if (gnssGateInflated) add(RISK_GNSS_GATE_INFLATE)
                 if (mode == NavigationMode.REACQUIRING) add(RISK_REACQUIRING)
             }
             val imuAgeS = if (lastImuNs < 0L) Double.POSITIVE_INFINITY else {
@@ -316,6 +523,11 @@ class DeadReckoningFilter(
                 if (lastDisplacementGated) add(FLAG_DISPLACEMENT_GATED)
                 if (imuGap) add(FLAG_IMU_GAP)
                 if (imuAgeS > 0.5) add(FLAG_NO_IMU)
+                if (gnssGateInflated) add(FLAG_GNSS_GATE_INFLATE)
+                if (holdCourseActive()) add(FLAG_WEAK_HEADING_HOLD)
+                if (coastStopDisarmed) add(FLAG_COAST_STOP_DISARMED)
+                if (lastGnssReseed) add(FLAG_GNSS_RESEED)
+                if (lastWouldAdmitWithoutReseed) add(FLAG_GNSS_WOULD_ADMIT)
             }
             val score = if (coasting) {
                 (1.0 / (1.0 + ageS)).coerceIn(0.0, 1.0)
@@ -364,6 +576,25 @@ class DeadReckoningFilter(
 
     internal fun velocityEnu(): Vec3 = synchronized(lock) { Vec3(ve, vn, vu) }
 
+    internal fun heldSpeedForTest(): Double = synchronized(lock) { heldSpeedMps }
+
+    internal fun coastStoppedForTest(): Boolean = synchronized(lock) { coastStopped }
+
+    internal fun coastStopArmedForTest(): Boolean = synchronized(lock) { coastStopArmed }
+
+    internal fun headingPickWeakForTest(): Boolean = synchronized(lock) { headingPickWeak }
+
+    internal fun lastGnssAdmitForTest(): String = synchronized(lock) { lastGnssAdmit }
+
+    internal fun lastWouldAdmitWithoutReseedForTest(): Boolean = synchronized(lock) { lastWouldAdmitWithoutReseed }
+
+    internal fun plantReportedGnssSpeedForTest(speed: Double, tNs: Long) {
+        synchronized(lock) {
+            lastReportedGnssSpeedMps = speed
+            lastReportedGnssSpeedNs = tNs
+        }
+    }
+
     internal fun positionEnu(): Vec3 = synchronized(lock) { Vec3(eastM, northM, upM) }
 
     internal fun horizontalVariance(): Double = synchronized(lock) { p[0, 0] + p[1, 1] }
@@ -396,8 +627,19 @@ class DeadReckoningFilter(
             bg = Vec3.ZERO
             timeNs = timestamp.value
             lastTrustedGnssNs = timestamp.value
+            lastAcceptedUniqueNs = timestamp.value
+            lastAcceptedUniqueLat = latitudeDeg
+            lastAcceptedUniqueLon = longitudeDeg
             lastHeadingRad = headingRad
             lastHorizAccM = posStdM
+            lastAcceptedGnssSpeedMps = hypot(velocityEnu.x, velocityEnu.y)
+            lastAcceptedGnssSpeedNs = timestamp.value
+            lastReportedGnssSpeedMps = lastAcceptedGnssSpeedMps
+            lastReportedGnssSpeedNs = timestamp.value
+            gnssTrail.clear()
+            gnssTrail.addLast(
+                TrailFix(latitudeDeg, longitudeDeg, timestamp.value, hypot(velocityEnu.x, velocityEnu.y), headingRad),
+            )
             initialized = true
             numericalOk = true
             lastDisplacement = false
@@ -409,6 +651,21 @@ class DeadReckoningFilter(
         }
     }
 
+    internal fun plantEnuForTest(position: Vec3? = null, velocity: Vec3? = null) {
+        synchronized(lock) {
+            if (position != null) {
+                eastM = position.x
+                northM = position.y
+                upM = position.z
+            }
+            if (velocity != null) {
+                ve = velocity.x
+                vn = velocity.y
+                vu = velocity.z
+            }
+        }
+    }
+
     private fun onImu(tNs: Long) {
         if (!initialized) {
             lastImuNs = tNs
@@ -417,6 +674,16 @@ class DeadReckoningFilter(
         predictTo(tNs)
         lastImuNs = tNs
         if (numericalOk) {
+            if (config.coastStopDetect) {
+                val accel = lastAccel
+                val gyro = lastGyro
+                if (accel != null && gyro != null) {
+                    pushVib(tNs, accel.norm(), gyro.norm())
+                    if (!isCoasting(tNs)) {
+                        observePrefixVariance()
+                    }
+                }
+            }
             maybeConstraints()
         }
     }
@@ -432,10 +699,14 @@ class DeadReckoningFilter(
         upM = 0.0
         val heading = fix.headingRad ?: lastHeadingRad
         lastHeadingRad = wrapHeadingRad(heading)
-        val speed = fix.speedMps ?: 0.0
+        val speed = if (imuStill) 0.0 else (fix.speedMps ?: 0.0)
         ve = speed * sin(lastHeadingRad)
         vn = speed * cos(lastHeadingRad)
         vu = 0.0
+        lastAcceptedGnssSpeedMps = speed
+        lastAcceptedGnssSpeedNs = fix.timestamp.value
+        lastReportedGnssSpeedMps = speed
+        lastReportedGnssSpeedNs = fix.timestamp.value
         val accel = lastAccel
         q = if (accel != null) {
             attitudeFromGravityAndHeading(accel, lastHeadingRad, imuFrame) ?: yawOnlyAttitude(lastHeadingRad, imuFrame)
@@ -450,6 +721,8 @@ class DeadReckoningFilter(
         numericalOk = true
         clones.clear()
         setInitialP(max(fix.horizontalAccuracyM, 3.0))
+        rememberFix(fix)
+        noteAcceptedUnique(fix)
         recordClone()
     }
 
@@ -485,6 +758,7 @@ class DeadReckoningFilter(
         val dt = (tNs - timeNs) / NS_PER_S
         if (dt > config.maxIntegrateS) {
             imuGap = true
+            noteCoastEntry(tNs)
             coastVelocity(dt)
             inflateForGap(dt)
             timeNs = tNs
@@ -494,13 +768,24 @@ class DeadReckoningFilter(
         val gyro = lastGyro
         val accel = lastAccel
         if (gyro == null || accel == null) {
+            noteCoastEntry(tNs)
             coastVelocity(dt)
             timeNs = tNs
             recordClone()
             return
         }
-        val fNav = strapdown(dt, gyro, accel)
+        noteCoastEntry(tNs)
+        val yawHold = config.coastMode == CoastMode.YAW_SPEED_HOLD && isCoasting(tNs)
+        val fNav = if (yawHold) {
+            yawSpeedHold(dt, gyro, accel, tNs)
+            Vec3.ZERO
+        } else {
+            strapdown(dt, gyro, accel)
+        }
         predictCovariance(dt, fNav)
+        if (yawHold) {
+            growCoastHalo(dt)
+        }
         timeNs = tNs
         reanchorIfNeeded()
         if (!q.isFinite() || !pIsHealthy(p) || !eastM.isFinite() || !ve.isFinite()) {
@@ -530,6 +815,171 @@ class DeadReckoningFilter(
         upM = next.state.positionEnu.z
         pushAccelHist(hypot3(next.navAccel.x, next.navAccel.y, next.navAccel.z))
         return next.specificForceNav
+    }
+
+    /**
+     * Reduced-order coast for [CoastMode.YAW_SPEED_HOLD].
+     *
+     * Specific force (m/s², IMU body frame minus accel bias) is not integrated
+     * into velocity. Horizontal speed is held in m/s. Vertical velocity is 0.
+     *
+     * Body gyro (rad/s, IMU frame minus gyro bias) is rotated into n-frame ENU
+     * with the current attitude. The ENU-up component is the heading rate.
+     * Navigation heading is clockwise from north (0 = north, positive toward
+     * east), matching persist: `heading += omega_up * dt`. Horizontal velocity
+     * is the held speed rotated by that heading. Position is metres ENU.
+     *
+     * Attitude still follows the body gyro so ZUPT, NHC, and later road
+     * updates have a quaternion to land on.
+     */
+    private fun yawSpeedHold(dt: Double, gyroMeas: Vec3, accelMeas: Vec3, tNs: Long) {
+        val omegaBody = gyroMeas - bg
+        val omegaNav = q.toRotation() * omegaBody
+        val omegaUp = if (holdCourseActive()) 0.0 else omegaNav.z
+        if (!coastStopped) {
+            coastHeadingRad = wrapHeadingRad(coastHeadingRad + omegaUp * dt)
+        }
+        q = NFrameMechanization.integrateAttitude(q, omegaBody, dt)
+        val lat = currentLatitudeDeg()
+        val alt = currentAltitudeM()
+        val fNav = q.toRotation() * (accelMeas - ba)
+        val aNav = NFrameMechanization.navAccelFromSpecificForce(fNav, lat, alt)
+        if (coastStopped) {
+            heldSpeedMps = 0.0
+            ve = 0.0
+            vn = 0.0
+            vu = 0.0
+            lastHeadingRad = coastHeadingRad
+            pushAccelHist(hypot3(aNav.x, aNav.y, aNav.z))
+            return
+        }
+        if (burstUntilNs > 0L && tNs < burstUntilNs) {
+            val aFwd = aNav.x * sin(coastHeadingRad) + aNav.y * cos(coastHeadingRad)
+            val acc = aFwd.coerceIn(-config.coastRestartAccelClipMps2, config.coastRestartAccelClipMps2)
+            heldSpeedMps = (heldSpeedMps + acc * dt).coerceAtLeast(0.0)
+        } else if (burstUntilNs > 0L && tNs >= burstUntilNs) {
+            burstUntilNs = -1L
+        }
+        if (!coastStopped && config.coastSpeedDecay && config.coastSpeedDecayTauS > 0.0) {
+            val alpha = 1.0 - exp(-dt / config.coastSpeedDecayTauS)
+            heldSpeedMps = (heldSpeedMps + (config.coastSpeedDecayTargetMps - heldSpeedMps) * alpha)
+                .coerceAtLeast(0.0)
+        }
+        ve = heldSpeedMps * sin(coastHeadingRad)
+        vn = heldSpeedMps * cos(coastHeadingRad)
+        vu = 0.0
+        eastM += ve * dt
+        northM += vn * dt
+        lastHeadingRad = coastHeadingRad
+        pushAccelHist(hypot3(aNav.x, aNav.y, aNav.z))
+    }
+
+    private fun growCoastHalo(dt: Double) {
+        if (config.coastHonestP) {
+            coastElapsedS += dt
+            val speed = if (coastSnapshotTaken) heldSpeedMps else hypot(ve, vn)
+            val sigma = hypot(config.coastSpeedRwMps, speed * config.coastHeadingRwRadps)
+            val t0 = (coastElapsedS - dt).coerceAtLeast(0.0)
+            val add = 2.0 * sigma * sigma * t0 * dt + (sigma * dt) * (sigma * dt)
+            p[0, 0] += add
+            p[1, 1] += add
+            val yaw = config.coastHeadingRwRadps * dt
+            val i = EskfDim.ITH + 2
+            p[i, i] += yaw * yaw
+        } else {
+            val grow = config.coastPosGrowMps * dt
+            p[0, 0] += grow * grow
+            p[1, 1] += grow * grow
+        }
+        if (holdCourseActive()) {
+            val yaw = config.weakHeadingGrowRadps * dt
+            val i = EskfDim.ITH + 2
+            p[i, i] += yaw * yaw
+        }
+        symmetrize(p)
+    }
+
+    private fun holdCourseActive(): Boolean {
+        return config.weakHeadingPolicy == WeakHeadingPolicy.HOLD_COURSE &&
+            headingPickWeak &&
+            isCoasting(timeNs)
+    }
+
+    private fun gnssAgeS(atNs: Long): Double {
+        return if (lastTrustedGnssNs < 0L) {
+            (atNs - timeNs).coerceAtLeast(0L) / NS_PER_S
+        } else {
+            (atNs - lastTrustedGnssNs).coerceAtLeast(0L) / NS_PER_S
+        }
+    }
+
+    private fun isCoasting(atNs: Long): Boolean = gnssHeld || gnssAgeS(atNs) > config.staleAfterS
+
+    private fun noteCoastEntry(atNs: Long) {
+        if (isCoasting(atNs)) {
+            captureCoastSnapshot()
+        } else if (coastSnapshotTaken) {
+            coastSnapshotTaken = false
+        }
+    }
+
+    private fun captureCoastSnapshot() {
+        if (coastSnapshotTaken) {
+            return
+        }
+        speedBeforeCoast = hypot(ve, vn)
+        heldSpeedMps = chooseHeldSpeed()
+        coastHeadingRad = if (speedBeforeCoast >= 0.5) {
+            atan2(ve, vn)
+        } else {
+            lastHeadingRad
+        }
+        coastSnapshotTaken = true
+        resumeSpeedMps = heldSpeedMps
+        coastElapsedS = 0.0
+        if (config.coastMode == CoastMode.YAW_SPEED_HOLD) {
+            vu = 0.0
+            ve = heldSpeedMps * sin(coastHeadingRad)
+            vn = heldSpeedMps * cos(coastHeadingRad)
+        }
+        if (config.coastStopDetect) {
+            finalizeStopCalibration()
+        }
+    }
+
+    private fun chooseHeldSpeed(): Double {
+        if (config.coastLatchGnssSpeed) {
+            val reported = lastReportedGnssSpeedMps
+            val stamp = lastReportedGnssSpeedNs
+            if (reported != null && reported >= 0.0 && stamp >= 0L) {
+                val ageS = (timeNs - stamp).coerceAtLeast(0L) / NS_PER_S
+                if (ageS <= config.coastLatchGnssMaxS) {
+                    return reported
+                }
+            }
+            return speedBeforeCoast
+        }
+        val accepted = lastAcceptedGnssSpeedMps
+        return if (accepted != null && accepted >= 0.0) accepted else speedBeforeCoast
+    }
+
+    private fun recordReportedGnssSpeed(fix: CoastFix) {
+        val speed = fix.speedMps ?: return
+        if (fix.horizontalAccuracyM > config.maxGnssAccuracyM) {
+            return
+        }
+        lastReportedGnssSpeedMps = speed
+        lastReportedGnssSpeedNs = fix.timestamp.value
+    }
+
+    private fun syncHeldSpeedFromFilter() {
+        if (config.coastMode != CoastMode.YAW_SPEED_HOLD || !coastSnapshotTaken) {
+            return
+        }
+        heldSpeedMps = hypot(ve, vn)
+        if (!coastStopped && heldSpeedMps >= 0.5) {
+            coastHeadingRad = atan2(ve, vn)
+        }
     }
 
     private fun coastVelocity(dt: Double) {
@@ -589,14 +1039,60 @@ class DeadReckoningFilter(
         residual[2] = u - upM
         val sigma = max(fix.horizontalAccuracyM, 1.0)
         val horizInnov = hypot(residual[0], residual[1])
-        val gate = 6.0 * (sigma + sqrt(max(p[0, 0] + p[1, 1], 0.0)))
+        val pHoriz = sqrt(max(p[0, 0] + p[1, 1], 0.0))
+        val gate = 6.0 * (sigma + pHoriz)
+        val wouldAdmit = horizInnov <= gate
+        lastWouldAdmitWithoutReseed = wouldAdmit
+        if (imuStill) {
+            val reported = fix.speedMps ?: 0.0
+            if (reported > 1.0 || horizInnov > 8.0) {
+                lastTrustedGnssNs = fix.timestamp.value
+                return
+            }
+        }
+        val gapS = if (lastTrustedGnssNs < 0L) 0.0 else (fix.timestamp.value - lastTrustedGnssNs) / NS_PER_S
+        val uniqueGapS = if (lastAcceptedUniqueNs < 0L) {
+            0.0
+        } else {
+            (fix.timestamp.value - lastAcceptedUniqueNs) / NS_PER_S
+        }
+        val fused = !isCoasting(fix.timestamp.value)
+        val wantReseed = config.gnssReseedAfterS > 0.0 &&
+            uniqueGapS >= config.gnssReseedAfterS &&
+            canReseed(fix) &&
+            (!fused || config.gnssReseedWhileFused)
+        if (wantReseed) {
+            reseedFromGnss(fix, e, n, u)
+            noteAcceptedUnique(fix)
+            return
+        }
+        lastGnssReseed = false
+        var inflatedThisFix = false
         if (horizInnov > gate) {
             lastGatedGnssNs = fix.timestamp.value
+            consecutiveGnssGates += 1
+            lastGnssAdmit = GNSS_GATE_REJECT
             if (coastedSinceFix) {
                 reacquiredFixes = 0
             }
-            return
+            val pSmall = pHoriz < config.gnssGateInflateMaxSigmaM
+            if (config.gnssGateInflate && consecutiveGnssGates >= config.gnssGateRejectsBeforeInflate && pSmall) {
+                inflateGnssGateLock(horizInnov)
+                gnssGateInflated = true
+                inflatedThisFix = true
+                val opened = 6.0 * (sigma + sqrt(max(p[0, 0] + p[1, 1], 0.0)))
+                if (horizInnov > opened) {
+                    return
+                }
+            } else {
+                return
+            }
         }
+        lastGnssAdmit = GNSS_GATE_ADMIT
+        if (!inflatedThisFix) {
+            gnssGateInflated = false
+        }
+        consecutiveGnssGates = 0
         fillPosH()
         val su = max(sigma * 1.5, 3.0)
         rMeas[0] = sigma * sigma
@@ -613,13 +1109,21 @@ class DeadReckoningFilter(
             return
         }
         inject()
-        val gapS = if (lastTrustedGnssNs < 0L) 0.0 else (fix.timestamp.value - lastTrustedGnssNs) / NS_PER_S
-        if (gapS > STALE_AFTER_S) {
+        if (gapS > config.staleAfterS) {
             coastedSinceFix = true
             reacquiredFixes = 0
         }
         lastTrustedGnssNs = fix.timestamp.value
         lastHorizAccM = fix.horizontalAccuracyM
+        if (!gnssHeld) {
+            coastSnapshotTaken = false
+        }
+        coastElapsedS = 0.0
+        val acceptedSpeed = fix.speedMps
+        if (acceptedSpeed != null && acceptedSpeed >= config.gnssReseedSlowMps) {
+            lastAcceptedGnssSpeedMps = acceptedSpeed
+            lastAcceptedGnssSpeedNs = fix.timestamp.value
+        }
         if (coastedSinceFix) {
             reacquiredFixes += 1
             if (reacquiredFixes >= config.reacquireFixes) {
@@ -631,9 +1135,178 @@ class DeadReckoningFilter(
         fix.headingRad?.let { lastHeadingRad = wrapHeadingRad(it) }
         val speed = fix.speedMps
         val heading = fix.headingRad
-        if (speed != null && heading != null && speed >= 0.4) {
+        if (speed != null && heading != null && speed >= 0.4 && !imuStill) {
             applyGnssVelocity(speed, heading)
         }
+        noteAcceptedUnique(fix)
+    }
+
+    private fun noteAcceptedUnique(fix: CoastFix) {
+        val isNew = lastAcceptedUniqueNs < 0L ||
+            Wgs84.distanceMetres(
+                lastAcceptedUniqueLat,
+                lastAcceptedUniqueLon,
+                fix.latitudeDeg,
+                fix.longitudeDeg,
+            ) > 1e-3
+        if (!isNew) {
+            return
+        }
+        lastAcceptedUniqueNs = fix.timestamp.value
+        lastAcceptedUniqueLat = fix.latitudeDeg
+        lastAcceptedUniqueLon = fix.longitudeDeg
+    }
+
+    private fun canReseed(fix: CoastFix): Boolean {
+        val speed = reseedSpeed(fix) ?: return false
+        if (speed >= config.gnssReseedSlowMps) {
+            if (fix.headingRad == null && headingFrom10m() == null) {
+                return false
+            }
+        }
+        return true
+    }
+
+    /**
+     * Column speed if it is a moving fix. Otherwise unique-pair finite
+     * difference. A 0 m/s column after a long unique hop is not a stop.
+     * Persist uses that hop speed.
+     */
+    private fun reseedSpeed(fix: CoastFix): Double? {
+        val derived = derivedUniqueSpeed(fix)
+        val column = fix.speedMps
+        if (column != null && column >= config.gnssReseedSlowMps) {
+            return column
+        }
+        if (derived != null && derived >= config.gnssReseedSlowMps) {
+            return derived
+        }
+        return column ?: derived
+    }
+
+    private fun derivedUniqueSpeed(fix: CoastFix): Double? {
+        if (gnssTrail.size < 2) {
+            return null
+        }
+        val prev = gnssTrail.elementAt(gnssTrail.size - 2)
+        val dt = (fix.timestamp.value - prev.tNs) / NS_PER_S
+        if (dt <= 0.0) {
+            return null
+        }
+        val dist = Wgs84.distanceMetres(prev.latDeg, prev.lonDeg, fix.latitudeDeg, fix.longitudeDeg)
+        return dist / dt
+    }
+
+    private fun reseedFromGnss(fix: CoastFix, east: Double, north: Double, up: Double) {
+        val speed = reseedSpeed(fix) ?: return
+        val heading = reseedHeading(fix, speed)
+        val baKeep = ba
+        val bgKeep = bg
+        eastM = east
+        northM = north
+        upM = up
+        ve = speed * sin(heading)
+        vn = speed * cos(heading)
+        vu = 0.0
+        yawAboutUpTo(heading)
+        ba = baKeep
+        bg = bgKeep
+        lastHeadingRad = heading
+        heldSpeedMps = speed
+        resumeSpeedMps = speed
+        coastHeadingRad = heading
+        speedBeforeCoast = speed
+        coastSnapshotTaken = false
+        coastElapsedS = 0.0
+        lastTrustedGnssNs = fix.timestamp.value
+        lastHorizAccM = fix.horizontalAccuracyM
+        lastAcceptedGnssSpeedMps = speed
+        lastAcceptedGnssSpeedNs = fix.timestamp.value
+        lastReportedGnssSpeedMps = speed
+        lastReportedGnssSpeedNs = fix.timestamp.value
+        lastAltM = fix.altitudeM ?: lastAltM
+        consecutiveGnssGates = 0
+        gnssGateInflated = false
+        lastGatedGnssNs = -1L
+        coastedSinceFix = false
+        reacquiredFixes = 0
+        lastGnssReseed = true
+        lastGnssAdmit = GNSS_RESEED_AFTER_GAP
+        setInitialP(max(fix.horizontalAccuracyM, 3.0))
+        if (speed < config.gnssReseedSlowMps) {
+            val yaw = config.gnssReseedSlowYawStdRad
+            p[EskfDim.ITH + 2, EskfDim.ITH + 2] = max(p[EskfDim.ITH + 2, EskfDim.ITH + 2], yaw * yaw)
+        }
+        timeNs = fix.timestamp.value
+        recordClone()
+    }
+
+    private fun reseedHeading(fix: CoastFix, speed: Double): Double {
+        if (speed < config.gnssReseedSlowMps) {
+            return wrapHeadingRad(lastHeadingRad)
+        }
+        val column = fix.speedMps
+        if (column == null || column < config.gnssReseedSlowMps) {
+            headingFrom10m()?.let { return it }
+        }
+        fix.headingRad?.let { return wrapHeadingRad(it) }
+        return headingFrom10m() ?: wrapHeadingRad(lastHeadingRad)
+    }
+
+    private fun headingFrom10m(): Double? {
+        if (gnssTrail.size < 2) {
+            return null
+        }
+        val end = gnssTrail.last()
+        var acc = 0.0
+        for (index in gnssTrail.size - 2 downTo 0) {
+            val a = gnssTrail.elementAt(index)
+            val b = gnssTrail.elementAt(index + 1)
+            acc += Wgs84.distanceMetres(a.latDeg, a.lonDeg, b.latDeg, b.lonDeg)
+            if (acc >= config.gnssReseedHeadingMotionM) {
+                val (north, east) = Wgs84.northEastMetres(a.latDeg, a.lonDeg, end.latDeg, end.lonDeg)
+                if (north * north + east * east < 1e-6) {
+                    return null
+                }
+                return atan2(east, north)
+            }
+        }
+        return null
+    }
+
+    private fun rememberFix(fix: CoastFix) {
+        val speed = fix.speedMps ?: 0.0
+        val heading = fix.headingRad ?: lastHeadingRad
+        val next = TrailFix(fix.latitudeDeg, fix.longitudeDeg, fix.timestamp.value, speed, heading)
+        val last = gnssTrail.lastOrNull()
+        if (last == null || Wgs84.distanceMetres(last.latDeg, last.lonDeg, next.latDeg, next.lonDeg) > 1e-3) {
+            gnssTrail.addLast(next)
+            while (gnssTrail.size > TRAIL_CAP) {
+                gnssTrail.removeFirst()
+            }
+        } else {
+            gnssTrail.removeLast()
+            gnssTrail.addLast(next)
+        }
+    }
+
+    private fun yawAboutUpTo(headingRad: Double) {
+        val current = headingFromAttitude()
+        val dYaw = wrapPi(headingRad - current)
+        if (abs(dYaw) < 1e-12) {
+            return
+        }
+        val half = 0.5 * dYaw
+        val dq = Quat(cos(half), 0.0, 0.0, sin(half))
+        q = dq.times(q).normalized()
+    }
+
+    private fun headingFromAttitude(): Double {
+        val fwd = q.rotate(bodyForward(imuFrame))
+        if (hypot(fwd.x, fwd.y) > 1e-6) {
+            return atan2(fwd.x, fwd.y)
+        }
+        return lastHeadingRad
     }
 
     private fun applyGnssVelocity(speed: Double, heading: Double) {
@@ -661,6 +1334,20 @@ class DeadReckoningFilter(
         lastNhc = false
         val accel = lastAccel ?: return
         val gyro = lastGyro ?: return
+        if (config.coastStopDetect &&
+            config.coastMode == CoastMode.YAW_SPEED_HOLD &&
+            isCoasting(timeNs) &&
+            !(burstUntilNs > 0L && timeNs < burstUntilNs)
+        ) {
+            updateCoastStopDetector()
+        } else if (!isCoasting(timeNs) && coastStopped) {
+            coastStopped = false
+            lastStopProbability = 0.0
+            quietSinceNs = -1L
+            noisySinceNs = -1L
+            burstUntilNs = -1L
+            resumeInhibitUntilNs = -1L
+        }
         val c = q.toRotation()
         val aNav = NFrameMechanization.navAccelFromSpecificForce(
             c * (accel - ba),
@@ -674,14 +1361,20 @@ class DeadReckoningFilter(
             omega < config.zuptGyroRadps &&
             accelVariance() < config.zuptAccelVar &&
             aHor < config.zuptAccelMps2
-        val skipStillZupt = gnssHeld && speedBeforeHold >= config.zuptHeldSkipMps
-        val stillZupt = still && speed < 1.5 && !skipStillZupt
+        val skipStillZupt = isCoasting(timeNs) &&
+            speedBeforeCoast >= config.zuptHeldSkipMps &&
+            !imuStill
+        val stillZupt = (still && speed < 1.5 && !skipStillZupt) || imuStill
+        val detectorZupt = coastStopped && lastStopProbability >= config.zuptStopProbability
         val wantZupt = lastStopProbability >= config.zuptStopProbability || stillZupt
-        if (wantZupt) {
-            applyZupt(force = lastStopProbability >= config.zuptStopProbability || stillZupt)
+        if (wantZupt || detectorZupt) {
+            applyZupt(force = lastStopProbability >= config.zuptStopProbability || stillZupt || detectorZupt)
             return
         }
-        if (imuFrame == VectorFrame.UNSPECIFIED) {
+        if (config.coastMode == CoastMode.YAW_SPEED_HOLD && isCoasting(timeNs)) {
+            return
+        }
+        if (imuFrame != VectorFrame.VEHICLE_FLU) {
             return
         }
         val aVeh = bodyToVehicle(imuFrame) * c.timesT(aNav)
@@ -697,10 +1390,14 @@ class DeadReckoningFilter(
         lastStopProbability = meas.stopProbability
         lastBump = meas.bump
         if (meas.idle || meas.stopProbability >= config.zuptStopProbability) {
+            lastPseudo = true
             applyZupt(force = true)
             return
         }
         if (meas.bump) {
+            return
+        }
+        if (!config.studentForwardSpeed) {
             return
         }
         val ageS = if (lastTrustedGnssNs < 0L) {
@@ -708,10 +1405,24 @@ class DeadReckoningFilter(
         } else {
             (timeNs - lastTrustedGnssNs).coerceAtLeast(0L) / NS_PER_S
         }
-        if (!(gnssHeld || ageS > STALE_AFTER_S)) {
+        if (!(gnssHeld || ageS > config.staleAfterS)) {
             return
         }
-        val sigma = sqrt(exp(meas.logSpeedVariance)).coerceIn(0.05, 8.0)
+        val sigma = sqrt(exp(meas.logSpeedVariance)).coerceAtLeast(config.studentSpeedSigmaFloorMps)
+        val c = q.toRotation()
+        val rvn = bodyToVehicle(imuFrame) * c.transpose()
+        val vNav = Vec3(ve, vn, vu)
+        val vVeh = rvn * vNav
+        residual[0] = meas.forwardSpeed.value - vVeh.x
+        val minusRvSkew = negated(rvn * Mat3.skew(vNav))
+        hRow.fill(0.0)
+        fillVehicleVelRows(rvn, minusRvSkew, rows = intArrayOf(0), m = 1)
+        rMeas[0] = sigma * sigma
+        val chi2 = innovationChiSquared(p, hRow, residual, rMeas, 1, joseph) ?: return
+        if (chi2 > config.studentSpeedChi2Gate) {
+            return
+        }
+        lastPseudo = true
         applyForwardSpeed(meas.forwardSpeed.value, sigma)
     }
 
@@ -782,6 +1493,14 @@ class DeadReckoningFilter(
         symmetrize(p)
     }
 
+    private fun inflateGnssGateLock(horizInnovM: Double) {
+        val sigma = max(horizInnovM, 1.0)
+        val add = sigma * sigma
+        p[0, 0] += add
+        p[1, 1] += add
+        symmetrize(p)
+    }
+
     private fun recordClone() {
         if (!initialized || !numericalOk) {
             return
@@ -810,6 +1529,137 @@ class DeadReckoningFilter(
         return best
     }
 
+    private fun pushVib(tNs: Long, accelMag: Double, gyroNorm: Double) {
+        vib.addLast(VibSample(tNs, accelMag, gyroNorm))
+        val cut = tNs - (config.coastStopHoldS * NS_PER_S).toLong()
+        while (vib.isNotEmpty() && vib.first().tNs < cut) {
+            vib.removeFirst()
+        }
+    }
+
+    private fun vibStats(): Pair<Double, Double>? {
+        if (vib.size < 8) {
+            return null
+        }
+        val spanS = (vib.last().tNs - vib.first().tNs) / NS_PER_S
+        if (spanS < config.coastStopHoldS * 0.85) {
+            return null
+        }
+        var magSum = 0.0
+        var gyroSum = 0.0
+        for (sample in vib) {
+            magSum += sample.accelMag
+            gyroSum += sample.gyroNorm
+        }
+        val n = vib.size.toDouble()
+        val magMean = magSum / n
+        var varSum = 0.0
+        for (sample in vib) {
+            val d = sample.accelMag - magMean
+            varSum += d * d
+        }
+        return (varSum / n) to (gyroSum / n)
+    }
+
+    private fun observePrefixVariance() {
+        if (gnssAgeS(timeNs) > config.staleAfterS) {
+            return
+        }
+        val stats = vibStats() ?: return
+        val speed = lastReportedGnssSpeedMps ?: lastAcceptedGnssSpeedMps ?: hypot(ve, vn)
+        if (speed < config.coastStopStoppedMaxMps) {
+            if (prefixStoppedVars.size < PREFIX_VAR_CAP) {
+                prefixStoppedVars.add(stats.first)
+                prefixStoppedGyros.add(stats.second)
+            }
+        } else if (speed > config.coastStopMovingMinMps) {
+            if (prefixMovingVars.size < PREFIX_VAR_CAP) {
+                prefixMovingVars.add(stats.first)
+                prefixMovingGyros.add(stats.second)
+            }
+        }
+        if (!config.coastStopRequireStoppedPrefix &&
+            !stopCalibrated &&
+            prefixStoppedVars.size >= 3 &&
+            prefixMovingVars.size >= 3
+        ) {
+            stopCalibrated = true
+            val stoppedMed = medianOf(prefixStoppedVars)
+            val movingMed = medianOf(prefixMovingVars)
+            if (movingMed > 2.0 * max(stoppedMed, 0.01)) {
+                effectiveStopAccelVar = (0.5 * (stoppedMed + movingMed)).coerceIn(0.02, 0.12)
+                coastStopArmed = true
+            } else {
+                coastStopArmed = false
+            }
+        }
+    }
+
+    private fun finalizeStopCalibration() {
+        if (stopCalibrated || !config.coastStopRequireStoppedPrefix) {
+            return
+        }
+        stopCalibrated = true
+        if (prefixStoppedVars.isEmpty() || prefixMovingVars.isEmpty()) {
+            coastStopArmed = false
+            coastStopDisarmed = true
+            return
+        }
+        val p10 = percentileOf(prefixMovingVars, 0.10)
+        effectiveStopAccelVar = (config.coastStopMovingK * p10).coerceAtLeast(1e-8)
+        if (prefixStoppedGyros.isNotEmpty()) {
+            effectiveStopGyroRadps = min(config.coastStopGyroRadps, percentileOf(prefixStoppedGyros, 0.90))
+        }
+        coastStopArmed = true
+        coastStopDisarmed = false
+    }
+
+    private fun updateCoastStopDetector() {
+        finalizeStopCalibration()
+        if (!coastStopArmed) {
+            return
+        }
+        val stats = vibStats() ?: return
+        val enterQuiet = stats.first < effectiveStopAccelVar && stats.second <= effectiveStopGyroRadps
+        val leaveQuiet = stats.first > effectiveStopAccelVar * 2.5 ||
+            stats.second > effectiveStopGyroRadps * 2.0
+        if (!coastStopped) {
+            if (enterQuiet && timeNs >= resumeInhibitUntilNs) {
+                coastStopped = true
+                lastStopProbability = 0.95
+            }
+        } else if (leaveQuiet) {
+            if (noisySinceNs < 0L) {
+                noisySinceNs = timeNs
+            }
+            if ((timeNs - noisySinceNs) / NS_PER_S >= config.coastStopRestartDebounceS) {
+                resumeFromCoastStop()
+            }
+        } else {
+            noisySinceNs = -1L
+        }
+    }
+
+    private fun resumeFromCoastStop() {
+        coastStopped = false
+        lastStopProbability = 0.0
+        noisySinceNs = -1L
+        resumeInhibitUntilNs = timeNs + (config.coastStopHoldS * NS_PER_S).toLong()
+        when (config.coastRestart) {
+            CoastRestart.HELD_SPEED -> {
+                heldSpeedMps = resumeSpeedMps
+                burstUntilNs = -1L
+            }
+            CoastRestart.ACCEL_BURST -> {
+                heldSpeedMps = 0.0
+                burstUntilNs = timeNs + (config.coastRestartBurstS * NS_PER_S).toLong()
+            }
+        }
+        ve = heldSpeedMps * sin(coastHeadingRad)
+        vn = heldSpeedMps * cos(coastHeadingRad)
+        vu = 0.0
+    }
+
     private fun applyZupt(force: Boolean) {
         if (!force && hypot3(ve, vn, vu) < 1e-4) {
             return
@@ -829,8 +1679,22 @@ class DeadReckoningFilter(
         rMeas[7] = 0.0
         rMeas[8] = r
         if (josephUpdate(p, hRow, residual, rMeas, 3, dx, joseph)) {
+            val east0 = eastM
+            val north0 = northM
+            val up0 = upM
+            val q0 = q
             inject()
+            if (coastStopped || imuStill) {
+                eastM = east0
+                northM = north0
+                upM = up0
+                q = q0
+                ve = 0.0
+                vn = 0.0
+                vu = 0.0
+            }
             lastZupt = true
+            syncHeldSpeedFromFilter()
         }
     }
 
@@ -867,6 +1731,7 @@ class DeadReckoningFilter(
         rMeas[0] = r
         if (josephUpdate(p, hRow, residual, rMeas, 1, dx, joseph)) {
             inject()
+            syncHeldSpeedFromFilter()
         }
     }
 
@@ -926,6 +1791,13 @@ class DeadReckoningFilter(
             return atan2(fwd.x, fwd.y)
         }
         return lastHeadingRad
+    }
+
+    private fun wrapPi(rad: Double): Double {
+        var heading = rad
+        val tau = 2.0 * PI
+        heading -= tau * kotlin.math.floor((heading + PI) / tau)
+        return heading
     }
 
     private fun currentLatitudeDeg(): Double {
@@ -999,16 +1871,28 @@ class DeadReckoningFilter(
         const val FLAG_DISPLACEMENT_GATED: String = "displacement_gated"
         const val FLAG_IMU_GAP: String = "imu_gap"
         const val FLAG_NO_IMU: String = "no_imu"
+        const val FLAG_GNSS_GATE_INFLATE: String = "gnss_gate_inflate"
+        const val FLAG_WEAK_HEADING_HOLD: String = "weak_heading_hold"
+        const val FLAG_COAST_STOP_DISARMED: String = "coast_stop_disarmed"
+        const val FLAG_HEADING_PICK_WEAK: String = "gyro_heading_pick_weak"
+        const val FLAG_GNSS_RESEED: String = "gnss_reseed_after_gap"
+        const val FLAG_GNSS_WOULD_ADMIT: String = "gnss_gate_would_admit"
+        const val GNSS_RESEED_AFTER_GAP: String = "gnss_reseed_after_gap"
+        const val GNSS_GATE_ADMIT: String = "gnss_gate_admit"
+        const val GNSS_GATE_REJECT: String = "gnss_gate_reject"
         const val RISK_STALE_GNSS: String = "stale_gnss"
         const val RISK_POOR_ACCURACY: String = "poor_accuracy"
         const val RISK_GATED_FIX: String = "gated_fix"
+        const val RISK_GNSS_GATE_INFLATE: String = "gnss_gate_inflate"
         const val RISK_REACQUIRING: String = "reacquiring"
         const val CONFIG_ID: String =
-            "eskf.v2.stale_s=2.output_hz=10.wgs84.somigliana_2_139.nframe_enu.phi_2_139.q_pv.zupt_skip_held.nhc_off_unspecified.joseph.tlio_dp_chi2_11.345.modes_v2_degraded_30m_reacquire_3"
+            "eskf.v2.stale_s=2.output_hz=10.wgs84.somigliana_2_139.nframe_enu.phi_2_139.q_pv.zupt_skip_coast.nhc_off_unspecified.joseph.tlio_dp_chi2_11.345.modes_v2_degraded_30m_reacquire_3.coast_strapdown.gate_inflate_5"
         val CONFIG_HASH: String = sha256Hex(CONFIG_ID)
         private const val NS_PER_S: Double = 1_000_000_000.0
         private const val ACCEL_HIST: Int = 32
         private const val CLONE_CAP: Int = 200
+        private const val PREFIX_VAR_CAP: Int = 40
+        private const val TRAIL_CAP: Int = 40
     }
 }
 
@@ -1019,6 +1903,50 @@ private data class PoseClone(
     val upM: Double,
     val enuToHacf: Mat3,
 )
+
+/**
+ * Coast model while GNSS is held or older than [DeadReckoningFilter.STALE_AFTER_S].
+ *
+ * [STRAPDOWN] integrates specific force into velocity (v1/v2).
+ * [YAW_SPEED_HOLD] holds horizontal speed (m/s) and yaws from the ENU-up gyro
+ * component (rad/s). Attitude is still quaternion-integrated. Frames: IMU body
+ * into n-frame ENU. Heading is clockwise from north, units rad.
+ */
+enum class CoastMode {
+    STRAPDOWN,
+    YAW_SPEED_HOLD,
+}
+
+/**
+ * How speed returns after a vibration stop during [CoastMode.YAW_SPEED_HOLD].
+ * [HELD_SPEED] restores [InsConfig] snapshot speed from before the stop.
+ * [ACCEL_BURST] integrates forward-axis nav accel for [InsConfig.coastRestartBurstS]
+ * (clip [InsConfig.coastRestartAccelClipMps2]) then holds.
+ */
+enum class CoastRestart {
+    HELD_SPEED,
+    ACCEL_BURST,
+}
+
+enum class WeakHeadingPolicy {
+    INTEGRATE,
+    HOLD_COURSE,
+}
+
+data class RoadHeadingResult(
+    val accepted: Boolean,
+    val reason: String,
+    val chi2: Double? = null,
+)
+
+object RoadHeadingReason {
+    const val ACCEPTED: String = "accepted"
+    const val NOT_COASTING: String = "not_coasting"
+    const val NOT_INITIALIZED: String = "not_initialized"
+    const val INVALID_STD: String = "invalid_std"
+    const val CHI2_REJECT: String = "chi2_reject"
+    const val NUMERICAL: String = "numerical"
+}
 
 data class InsConfig(
     val accelNoise: Double = 0.20,
@@ -1056,6 +1984,104 @@ data class InsConfig(
     val displacementChi2Gate: Double = LinearDpConstants.CHI2_99_3DOF,
     val displacementOverlapRScale: Double = LinearDpConstants.OVERLAP_R_SCALE,
     val displacementGateGrowM: Double = 1.0,
+    /**
+     * Reduced-order coast versus full strapdown. Default [CoastMode.STRAPDOWN]
+     * keeps v1/v2 replay hashes. [CoastMode.YAW_SPEED_HOLD] holds last GNSS
+     * speed and yaws from the gravity-vertical gyro while coasting.
+     */
+    val coastMode: CoastMode = CoastMode.STRAPDOWN,
+    /** Consecutive gated GNSS fixes before P_h is inflated. */
+    val gnssGateRejectsBeforeInflate: Int = 5,
+    /** sqrt(P_e + P_n) below this (metres) counts as over-confident for inflation. */
+    val gnssGateInflateMaxSigmaM: Double = 50.0,
+    /** When false, gated GNSS never inflates P_h. Default on matches v3. */
+    val gnssGateInflate: Boolean = true,
+    /**
+     * Vibration stop detector during [CoastMode.YAW_SPEED_HOLD] coast.
+     * Default off so gravity-only v3 fixtures keep held speed.
+     *
+     * Rolling 1 s variance of specific-force magnitude |a| ((m/s²)²) plus mean
+     * gyro norm (rad/s). A quiet window ZUPTs (velocity 0, position held).
+     * Fixed defaults 0.04 (m/s²)² and 0.08 rad/s are round phone-idle
+     * constants from pre-mask moving vs stopped |a| variance on a GNSS-known
+     * prefix, not fit inside a mask. Optional prefix calibration may replace
+     * the accel threshold with the midpoint of stopped vs moving medians,
+     * clipped to [0.02, 0.12]. Overlapping classes disarm.
+     */
+    val coastStopDetect: Boolean = false,
+    val coastStopAccelVar: Double = 0.04,
+    val coastStopGyroRadps: Double = 0.08,
+    val coastStopHoldS: Double = 1.0,
+    val coastStopRestartDebounceS: Double = 0.3,
+    val coastRestart: CoastRestart = CoastRestart.HELD_SPEED,
+    val coastRestartBurstS: Double = 2.0,
+    val coastRestartAccelClipMps2: Double = 3.0,
+    /** 1-dof chi-square gate for [DeadReckoningFilter.applyRoadHeading]. 6.63 is 99th percentile. */
+    val roadHeadingChi2Gate: Double = 6.63,
+    /**
+     * When the heading-gyro pick is weak (few_hops / insufficient_fixes / weak_corr),
+     * [HOLD_COURSE] zeros yaw rate and grows P_heading. [INTEGRATE] is v3/v4.
+     */
+    val weakHeadingPolicy: WeakHeadingPolicy = WeakHeadingPolicy.INTEGRATE,
+    /** Extra heading random walk (rad/s) added to P_yaw while HOLD_COURSE is active. */
+    val weakHeadingGrowRadps: Double = 0.05,
+    /**
+     * When true, YAW_SPEED_HOLD latches last reported GNSS speed if its timestamp
+     * is within [coastLatchGnssMaxS] of coast start. Otherwise uses filter speed.
+     * Reported speed includes accuracy-ok fixes that the position gate rejected.
+     * Default off keeps v3/v4 last-accepted-any-age latch.
+     */
+    val coastLatchGnssSpeed: Boolean = false,
+    val coastLatchGnssMaxS: Double = 2.0,
+    /**
+     * Second-attempt stop detector: calibrate |a| variance and gyro from the
+     * pre-mask prefix only. Default off. Live phone IMU is 100 Hz; IO-VNBD is 10 Hz.
+     */
+    val coastStopRequireStoppedPrefix: Boolean = false,
+    val coastStopMovingK: Double = 0.5,
+    val coastStopMovingMinMps: Double = 3.0,
+    val coastStopStoppedMaxMps: Double = 0.5,
+    /**
+     * Re-initialize from a GNSS fix when the gap since the last accepted
+     * unique-fix is at least this many seconds. 0 disables. Live phone GNSS
+     * is about 1 Hz, so the default stays off. Replay passes
+     * `--gnss-reseed-after-s` for the sparse v6 row.
+     */
+    val gnssReseedAfterS: Double = 0.0,
+    val gnssReseedHeadingMotionM: Double = 10.0,
+    val gnssReseedSlowMps: Double = 1.0,
+    val gnssReseedSlowYawStdRad: Double = 30.0 * PI / 180.0,
+    /**
+     * When false (default), a unique-gap reseed is skipped while GNSS is
+     * still fused. 1 Hz streams stay on the Joseph path.
+     */
+    val gnssReseedWhileFused: Boolean = false,
+    /**
+     * Bias-like coast position covariance: after T seconds,
+     * sqrt(P_h) grows as hypot(sigma_v, v * sigma_heading) * T.
+     * Default off keeps v3/v5 halo growth.
+     */
+    val coastHonestP: Boolean = false,
+    val coastSpeedRwMps: Double = 3.0,
+    val coastHeadingRwRadps: Double = 0.1,
+    /**
+     * Learned forward-speed pseudo-measurement during coast. Default off.
+     * Stop/idle probability still forces ZUPT. When on, 1-dof chi-square 3.841
+     * and sigma floored at [studentSpeedSigmaFloorMps].
+     */
+    val studentForwardSpeed: Boolean = false,
+    val studentSpeedChi2Gate: Double = 3.841,
+    val studentSpeedSigmaFloorMps: Double = 2.0,
+    /** Decay held speed toward [coastSpeedDecayTargetMps] with time constant tau. */
+    val coastSpeedDecay: Boolean = false,
+    val coastSpeedDecayTauS: Double = 30.0,
+    val coastSpeedDecayTargetMps: Double = 0.0,
+    /**
+     * GNSS age (s) before DEAD_RECKONING unless GNSS is held. Default 2
+     * keeps replay hashes. The live phone filter uses 8 so indoor gaps
+     * of a few seconds stay GNSS or Assisted, not a fake tunnel.
+     */
+    val staleAfterS: Double = 2.0,
 )
 
 /** GNSS sample at the PoseStore / filter boundary. Units: deg, m/s, rad, metres. */
@@ -1099,3 +2125,45 @@ private operator fun Mat3.times(scale: Double): Mat3 = Mat3(
 private fun negated(m: Mat3): Mat3 = m * -1.0
 
 private fun hypot3(x: Double, y: Double, z: Double): Double = hypot(hypot(x, y), z)
+
+private fun medianOf(values: List<Double>): Double {
+    val sorted = values.sorted()
+    val n = sorted.size
+    require(n > 0)
+    return if (n % 2 == 1) {
+        sorted[n / 2]
+    } else {
+        0.5 * (sorted[n / 2 - 1] + sorted[n / 2])
+    }
+}
+
+private fun percentileOf(values: List<Double>, p: Double): Double {
+    val sorted = values.sorted()
+    val n = sorted.size
+    require(n > 0)
+    if (n == 1) {
+        return sorted[0]
+    }
+    val x = p.coerceIn(0.0, 1.0) * (n - 1).toDouble()
+    val i = floor(x).toInt()
+    val f = x - i
+    return if (i >= n - 1) {
+        sorted[n - 1]
+    } else {
+        sorted[i] * (1.0 - f) + sorted[i + 1] * f
+    }
+}
+
+private data class TrailFix(
+    val latDeg: Double,
+    val lonDeg: Double,
+    val tNs: Long,
+    val speedMps: Double,
+    val headingRad: Double,
+)
+
+private data class VibSample(
+    val tNs: Long,
+    val accelMag: Double,
+    val gyroNorm: Double,
+)

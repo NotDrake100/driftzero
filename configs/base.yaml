@@ -1,44 +1,48 @@
+# Documentation only. Kotlin does not load this file.
+# Live thresholds live in InsConfig (DeadReckoningFilter.kt) and HmmMatchConfig
+# (RoadGraph.kt). Some numbers below are duplicated in those defaults. Changing
+# a key here does not change the filter or the matcher.
 schema_version: "1.0.0"
 product:
   name: DriftZero
-  output_rate_hz: 10
+  output_rate_hz: 10  # documentation only. OUTPUT_HZ is 10 in DeadReckoningFilter.
 frames:
-  vehicle: FLU
-  navigation: ENU
-  geographic: WGS84
+  vehicle: FLU  # documentation only
+  navigation: ENU  # documentation only
+  geographic: WGS84  # documentation only
 sensor:
-  preferred_raw_rate_hz: 100
-  minimum_raw_rate_hz: 50
-  max_interpolation_gap_ms: 40
-  missing_gap_ms: 200
+  preferred_raw_rate_hz: 100  # documentation only. Phone uses SENSOR_DELAY_GAME.
+  minimum_raw_rate_hz: 50  # documentation only
+  max_interpolation_gap_ms: 40  # documentation only
+  missing_gap_ms: 200  # documentation only
 filter:
-  implementation: ESKF
-  use_non_holonomic_constraint: true
-  use_stop_update: true
-  use_magnetometer: gated
-  learned_update_fallback: disabled
+  implementation: ESKF  # documentation only. DeadReckoningFilter is the live ESKF.
+  use_non_holonomic_constraint: true  # documentation only. NHC is an InsConfig path.
+  use_stop_update: true  # documentation only. ZUPT is an InsConfig path.
+  use_magnetometer: gated  # documentation only. consume ignores MAGNETOMETER.
+  learned_update_fallback: disabled  # documentation only
 # InsConfig in DeadReckoningFilter.kt is the source of truth for live thresholds.
 gnss_health:
-  fused_to_degraded_consecutive: 3
-  degraded_to_dr_timeout_s: 2.0
-  degraded_accuracy_m: 30.0
-  gated_recent_s: 5.0
-  reacquiring_required_fixes: 3
-  innovation_gate_probability: 0.99
+  fused_to_degraded_consecutive: 3  # documentation only. Not an InsConfig field.
+  degraded_to_dr_timeout_s: 2.0  # documentation only. STALE_AFTER_S is 2 in code.
+  degraded_accuracy_m: 30.0  # mirrored in InsConfig.degradedAccuracyM, not read from here
+  gated_recent_s: 5.0  # mirrored in InsConfig.gatedRecentS, not read from here
+  reacquiring_required_fixes: 3  # mirrored in InsConfig.reacquireFixes, not read from here
+  innovation_gate_probability: 0.99  # documentation only
 recovery:
-  blend_duration_s: 3.0
-  max_instant_display_correction_m: 2.0
+  blend_duration_s: 3.0  # documentation only. Filter applies the Kalman correction in one step.
+  max_instant_display_correction_m: 2.0  # documentation only. PuckInterpolator bounds display.
 map_matching:
-  enabled: true
-  beam_width: 8
-  max_candidates_per_epoch: 12
-  min_search_radius_m: 15
-  max_search_radius_m: 250
-  soft_filter_feedback: true
+  enabled: true  # documentation only
+  beam_width: 8  # mirrored in HmmMatchConfig, not read from here
+  max_candidates_per_epoch: 12  # mirrored in HmmMatchConfig, not read from here
+  min_search_radius_m: 15  # mirrored in HmmMatchConfig, not read from here
+  max_search_radius_m: 250  # mirrored in HmmMatchConfig, not read from here
+  soft_filter_feedback: true  # documentation only. Matcher is display-only today.
 confidence:
-  low_confidence_horizontal_95_m: 120
-  suppress_lane_precision_horizontal_95_m: 8
+  low_confidence_horizontal_95_m: 120  # mirrored in InsConfig.lowConfidenceRadiusM, not read from here
+  suppress_lane_precision_horizontal_95_m: 8  # documentation only
 runtime:
-  deterministic_replay: true
-  network_required: false
+  deterministic_replay: true  # documentation only
+  network_required: false  # documentation only. Hosted tiles, Photon, Nominatim, and OSRM need a network until a Ready pack exists.
 

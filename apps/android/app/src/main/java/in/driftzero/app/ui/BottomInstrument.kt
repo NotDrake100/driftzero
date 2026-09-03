@@ -21,32 +21,41 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import `in`.driftzero.app.R
+import `in`.driftzero.core.MountQuality
 
+/**
+ * Bottom status sheet. [mountReason], [mountQuality], and [roadAid] default to
+ * null so the map owner can wire PoseStore without further UI edits. Skip them
+ * when [rows] already come from [StatusCopy.of] to avoid a second Mount or
+ * Road heading line. [onOpenJudge] is Lab only. Demo stays off the default sheet.
+ */
 @Composable
 internal fun BottomInstrument(
     lamp: LampDisplay,
     speedText: String?,
     radiusText: String?,
     reason: ModeReason?,
+    mountReason: String? = null,
+    mountQuality: MountQuality? = null,
+    mountYawConfidence: Double? = null,
+    roadAid: StatusCopy.RoadAidState? = null,
     rows: List<Pair<String, String>>,
     routeName: String?,
     routeSummary: String?,
     recording: Boolean,
     expanded: Boolean,
     onToggle: () -> Unit,
-    onOpenJudge: () -> Unit,
+    onOpenJudge: (() -> Unit)? = null,
     onStopRoute: (() -> Unit)?,
-    onOpenTrips: () -> Unit,
-    onOpenOffline: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenAbout: () -> Unit,
+    onDemoSignalLoss: (() -> Unit)? = null,
+    showLabTools: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val handle = stringResource(if (expanded) R.string.sheet_status_expanded else R.string.sheet_status_collapsed)
     InstrumentSheet(
         expanded = expanded,
         onToggle = onToggle,
-        onLongPress = onOpenJudge,
+        onLongPress = if (showLabTools) onOpenJudge else null,
         handleDescription = handle,
         modifier = modifier.navigationBarsPadding(),
     ) {
@@ -56,7 +65,7 @@ internal fun BottomInstrument(
             radiusText = radiusText,
             recording = recording,
             onClick = onToggle,
-            onLongPress = onOpenJudge,
+            onLongPress = if (showLabTools) onOpenJudge else null,
         )
         if (routeName != null && routeSummary != null) {
             RouteRows(
@@ -72,18 +81,30 @@ internal fun BottomInstrument(
                     .heightIn(max = 360.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
-                if (reason != null) {
-                    ListRow(label = stringResource(R.string.row_reason), value = reasonText(reason))
+                val seen = rows.map { it.first }.toSet()
+                val reasonLabel = stringResource(R.string.row_reason)
+                val mountLabel = stringResource(R.string.row_mount)
+                val roadLabel = stringResource(R.string.row_road_heading)
+                val reasonValue = StatusCopy.reasonLine(reason, mountReason)
+                if (reasonValue != null && reasonLabel !in seen) {
+                    ListRow(label = reasonLabel, value = reasonValue)
+                }
+                StatusCopy.mountIfUseful(mountQuality, mountYawConfidence)?.let { value ->
+                    if (mountLabel !in seen) {
+                        ListRow(label = mountLabel, value = value)
+                    }
                 }
                 rows.forEach { (label, value) ->
                     ListRow(label = label, value = value)
                 }
-                LinkRow(
-                    onOpenTrips = onOpenTrips,
-                    onOpenOffline = onOpenOffline,
-                    onOpenSettings = onOpenSettings,
-                    onOpenAbout = onOpenAbout,
-                )
+                StatusCopy.roadHeading(roadAid)?.let { value ->
+                    if (showLabTools && roadLabel !in seen) {
+                        ListRow(label = roadLabel, value = value)
+                    }
+                }
+                if (showLabTools && onDemoSignalLoss != null) {
+                    DemoRow(onClick = onDemoSignalLoss)
+                }
             }
         }
     }
@@ -96,7 +117,7 @@ private fun CollapsedStatusLine(
     radiusText: String?,
     recording: Boolean,
     onClick: () -> Unit,
-    onLongPress: () -> Unit,
+    onLongPress: (() -> Unit)?,
 ) {
     val colors = InstrumentTheme.colors
     val type = InstrumentTheme.type
@@ -111,7 +132,8 @@ private fun CollapsedStatusLine(
                 idle = colors.panel,
                 pressed = colors.panelPressed,
             )
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp)
+            .horizontalScroll(rememberScrollState()),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -124,7 +146,6 @@ private fun CollapsedStatusLine(
         if (recording) {
             BasicText(text = stringResource(R.string.trips_recording), style = type.readout)
         }
-        Box(modifier = Modifier.weight(1f))
         if (speedText != null) {
             BasicText(text = speedText, style = type.readoutLarge)
         }
@@ -159,22 +180,19 @@ private fun RouteRows(
 }
 
 @Composable
-private fun LinkRow(
-    onOpenTrips: () -> Unit,
-    onOpenOffline: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenAbout: () -> Unit,
-) {
+private fun DemoRow(onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .heightIn(min = 48.dp)
+            .travelClickable(
+                onClick = onClick,
+                idle = InstrumentTheme.colors.panel,
+                pressed = InstrumentTheme.colors.panelPressed,
+            )
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        SecondaryButton(label = stringResource(R.string.link_trips), onClick = onOpenTrips)
-        SecondaryButton(label = stringResource(R.string.link_offline), onClick = onOpenOffline)
-        SecondaryButton(label = stringResource(R.string.link_settings), onClick = onOpenSettings)
-        SecondaryButton(label = stringResource(R.string.link_about), onClick = onOpenAbout)
+        BasicText(text = stringResource(R.string.demo_signal_loss), style = InstrumentTheme.type.body)
     }
 }

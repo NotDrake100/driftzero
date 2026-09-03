@@ -36,14 +36,14 @@ from driftzero_ml.eval_iovnbd_blackout import (
     write_blackout_interval_ids,
 )
 from driftzero_ml.features.causal_imu import (
-    FEATURE_NAMES,
+    MAX_SAMPLES,
     MIN_SAMPLES,
     STOP_ZUPT,
     extract_causal_imu_features,
     records_to_imu_samples,
     trim_causal_window,
 )
-from driftzero_ml.gnss_truth import TruthGateConfig, assess_truth, score_epochs, seed_heading_rad
+from driftzero_ml.gnss_truth import TruthGateConfig, assess_truth, score_epochs, seed_heading_rad, unique_fix_median_spacing_s
 from driftzero_ml.io_vnbd import IOVNBDMissing, assign_grouped_trip_splits
 from driftzero_ml.learned_imu import hacf_sequence
 from driftzero_ml.metrics import (
@@ -54,6 +54,23 @@ from driftzero_ml.metrics import (
     path_heading_rad,
     path_length_m,
     wrap_heading_error_rad,
+)
+from driftzero_ml.curve_speed import (
+    estimate_forward_axis,
+    linear_curve_speed_fn,
+    observe_curve_speeds,
+    persist_curve_speed_fn,
+)
+from driftzero_ml.selfcal_speed import (
+    ROLL_WINDOW_NS,
+    budget_bucket,
+    calibration_budget_s,
+    fit_affine_correction,
+    fit_selfcal,
+    fit_selfcal_precomputed,
+    linear_selfcal_speed_fn,
+    persist_selfcal_speed_fn,
+    vibration_bands,
 )
 from driftzero_ml.student.gru_runtime import CausalGruStudent, load_gru_student
 from driftzero_ml.student.heads import zupt_accel_infer
@@ -68,6 +85,51 @@ SYSTEMS = (
     "linear",
     "gru",
     "gru_bump",
+)
+PHYSICS_SYSTEMS = (
+    "persist_curve",
+    "linear_curve",
+    "persist_selfcal",
+    "linear_selfcal",
+)
+GATED_INTERVAL_IDS = frozenset(
+    {
+        "S-S1:d1000",
+        "S-S1:mid",
+        "S-S3a:d1000",
+        "S-S3b:d1000",
+        "S-S3b:mid",
+        "S-S3c:mid",
+        "S-Vfa01:mid",
+        "S-Vta12:mid",
+        "S-Vta15:mid",
+        "S-Vta17:d1000",
+        "S-Vta17:mid",
+        "S-Vta1a:d1000",
+        "S-Vta1a:d50",
+        "S-Vta1a:mid",
+        "S-Vta1b:d50",
+        "S-Vta1b:mid",
+        "S-Vta20:mid",
+        "S-Vta22:d1000",
+        "S-Vta22:mid",
+        "S-Vta24:mid",
+        "S-Vta25:mid",
+        "S-Vta2:d1000",
+        "S-Vta2:d50",
+        "S-Vta2:mid",
+        "S-Vtb1:mid",
+        "S-Vtb6:mid",
+        "S-Vtb8:mid",
+        "S-Vtb9:mid",
+        "S-Vw16a:d1000",
+        "S-Vw16a:mid",
+        "S-Vw16b:d1000",
+        "S-Vw16b:mid",
+        "S-Vw5:mid",
+        "S-Y1:d1000",
+        "S-Y1:mid",
+    }
 )
 
 
@@ -260,6 +322,8 @@ def score_interval(
     interval: BlackoutInterval,
     linear: LinearMotionStudent,
     gru: CausalGruStudent | None,
+    *,
+    physics: bool = False,
 ) -> dict | None:
     records = _time_ordered(records)
     history = _gnss_history(records, interval.start_ns)
@@ -348,6 +412,273 @@ def score_interval(
     checked = assess_truth(truth, duration_s=duration, coverage=1.0, config=gate)
     if not checked.accepted:
         return None
+    physics_diag: dict | None = None
+    if physics:
+        physics_diag = _attach_physics(
+            records,
+            interval,
+            history,
+            blackout_rows,
+            masked,
+            linear,
+            traces,
+            speeds,
+            headings,
+        )
+    metrics: dict[str, BlackoutMetrics] = {}
+    extras: dict[str, dict] = {}
+    for name, trace in traces.items():
+        kept_trace = [point for point, flag in zip(trace, keep) if flag]
+        kept_speed = [value for value, flag in zip(speeds[name], keep) if flag]
+        kept_head = [value for value, flag in zip(headings[name], keep) if flag]
+        kept_truth_speed = [value for value, flag in zip(truth_speed, keep) if flag]
+        kept_truth_head = [value for value, flag in zip(truth_heading, keep) if flag]
+        metrics[name] = evaluate_blackout(kept_trace, truth)
+        extras[name] = {
+            "speed_mae_mps": mean(abs(a - b) for a, b in zip(kept_speed, kept_truth_speed)),
+            "heading_mae_rad": circular_mae_rad(kept_head, kept_truth_head),
+        }
+        traces[name] = kept_trace
+    payload = {
+        "interval_id": interval.interval_id,
+        "start_ns": interval.start_ns,
+        "end_ns": interval.end_ns,
+        "truth": truth,
+        "traces": traces,
+        "metrics": metrics,
+        "extras": extras,
+        "truth_speed": truth_speed,
+    }
+    if physics_diag is not None:
+        payload["physics"] = physics_diag
+    return payload
+
+
+def _student_speed_var(
+    student: LinearMotionStudent,
+    imu_records: Sequence[dict],
+) -> Callable[[dict], tuple[float, float, bool] | None]:
+    samples = records_to_imu_samples(imu_records)
+    by_t = {sample.timestamp_ns: index for index, sample in enumerate(samples)}
+
+    def infer(row: dict) -> tuple[float, float, bool] | None:
+        stamp = int(row["timestamp_ns"])
+        index = by_t.get(stamp)
+        if index is None:
+            return None
+        window = trim_causal_window(samples[max(0, index + 1 - MAX_SAMPLES) : index + 1], stamp)
+        if len(window) < MIN_SAMPLES:
+            return None
+        features = extract_causal_imu_features(window)
+        speed, stop_logit, log_var = student.infer(features.vector)
+        return speed, exp(log_var), _logistic(stop_logit) >= STOP_ZUPT
+
+    return infer
+
+
+def _hold_heading(_row: dict) -> float | None:
+    return None
+
+
+def _attach_physics(
+    records: Sequence[dict],
+    interval: BlackoutInterval,
+    history: Sequence[dict],
+    blackout_rows: Sequence[dict],
+    masked: Sequence[dict],
+    linear: LinearMotionStudent,
+    traces: dict,
+    speeds: dict,
+    headings: dict,
+) -> dict:
+    """Add the four physics coasts. Forward axis and self-cal freeze at mask start."""
+
+    trip_id = str(records[0].get("trip_id", "unknown")) if records else "unknown"
+    alignment = alignment_from_records(records, trip_id)
+    pre = [row for row in records if int(row["timestamp_ns"]) < interval.start_ns]
+    forward = estimate_forward_axis(pre, alignment, interval.start_ns)
+    curve_obs = observe_curve_speeds(blackout_rows, alignment, forward)
+    valid_n = sum(1 for row in curve_obs if row.valid)
+    budget_s = calibration_budget_s(records, interval.start_ns)
+    selfcal = fit_selfcal(records, interval.start_ns)
+    infer_all = _student_speed_var(linear, records)
+    infer_mask = _student_speed_var(linear, masked)
+
+    def student_speed_only(row: dict) -> float | None:
+        got = infer_all(row)
+        if got is None:
+            return None
+        speed, _var, stopped = got
+        return 0.0 if stopped else speed
+
+    affine = fit_affine_correction(records, interval.start_ns, student_speed_only)
+    traces["persist_curve"], pc_speed, pc_head = _coast(
+        history, blackout_rows, persist_curve_speed_fn(curve_obs), _hold_heading
+    )
+    traces["linear_curve"], lc_speed, lc_head = _coast(
+        history, blackout_rows, linear_curve_speed_fn(infer_mask, curve_obs)
+    )
+    traces["persist_selfcal"], ps_speed, ps_head = _coast(
+        history, blackout_rows, persist_selfcal_speed_fn(selfcal, masked), _hold_heading
+    )
+    def student_speed_mask(row: dict) -> float | None:
+        got = infer_mask(row)
+        if got is None:
+            return None
+        speed, _var, stopped = got
+        return 0.0 if stopped else speed
+
+    traces["linear_selfcal"], ls_speed, ls_head = _coast(
+        history, blackout_rows, linear_selfcal_speed_fn(student_speed_mask, affine)
+    )
+    speeds["persist_curve"] = pc_speed
+    speeds["linear_curve"] = lc_speed
+    speeds["persist_selfcal"] = ps_speed
+    speeds["linear_selfcal"] = ls_speed
+    headings["persist_curve"] = pc_head
+    headings["linear_curve"] = lc_head
+    headings["persist_selfcal"] = ps_head
+    headings["linear_selfcal"] = ls_head
+    return {
+        "forward_source": None if forward is None else forward.source,
+        "forward_n": 0 if forward is None else forward.sample_count,
+        "curve_valid_n": valid_n,
+        "curve_n": len(curve_obs),
+        "curve_valid_frac": 0.0 if not curve_obs else valid_n / len(curve_obs),
+        "cal_budget_s": budget_s,
+        "cal_bucket": budget_bucket(budget_s),
+        "selfcal_n": 0 if selfcal is None else selfcal.n_fit,
+        "selfcal_span_s": 0.0 if selfcal is None else selfcal.used_span_s,
+        "affine_scale": affine.scale,
+        "affine_bias": affine.bias,
+        "affine_n": affine.n_fit,
+        "affine_linear_std": affine.linear_std,
+    }
+
+
+def _precompute_trip(records: Sequence[dict], linear: LinearMotionStudent) -> dict:
+    """One causal feature pass per trip. Used by the physics-only runner."""
+
+    samples = records_to_imu_samples(records)
+    student_at: dict[int, tuple[float, float, bool]] = {}
+    selfcal_at: dict[int, tuple[float, ...]] = {}
+    for index, sample in enumerate(samples):
+        window = trim_causal_window(samples[max(0, index + 1 - MAX_SAMPLES) : index + 1], sample.timestamp_ns)
+        if len(window) < MIN_SAMPLES:
+            continue
+        feats = extract_causal_imu_features(window)
+        selfcal_at[sample.timestamp_ns] = feats.vector + vibration_bands(window)
+        speed, stop_logit, log_var = linear.infer(feats.vector)
+        student_at[sample.timestamp_ns] = (speed, exp(log_var), _logistic(stop_logit) >= STOP_ZUPT)
+    return {"student": student_at, "selfcal": selfcal_at}
+
+
+def _score_physics_only(
+    records: Sequence[dict],
+    interval: BlackoutInterval,
+    linear: LinearMotionStudent,
+    cache: dict,
+) -> dict | None:
+    """Gate the locked interval, then coast only the four physics systems."""
+
+    records = _time_ordered(records)
+    history = _gnss_history(records, interval.start_ns)
+    if _positive_dt_pair(history) is None:
+        return None
+    masked = mask_gnss_records(records, [interval])
+    assert_no_gnss_leakage(masked)
+    blackout_rows = [row for row in masked if row.get("gnss_masked")]
+    if len(blackout_rows) < 8:
+        return None
+    original_by_t = {int(row["timestamp_ns"]): row for row in records}
+    truth: list[tuple[float, float]] = []
+    for row in blackout_rows:
+        src = original_by_t[int(row["timestamp_ns"])]
+        if "latitude_deg" not in src or "longitude_deg" not in src:
+            return None
+        leaked = GNSS_KEYS.intersection(row.keys())
+        if leaked:
+            raise AssertionError(f"blackout IMU row still has GNSS keys: {sorted(leaked)}")
+        truth.append((float(src["latitude_deg"]), float(src["longitude_deg"])))
+    heading0 = seed_heading_rad(history)
+    if heading0 is None:
+        return None
+    epochs = set(score_epochs(records, interval.start_ns, interval.end_ns))
+    keep = [int(row["timestamp_ns"]) in epochs for row in blackout_rows]
+    if sum(1 for flag in keep if flag) < 2:
+        return None
+    truth = [point for point, flag in zip(truth, keep) if flag]
+    suite = interval.interval_id.rsplit(":", 1)[-1]
+    gate = {
+        "mid": TruthGateConfig(),
+        "d50": TruthGateConfig(min_path_length_m=40.0, min_unique_fixes=3),
+        "d1000": TruthGateConfig(min_path_length_m=800.0, min_unique_fixes=8),
+    }.get(suite, TruthGateConfig())
+    duration = (interval.end_ns - interval.start_ns) / 1_000_000_000.0
+    checked = assess_truth(truth, duration_s=duration, coverage=1.0, config=gate)
+    if not checked.accepted:
+        return None
+    trip_id = str(records[0].get("trip_id", "unknown"))
+    alignment = alignment_from_records(records, trip_id)
+    pre = [row for row in records if int(row["timestamp_ns"]) < interval.start_ns]
+    forward = estimate_forward_axis(pre, alignment, interval.start_ns)
+    curve_obs = observe_curve_speeds(blackout_rows, alignment, forward)
+    valid_n = sum(1 for row in curve_obs if row.valid)
+    budget_s = calibration_budget_s(records, interval.start_ns)
+    window_start = interval.start_ns - ROLL_WINDOW_NS
+    fit_x: list[tuple[float, ...]] = []
+    fit_y: list[float] = []
+    fit_t: list[int] = []
+    for row in records:
+        stamp = int(row["timestamp_ns"])
+        if stamp >= interval.start_ns or stamp < window_start:
+            continue
+        if row.get("gnss_speed_mps") is None:
+            continue
+        vec = cache["selfcal"].get(stamp)
+        if vec is None:
+            continue
+        fit_x.append(vec)
+        fit_y.append(max(0.0, float(row["gnss_speed_mps"])))
+        fit_t.append(stamp)
+    selfcal = fit_selfcal_precomputed(fit_x, fit_y, fit_t)
+
+    def student_speed_only(row: dict) -> float | None:
+        got = cache["student"].get(int(row["timestamp_ns"]))
+        if got is None:
+            return None
+        speed, _var, stopped = got
+        return 0.0 if stopped else speed
+
+    affine = fit_affine_correction(records, interval.start_ns, student_speed_only)
+
+    def linear_infer(row: dict) -> tuple[float, float, bool] | None:
+        return cache["student"].get(int(row["timestamp_ns"]))
+
+    def selfcal_speed(row: dict, prior: float) -> float:
+        if selfcal is None:
+            return prior
+        vec = cache["selfcal"].get(int(row["timestamp_ns"]))
+        if vec is None:
+            return prior
+        return selfcal.infer(vec)
+
+    traces: dict[str, list[tuple[float, float]]] = {}
+    speeds: dict[str, list[float]] = {}
+    headings: dict[str, list[float]] = {}
+    traces["persist_curve"], speeds["persist_curve"], headings["persist_curve"] = _coast(
+        history, blackout_rows, persist_curve_speed_fn(curve_obs), _hold_heading
+    )
+    traces["linear_curve"], speeds["linear_curve"], headings["linear_curve"] = _coast(
+        history, blackout_rows, linear_curve_speed_fn(linear_infer, curve_obs)
+    )
+    traces["persist_selfcal"], speeds["persist_selfcal"], headings["persist_selfcal"] = _coast(
+        history, blackout_rows, selfcal_speed, _hold_heading
+    )
+    traces["linear_selfcal"], speeds["linear_selfcal"], headings["linear_selfcal"] = _coast(
+        history, blackout_rows, linear_selfcal_speed_fn(student_speed_only, affine)
+    )
+    truth_speed, truth_heading = _truth_motion(original_by_t, blackout_rows)
     metrics: dict[str, BlackoutMetrics] = {}
     extras: dict[str, dict] = {}
     for name, trace in traces.items():
@@ -371,6 +702,21 @@ def score_interval(
         "metrics": metrics,
         "extras": extras,
         "truth_speed": truth_speed,
+        "physics": {
+            "forward_source": None if forward is None else forward.source,
+            "forward_n": 0 if forward is None else forward.sample_count,
+            "curve_valid_n": valid_n,
+            "curve_n": len(curve_obs),
+            "curve_valid_frac": 0.0 if not curve_obs else valid_n / len(curve_obs),
+            "cal_budget_s": budget_s,
+            "cal_bucket": budget_bucket(budget_s),
+            "selfcal_n": 0 if selfcal is None else selfcal.n_fit,
+            "selfcal_span_s": 0.0 if selfcal is None else selfcal.used_span_s,
+            "affine_scale": affine.scale,
+            "affine_bias": affine.bias,
+            "affine_n": affine.n_fit,
+            "affine_linear_std": affine.linear_std,
+        },
     }
 
 
@@ -475,6 +821,7 @@ def run(repo: Path, out_dir: Path) -> dict:
     heading_by_system: dict[str, list[float]] = defaultdict(list)
     plot_candidates: list[tuple[str, dict]] = []
     locked_ids: list[str] = []
+    trip_spacing: dict[str, float | None] = {}
     for path in tables:
         split = assignments[path.stem]
         if split not in EVAL_SPLITS:
@@ -484,6 +831,7 @@ def run(repo: Path, out_dir: Path) -> dict:
         except ValueError:
             continue
         records = _time_ordered(records)
+        trip_spacing[path.stem] = unique_fix_median_spacing_s(records)
         aligned = alignment_from_records(records, path.stem)
         if aligned is not None:
             records = attach_alignment(records, aligned)
@@ -517,6 +865,13 @@ def run(repo: Path, out_dir: Path) -> dict:
         systems[name]["heading_mae_rad_p50"] = median(heading_by_system[name])
     out_dir.mkdir(parents=True, exist_ok=True)
     _write_csvs(out_dir, per_interval, systems)
+    try:
+        from driftzero_ml.eval_slices import build_slices_from_screening_dir, write_slices_markdown
+
+        _, markdown = build_slices_from_screening_dir(out_dir, spacing_by_trip=trip_spacing)
+        write_slices_markdown(out_dir / "slices.md", markdown)
+    except FileNotFoundError:
+        pass
     plot_dir = out_dir / "plots"
     plot_paths = []
     plot_candidates.sort(key=lambda item: (0 if item[0] == "S-Vta2" else 1, item[0]))
@@ -541,9 +896,10 @@ def run(repo: Path, out_dir: Path) -> dict:
                 "note": _failure_note(row, records),
             }
         )
+    scored_ids = [row["interval_id"] for row in per_interval]
     manifest = repo / "data" / "manifests" / "io_vnbd_screening_v1.yaml"
-    if locked_ids:
-        write_blackout_interval_ids(manifest, locked_ids)
+    if manifest.is_file() and "blackout_interval_ids: []\n" in manifest.read_text():
+        write_blackout_interval_ids(manifest, sorted(GATED_INTERVAL_IDS))
     payload = {
         "skipped": False,
         "seed": SEED,
@@ -554,7 +910,9 @@ def run(repo: Path, out_dir: Path) -> dict:
         "systems": systems,
         "plot_paths": plot_paths,
         "failures": failures,
-        "blackout_interval_ids": locked_ids,
+        "blackout_interval_ids": sorted(GATED_INTERVAL_IDS),
+        "generated_interval_ids": locked_ids,
+        "scored_interval_ids": scored_ids,
         "gru_present": gru is not None,
     }
     (out_dir / "metrics_summary.json").write_text(json.dumps(payload, indent=2) + "\n")
@@ -619,6 +977,255 @@ def _write_csvs(out_dir: Path, per_interval: list[dict], systems: dict) -> None:
                 )
 
 
+def _table_row(name: str, row: dict) -> str:
+    def fmt(key: str, digits: int = 4) -> str:
+        if key not in row:
+            return "n/a"
+        return f"{float(row[key]):.{digits}f}"
+
+    return (
+        f"| {name} | {fmt('drift_ratio_p50')} | {fmt('drift_ratio_p90')} | "
+        f"{fmt('drift_ratio_p95')} | {fmt('drift_ratio_worst')} | {fmt('endpoint_p50_m', 2)} | "
+        f"{fmt('speed_mae_p50', 3)} | {fmt('heading_mae_rad_p50', 3)} |"
+    )
+
+
+def insert_physics_summary_rows(path: Path, systems: dict) -> None:
+    """Insert or replace the four physics rows. Does not rewrite the rest of the file."""
+
+    if not path.is_file():
+        raise FileNotFoundError(path)
+    text = path.read_text()
+    lines = text.splitlines()
+    new_rows = [_table_row(name, systems[name]) for name in PHYSICS_SYSTEMS if name in systems]
+    if len(new_rows) != len(PHYSICS_SYSTEMS):
+        missing = [name for name in PHYSICS_SYSTEMS if name not in systems]
+        raise ValueError(f"missing physics systems: {missing}")
+    names = set(PHYSICS_SYSTEMS)
+    out: list[str] = []
+    replaced = 0
+    for line in lines:
+        key = line.split("|")[1].strip() if line.startswith("| ") and line.count("|") >= 3 else ""
+        if key in names:
+            out.append(new_rows[PHYSICS_SYSTEMS.index(key)])
+            replaced += 1
+        else:
+            out.append(line)
+    if replaced == len(PHYSICS_SYSTEMS):
+        path.write_text("\n".join(out) + "\n")
+        return
+    if replaced:
+        raise ValueError(f"{path} has a partial physics table ({replaced} rows)")
+    insert_after = None
+    for index, line in enumerate(out):
+        if line.startswith("| timesfm_coast |"):
+            insert_after = index
+        elif insert_after is None and line.startswith("| linear |") and not line.startswith("| linear_"):
+            insert_after = index
+    if insert_after is None:
+        raise ValueError(f"{path} has no linear row to insert after")
+    out[insert_after + 1 : insert_after + 1] = new_rows
+    path.write_text("\n".join(out) + "\n")
+
+
+def _merge_interval_csv(path: Path, per_interval: list[dict]) -> None:
+    keep: list[list[str]] = []
+    if path.is_file():
+        with path.open(newline="") as handle:
+            reader = csv.reader(handle)
+            header = next(reader)
+            for row in reader:
+                if len(row) >= 4 and row[3] in PHYSICS_SYSTEMS:
+                    continue
+                keep.append(row)
+    else:
+        header = [
+            "interval_id",
+            "trip_id",
+            "split",
+            "system",
+            "endpoint_error_m",
+            "truth_path_length_m",
+            "drift_ratio",
+            "along_track_error_m",
+            "cross_track_error_m",
+            "speed_mae_mps",
+            "heading_mae_rad",
+        ]
+    with path.open("w", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(header)
+        writer.writerows(keep)
+        for row in per_interval:
+            for name in PHYSICS_SYSTEMS:
+                metrics = row["metrics"][name]
+                writer.writerow(
+                    [
+                        row["interval_id"],
+                        row["trip_id"],
+                        row["split"],
+                        name,
+                        f"{metrics.endpoint_error_m:.6f}",
+                        f"{metrics.truth_path_length_m:.6f}",
+                        "" if metrics.drift_ratio is None else f"{metrics.drift_ratio:.6f}",
+                        "" if metrics.along_track_error_m is None else f"{metrics.along_track_error_m:.6f}",
+                        "" if metrics.cross_track_error_m is None else f"{metrics.cross_track_error_m:.6f}",
+                        f"{row['extras'][name]['speed_mae_mps']:.6f}",
+                        f"{row['extras'][name]['heading_mae_rad']:.6f}",
+                    ]
+                )
+
+
+def _merge_trip_csv(path: Path, per_interval: list[dict]) -> None:
+    by_trip: dict[str, dict[str, list[BlackoutMetrics]]] = defaultdict(lambda: defaultdict(list))
+    for row in per_interval:
+        for name in PHYSICS_SYSTEMS:
+            by_trip[row["trip_id"]][name].append(row["metrics"][name])
+    keep: list[list[str]] = []
+    if path.is_file():
+        with path.open(newline="") as handle:
+            reader = csv.reader(handle)
+            header = next(reader)
+            for row in reader:
+                if len(row) >= 2 and row[1] in PHYSICS_SYSTEMS:
+                    continue
+                keep.append(row)
+    else:
+        header = ["trip_id", "system", "intervals", "endpoint_p50_m", "drift_ratio_p50"]
+    with path.open("w", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(header)
+        writer.writerows(keep)
+        for trip_id, systems_rows in sorted(by_trip.items()):
+            for name, rows in systems_rows.items():
+                ratios = [item.drift_ratio for item in rows if item.drift_ratio is not None]
+                writer.writerow(
+                    [
+                        trip_id,
+                        name,
+                        len(rows),
+                        f"{median([item.endpoint_error_m for item in rows]):.6f}",
+                        "" if not ratios else f"{median(ratios):.6f}",
+                    ]
+                )
+
+
+def _persist_metrics_from_csv(path: Path) -> dict[str, BlackoutMetrics]:
+    out: dict[str, BlackoutMetrics] = {}
+    if not path.is_file():
+        return out
+    with path.open(newline="") as handle:
+        for row in csv.DictReader(handle):
+            if row.get("system") != "persist":
+                continue
+            drift = None if not row.get("drift_ratio") else float(row["drift_ratio"])
+            out[row["interval_id"]] = BlackoutMetrics(
+                endpoint_error_m=float(row["endpoint_error_m"]),
+                truth_path_length_m=float(row["truth_path_length_m"]),
+                drift_ratio=drift,
+                mean_position_error_m=None,
+                max_position_error_m=None,
+                sample_count=0,
+            )
+    return out
+
+
+def run_physics(repo: Path, out_dir: Path) -> dict:
+    """Score the four physics systems on the locked 35 gated intervals only."""
+
+    root = repo / "data" / "raw" / "io_vnbd"
+    linear_path = repo / "models" / "motion_student_v1" / "linear.json"
+    tables = screening_csv_paths(root)
+    linear = load_linear_student(linear_path)
+    assignments = {row.trip_id: row.split for row in assign_grouped_trip_splits([p.stem for p in tables], seed=SEED)}
+    per_interval: list[dict] = []
+    extras_by_system: dict[str, list[float]] = defaultdict(list)
+    heading_by_system: dict[str, list[float]] = defaultdict(list)
+    by_system: dict[str, list[BlackoutMetrics]] = defaultdict(list)
+    physics_rows: list[dict] = []
+    for path in tables:
+        split = assignments[path.stem]
+        if split not in EVAL_SPLITS:
+            continue
+        try:
+            records = [eval_record(row) for row in load_smartphone_csv(path)]
+        except ValueError:
+            continue
+        records = _time_ordered(records)
+        aligned = alignment_from_records(records, path.stem)
+        if aligned is not None:
+            records = attach_alignment(records, aligned)
+        print(f"physics cache {path.stem}", flush=True)
+        cache = _precompute_trip(records, linear)
+        for interval in locked_blackouts(records, path.stem):
+            if interval.interval_id not in GATED_INTERVAL_IDS:
+                continue
+            try:
+                scored = _score_physics_only(records, interval, linear, cache)
+            except ValueError:
+                continue
+            if scored is None:
+                continue
+            scored["trip_id"] = path.stem
+            scored["split"] = split
+            per_interval.append(scored)
+            physics_rows.append({"interval_id": interval.interval_id, "trip_id": path.stem, **scored.get("physics", {})})
+            for name in PHYSICS_SYSTEMS:
+                by_system[name].append(scored["metrics"][name])
+                extras_by_system[name].append(scored["extras"][name]["speed_mae_mps"])
+                heading_by_system[name].append(scored["extras"][name]["heading_mae_rad"])
+    if len(per_interval) != len(GATED_INTERVAL_IDS):
+        return {
+            "skipped": True,
+            "reason": f"physics scored {len(per_interval)} intervals, expected {len(GATED_INTERVAL_IDS)}",
+            "interval_count": len(per_interval),
+        }
+    systems = {name: summarize(rows) for name, rows in by_system.items()}
+    for name, maes in extras_by_system.items():
+        systems[name]["speed_mae_p50"] = median(maes)
+        systems[name]["heading_mae_rad_p50"] = median(heading_by_system[name])
+        systems[name]["speed_mae_mean"] = mean(maes)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    _merge_interval_csv(out_dir / "metrics_per_interval.csv", per_interval)
+    _merge_trip_csv(out_dir / "metrics_per_trip.csv", per_interval)
+    summary_json = out_dir / "metrics_summary.json"
+    payload = json.loads(summary_json.read_text()) if summary_json.is_file() else {}
+    payload.setdefault("systems", {})
+    payload["systems"].update(systems)
+    payload["physics_interval_count"] = len(per_interval)
+    payload["physics_seed"] = SEED
+    summary_json.write_text(json.dumps(payload, indent=2) + "\n")
+    (out_dir / "physics_metrics.json").write_text(
+        json.dumps(
+            {
+                "seed": SEED,
+                "interval_count": len(per_interval),
+                "systems": systems,
+                "intervals": physics_rows,
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+    persist_map = _persist_metrics_from_csv(out_dir / "metrics_per_interval.csv")
+    for scored in per_interval:
+        persist = persist_map.get(scored["interval_id"])
+        if persist is not None:
+            scored["metrics"]["persist"] = persist
+    insert_physics_summary_rows(out_dir / "summary.md", systems)
+    # physics_notes.md is written from artifacts plus a separate validation pass.
+    # Reloading S-Y1 / S-S1 here would add tens of minutes after scoring.
+    return {
+        "skipped": False,
+        "seed": SEED,
+        "interval_count": len(per_interval),
+        "systems": systems,
+        "per_interval": per_interval,
+        "physics_rows": physics_rows,
+    }
+
+
+
 def write_summary(path: Path, payload: dict, versions: dict, commands: list[str]) -> None:
     lines = [
         "# IO-VNBD screening v1",
@@ -653,7 +1260,7 @@ def write_summary(path: Path, payload: dict, versions: dict, commands: list[str]
             "|---|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
-    for name in SYSTEMS:
+    for name in SYSTEMS + PHYSICS_SYSTEMS:
         if name not in payload["systems"]:
             continue
         row = payload["systems"][name]
@@ -693,8 +1300,19 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Write the IO-VNBD screening bundle")
     parser.add_argument("--repo", type=Path, default=Path("."))
     parser.add_argument("--out", type=Path, default=Path("results/io_vnbd_screening_v1"))
+    parser.add_argument(
+        "--physics-only",
+        action="store_true",
+        help="Score persist_curve, linear_curve, persist_selfcal, linear_selfcal on the locked 35 intervals",
+    )
     args = parser.parse_args(argv)
     repo = args.repo.resolve()
+    if args.physics_only:
+        payload = run_physics(repo, args.out)
+        print(json.dumps({k: payload[k] for k in payload if k not in {"per_interval", "tables", "assignments", "linear", "physics_rows"}}, indent=2))
+        if payload.get("systems"):
+            print(json.dumps(payload["systems"], indent=2))
+        return 0
     try:
         payload = run(repo, args.out)
     except (IOVNBDMissing, DatasetLfsMissing, DatasetMissing) as error:

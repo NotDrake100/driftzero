@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -32,10 +36,12 @@ internal fun JudgeOverlay(
     modes: List<NavigationMode>,
     onToggleHold: () -> Unit,
     onClose: () -> Unit,
+    onDemoSignalLoss: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = InstrumentTheme.colors
     val type = InstrumentTheme.type
+    var detailsOpen by remember { mutableStateOf(false) }
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -54,11 +60,7 @@ internal fun JudgeOverlay(
             BasicText(text = stringResource(R.string.judge_title), style = type.title)
             SecondaryButton(label = stringResource(R.string.action_close), onClick = onClose)
         }
-        BasicText(text = stringResource(R.string.judge_raw_trail), style = type.caption)
-        BasicText(text = stringResource(R.string.judge_fused_trail), style = type.caption)
-        BasicText(text = stringResource(R.string.judge_mode_strip), style = type.caption)
-        ModeStrip(modes = modes, modifier = Modifier.fillMaxWidth().height(24.dp))
-        StatusCopy.outputRate(p95GapMs)?.let { BasicText(text = it, style = type.readout) }
+        BasicText(text = stringResource(R.string.judge_score_only), style = type.body)
         if (held && holdElapsedS != null && holdDistanceM != null) {
             BasicText(
                 text = stringResource(
@@ -69,11 +71,30 @@ internal fun JudgeOverlay(
                 style = type.readout,
             )
         }
+        if (detailsOpen) {
+            BasicText(text = stringResource(R.string.judge_raw_trail), style = type.caption)
+            BasicText(text = stringResource(R.string.judge_fused_trail), style = type.caption)
+            BasicText(text = stringResource(R.string.judge_mode_strip), style = type.caption)
+            ModeStrip(modes = modes, modifier = Modifier.fillMaxWidth().height(24.dp))
+            StatusCopy.outputRate(p95GapMs)?.let { BasicText(text = it, style = type.readout) }
+        }
         PrimaryButton(
             label = stringResource(if (held) R.string.action_resume_gnss else R.string.action_hold_gnss),
             onClick = onToggleHold,
             modifier = Modifier.fillMaxWidth(),
         )
+        SecondaryButton(
+            label = stringResource(if (detailsOpen) R.string.judge_less else R.string.judge_more),
+            onClick = { detailsOpen = !detailsOpen },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (onDemoSignalLoss != null) {
+            SecondaryButton(
+                label = stringResource(R.string.demo_signal_loss),
+                onClick = onDemoSignalLoss,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 

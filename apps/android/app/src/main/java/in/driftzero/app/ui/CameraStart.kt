@@ -1,5 +1,7 @@
 package `in`.driftzero.app.ui
 
+import `in`.driftzero.core.Wgs84
+
 /**
  * First camera: live GPS, else a stored last fix, else a world overview.
  * Never pins a demo city when those are missing.
@@ -13,8 +15,13 @@ data class CameraStart(
 }
 
 object CameraStartResolver {
+    /** Live GNSS always wins. Last-fix is only for the first paint. */
+    fun preferredFix(liveGps: TravelLatLng?, lastFix: TravelLatLng?): TravelLatLng? {
+        return validOrNull(liveGps) ?: validOrNull(lastFix)
+    }
+
     fun resolve(liveGps: TravelLatLng?, lastFix: TravelLatLng?): CameraStart {
-        val point = validOrNull(liveGps) ?: validOrNull(lastFix)
+        val point = preferredFix(liveGps, lastFix)
         return if (point != null) {
             CameraStart(point.latitudeDeg, point.longitudeDeg, StreetMapConfig.STREET_ZOOM)
         } else {
@@ -24,6 +31,30 @@ object CameraStartResolver {
                 StreetMapConfig.WORLD_ZOOM,
             )
         }
+    }
+
+    /**
+     * Recenter when the first live fix of a session is farther than
+     * [StreetMapConfig.LIVE_RECENTER_M] from the last-fix used at start.
+     * A live fix with no stored last-fix also recenters (world overview).
+     */
+    fun shouldRecenterOnLive(
+        liveGps: TravelLatLng?,
+        lastFix: TravelLatLng?,
+        alreadyRecentred: Boolean,
+    ): Boolean {
+        if (alreadyRecentred) {
+            return false
+        }
+        val live = validOrNull(liveGps) ?: return false
+        val stored = validOrNull(lastFix) ?: return true
+        val metres = Wgs84.distanceMetres(
+            stored.latitudeDeg,
+            stored.longitudeDeg,
+            live.latitudeDeg,
+            live.longitudeDeg,
+        )
+        return metres > StreetMapConfig.LIVE_RECENTER_M
     }
 
     fun validOrNull(point: TravelLatLng?): TravelLatLng? {

@@ -8,7 +8,7 @@ Python lives here. The phone does not import this package. Unit tests use the st
 |---|---|
 | Train linear or optional GRU students | `ZuptAccelMotionModel`, or packed `linear.json` |
 | Fit `linear_dp.json` (RoNIN/TLIO-shaped Δp) | Optional χ²-gated `ingestDisplacementPseudo` |
-| TimesFM 3 adapter (optional extra) | Never. No TimesFM, no PyTorch, no ONNX Runtime |
+| TimesFM 3.0 adapter (designed, not run) | Never. No TimesFM, no PyTorch, no ONNX Runtime |
 | IO-VNBD / OxIOD / RoNIN loaders | Not present. Filter consumes `SensorFrame` |
 | Blackout metrics and eval scripts | Score-only after a desktop run |
 
@@ -22,7 +22,7 @@ Same command as the root README and `pytest.ini`:
 PYTHONPATH=ml/src python -m unittest discover -s ml/tests -v
 ```
 
-`make validate` at repo root also checks `contracts/` JSON. `./ml[dev]` adds pytest and Ruff. `./ml[research]` adds numpy, pandas, torch, and TimesFM. Do not add those to the default test path.
+`make validate` at repo root also checks `contracts/` JSON. `./ml[dev]` adds pytest and Ruff. `./ml[research]` adds numpy, pandas, torch, and TimesFM. Do not add those to the default test path. TimesFM 3.0 is designed, not run, until `results/timesfm/` exists. 3.0 weights cannot ship. Distillation from 3.0 needs a license read. 2.5 is Apache-2.0.
 
 ## IO-VNBD
 
@@ -36,7 +36,7 @@ PYTHONPATH=ml/src python -m driftzero_ml.learned_imu --out models/learned_imu_v1
 PYTHONPATH=ml/src python -m driftzero_ml.eval_iovnbd_blackout --out results/io_vnbd_blackout_eval.md
 ```
 
-Synthetic IMU is used when LFS is missing. Synthetic numbers are not product scores.
+Cite [results/io_vnbd_screening_v1/summary.md](../results/io_vnbd_screening_v1/summary.md) for screening numbers. Do not cite `results/io_vnbd_blackout_eval.md`. Synthetic IMU is used when LFS is missing. Synthetic numbers are not product scores.
 
 ## Layout
 
@@ -49,7 +49,7 @@ driftzero_ml/
   student/       heuristic, linear, optional GRU, train script
   baselines.py   freeze and constant-velocity screening baselines
   contracts.py   SensorFrame / NavigationState instance checks
-  timesfm_adapter.py  optional zero-shot boundary (fails if extra missing)
+  timesfm_adapter.py  optional zero-shot boundary (designed, not run; fails if extra missing)
   eval_iovnbd_blackout.py  desktop blackout script
 ```
 

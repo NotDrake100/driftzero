@@ -1,5 +1,6 @@
 package `in`.driftzero.app.ui
 
+import `in`.driftzero.app.pose.LocationGrant
 import `in`.driftzero.core.DeadReckoningFilter
 import `in`.driftzero.core.NavigationMode
 import `in`.driftzero.core.NavigationState
@@ -13,6 +14,7 @@ enum class LampWord {
     REACQUIRING,
     LOW_CONFIDENCE,
     NO_PERMISSION,
+    PRECISE_OFF,
     WAITING_FIX,
 }
 
@@ -36,9 +38,15 @@ fun lampFor(mode: NavigationMode): LampDisplay = when (mode) {
     NavigationMode.LOW_CONFIDENCE -> LampDisplay(LampTone.ALERT, LampWord.LOW_CONFIDENCE, null, dashed = true, coasting = true)
 }
 
-fun lampFor(state: NavigationState?, locationPermission: Boolean): LampDisplay {
-    if (!locationPermission) {
+fun lampFor(state: NavigationState?, locationPermission: Boolean): LampDisplay =
+    lampFor(state, if (locationPermission) LocationGrant.FINE else LocationGrant.NONE)
+
+fun lampFor(state: NavigationState?, grant: LocationGrant): LampDisplay {
+    if (grant == LocationGrant.NONE) {
         return LampDisplay(LampTone.ALERT, LampWord.NO_PERMISSION, null, dashed = true, coasting = false)
+    }
+    if (state == null && grant == LocationGrant.COARSE) {
+        return LampDisplay(LampTone.ALERT, LampWord.PRECISE_OFF, null, dashed = true, coasting = false)
     }
     if (state == null) {
         return LampDisplay(LampTone.CAUTION, LampWord.WAITING_FIX, null, dashed = true, coasting = false)

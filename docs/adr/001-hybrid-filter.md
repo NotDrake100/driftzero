@@ -9,7 +9,7 @@ Raw phone inertial integration drifts quickly, while an end-to-end black-box pos
 
 ## Decision
 
-Use a compact causal neural model to produce motion pseudo-measurements, uncertainty, or bounded noise adaptation. Fuse them with GNSS, inertial propagation, and vehicle constraints in an ESKF or InEKF. Keep a filter-only fallback.
+Use a compact causal student to produce motion pseudo-measurements, uncertainty, or bounded noise adaptation. The packed phone student is `linear.json`. GRU is analysis-only. Fuse them with GNSS, inertial propagation, and vehicle constraints in an ESKF. Keep a filter-only fallback. TimesFM is not this student. TimesFM 3.0 is designed, not run.
 
 ## Consequences
 

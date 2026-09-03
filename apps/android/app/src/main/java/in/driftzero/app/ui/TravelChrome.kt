@@ -28,12 +28,16 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -44,6 +48,30 @@ import `in`.driftzero.app.R
 private val SheetCorner = RoundedCornerShape(8.dp)
 private val SearchPill = RoundedCornerShape(24.dp)
 private val LampCorner = RoundedCornerShape(4.dp)
+
+@Composable
+internal fun SearchCollapsedButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = InstrumentTheme.colors
+    val label = stringResource(R.string.destination_field)
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .shadow(2.dp, CircleShape)
+            .travelClickable(
+                onClick = onClick,
+                idle = colors.panel,
+                pressed = colors.panelPressed,
+                shape = CircleShape,
+            )
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        DestinationMark(size = 24.dp)
+    }
+}
 
 @Composable
 internal fun TravelSearchBar(
@@ -193,20 +221,32 @@ internal fun ModeLamp(
     lamp: LampDisplay,
     onClick: () -> Unit,
     onLongPress: (() -> Unit)?,
+    reason: String? = null,
+    holdHint: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = InstrumentTheme.colors
     val type = InstrumentTheme.type
     val word = lampWordText(lamp.word)
-    val readout = lampReadoutText(lamp)
+    val readout: String? = null
     val dot = lampColor(lamp.tone)
     val tone by animateColorAsState(
         targetValue = dot,
         animationSpec = tween(TRAVEL_MOTION_MS, easing = TravelEaseOut),
         label = "lamp",
     )
-    val description = if (readout == null) word else "$word, $readout"
-    Row(
+    val description = buildString {
+        append(if (readout == null) word else "$word, $readout")
+        if (!reason.isNullOrEmpty()) {
+            append(", ")
+            append(reason)
+        }
+        if (!holdHint.isNullOrEmpty()) {
+            append(", ")
+            append(holdHint)
+        }
+    }
+    Column(
         modifier = modifier
             .heightIn(min = 48.dp)
             .shadow(2.dp, LampCorner)
@@ -218,18 +258,28 @@ internal fun ModeLamp(
                 shape = LampCorner,
             )
             .semantics { contentDescription = description }
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .background(if (InstrumentTheme.reduceMotion) dot else tone, CircleShape),
-        )
-        BasicText(text = word, style = type.label)
-        if (readout != null) {
-            BasicText(text = readout, style = type.readout.copy(color = colors.inkDim))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(if (InstrumentTheme.reduceMotion) dot else tone, CircleShape),
+            )
+            BasicText(text = word, style = type.label)
+            if (readout != null) {
+                BasicText(text = readout, style = type.readout.copy(color = colors.inkDim))
+            }
+            if (!reason.isNullOrEmpty()) {
+                BasicText(text = reason, style = type.readout)
+            }
+        }
+        if (!holdHint.isNullOrEmpty()) {
+            BasicText(text = holdHint, style = type.caption)
         }
     }
 }
@@ -295,11 +345,42 @@ internal fun TravelTopChrome(
     onPick: (TravelPlace) -> Unit,
     searchNote: String?,
     reduceMotion: Boolean,
+    searchCollapsed: Boolean = false,
+    onExpandSearch: () -> Unit = {},
     lamp: LampDisplay,
     onLampClick: () -> Unit,
     onLampLongPress: (() -> Unit)?,
+    lampReason: String? = null,
+    banner: GuidanceBanner? = null,
+    gnssHeld: Boolean = false,
+    onOpenTrips: (() -> Unit)? = null,
+    onOpenOffline: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null,
+    onOpenAbout: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val searchOpen = !searchCollapsed || places.isNotEmpty()
+    val network = networkReachable(LocalContext.current)
+    var overflowOpen by remember { mutableStateOf(false) }
+    val holdHint = if (
+        SearchNotes.holdHintVisible(
+            longPressArmed = onLampLongPress != null,
+            word = lamp.word,
+            gnssHeld = gnssHeld,
+            bannerVisible = banner != null,
+        )
+    ) {
+        stringResource(R.string.lamp_hold_hint)
+    } else {
+        null
+    }
+    val note = searchNote ?: if (
+        SearchNotes.needsNetworkFallback(query, searchNote, network, searchOpen)
+    ) {
+        stringResource(R.string.search_network)
+    } else {
+        null
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -307,14 +388,59 @@ internal fun TravelTopChrome(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        TravelSearchBar(
-            query = query,
-            onQueryChange = onQueryChange,
-            onSubmit = onSubmit,
-            onClear = onClear,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (searchOpen) {
+                TravelSearchBar(
+                    query = query,
+                    onQueryChange = onQueryChange,
+                    onSubmit = onSubmit,
+                    onClear = onClear,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                SearchCollapsedButton(
+                    onClick = onExpandSearch,
+                    modifier = Modifier,
+                )
+                Spacer(Modifier.weight(1f))
+            }
+            OverflowButton(
+                open = overflowOpen,
+                onToggle = { overflowOpen = !overflowOpen },
+            )
+        }
+        if (overflowOpen) {
+            OverflowPanel(
+                onOpenTrips = {
+                    overflowOpen = false
+                    onOpenTrips?.invoke()
+                },
+                onOpenOffline = {
+                    overflowOpen = false
+                    onOpenOffline?.invoke()
+                },
+                onOpenSettings = {
+                    overflowOpen = false
+                    onOpenSettings?.invoke()
+                },
+                onOpenAbout = {
+                    overflowOpen = false
+                    onOpenAbout?.invoke()
+                },
+            )
+        }
         if (places.isEmpty()) {
-            ModeLamp(lamp = lamp, onClick = onLampClick, onLongPress = onLampLongPress)
+            ModeLamp(
+                lamp = lamp,
+                onClick = onLampClick,
+                onLongPress = onLampLongPress,
+                reason = lampReason,
+                holdHint = holdHint,
+            )
         }
         TravelSuggestionList(
             places = places,
@@ -322,9 +448,9 @@ internal fun TravelTopChrome(
             visible = places.isNotEmpty(),
             reduceMotion = reduceMotion,
         )
-        if (searchNote != null) {
+        if (note != null) {
             BasicText(
-                text = searchNote,
+                text = note,
                 modifier = Modifier
                     .fillMaxWidth()
                     .shadow(2.dp, SheetCorner)
@@ -333,5 +459,105 @@ internal fun TravelTopChrome(
                 style = InstrumentTheme.type.caption,
             )
         }
+        if (banner != null) {
+            GuidanceBanner(banner = banner)
+        }
+    }
+}
+
+@Composable
+private fun OverflowButton(
+    open: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = InstrumentTheme.colors
+    val label = stringResource(R.string.chrome_more)
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .shadow(2.dp, CircleShape)
+            .travelClickable(
+                onClick = onToggle,
+                idle = if (open) colors.panelPressed else colors.panel,
+                pressed = colors.panelPressed,
+                shape = CircleShape,
+            )
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText(text = label, style = InstrumentTheme.type.label)
+    }
+}
+
+@Composable
+private fun OverflowPanel(
+    onOpenTrips: () -> Unit,
+    onOpenOffline: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenAbout: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = InstrumentTheme.colors
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(2.dp, SheetCorner)
+            .background(colors.panel, SheetCorner),
+    ) {
+        OverflowItem(label = stringResource(R.string.chrome_areas), onClick = onOpenOffline)
+        OverflowItem(label = stringResource(R.string.link_about), onClick = onOpenAbout)
+        OverflowItem(label = stringResource(R.string.link_settings), onClick = onOpenSettings)
+        OverflowItem(label = stringResource(R.string.link_trips), onClick = onOpenTrips)
+    }
+}
+
+@Composable
+private fun OverflowItem(
+    label: String,
+    onClick: () -> Unit,
+) {
+    val colors = InstrumentTheme.colors
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .travelClickable(
+                onClick = onClick,
+                idle = colors.panel,
+                pressed = colors.panelPressed,
+                shape = RoundedCornerShape(0.dp),
+            )
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        BasicText(text = label, style = InstrumentTheme.type.body)
+    }
+}
+
+@Composable
+internal fun GuidanceBanner(
+    banner: GuidanceBanner,
+    modifier: Modifier = Modifier,
+) {
+    val colors = InstrumentTheme.colors
+    val type = InstrumentTheme.type
+    val label = stringResource(R.string.guidance_banner)
+    val ink = if (banner.offRoute) colors.lampCaution else colors.ink
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .shadow(2.dp, SheetCorner)
+            .background(colors.panel, SheetCorner)
+            .semantics { contentDescription = label }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (banner.distanceText != null) {
+            BasicText(text = banner.distanceText, style = type.readoutLarge)
+        }
+        BasicText(text = banner.instruction, style = type.body.copy(color = ink))
     }
 }

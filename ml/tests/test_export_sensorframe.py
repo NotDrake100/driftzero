@@ -10,8 +10,13 @@ from pathlib import Path
 from driftzero_ml.contracts import validate_sensor_frame
 from driftzero_ml.datasets.io_vnbd import SmartphoneRow
 from driftzero_ml.export_sensorframe import (
+    FLAG_HEADING_PICK_WEAK,
+    FLAG_HEADING_VERTICAL,
+    FLAG_HOLD_LAST,
+    FLAG_REWIND,
     MAX_INTEGRATE_S,
     export_sensor_frames,
+    heading_gyro_from_rows,
     hold_last_imu_upsample,
     imu_gap_count,
     write_sensorframe_jsonl,
@@ -232,6 +237,104 @@ class ExportSensorFrameTests(unittest.TestCase):
             loaded = [__import__("json").loads(line) for line in text[1:]]
             self.assertEqual(len(loaded), len(frames))
             self.assertEqual(loaded[0]["timestamp_ns"], 0)
+
+    def test_premask_heading_pick_does_not_use_blackout_turn(self) -> None:
+        rows, mask_start_ns = _straight_then_blackout_turn()
+        whole = heading_gyro_from_rows(rows)
+        pre = heading_gyro_from_rows(rows, mask_start_ns=mask_start_ns)
+        self.assertIsNotNone(whole.pick)
+        assert whole.pick is not None
+        self.assertEqual(whole.pick.axis, "pitch")
+        self.assertGreater(abs(whole.pick.correlation), 0.25)
+        self.assertIsNone(pre.pick)
+        self.assertIn(pre.reason, {"few_hops", "no_heading_rate", "weak_corr"})
+        header_whole, frames_whole = export_sensor_frames(rows)
+        header_pre, frames_pre = export_sensor_frames(rows, mask_start_ns=mask_start_ns)
+        self.assertEqual(header_whole["heading_gyro"]["axis"], "pitch")
+        self.assertEqual(header_pre["heading_gyro"]["source"], "gravity_vertical_fallback")
+        self.assertIsNone(header_pre["heading_gyro"]["axis"])
+        whole_gyro = next(row for row in frames_whole if row["kind"] == "gyroscope")
+        pre_gyro = next(row for row in frames_pre if row["kind"] == "gyroscope")
+        self.assertIn("gyro_heading_axis_pitch", whole_gyro["quality"]["flags"])
+        self.assertIn(FLAG_HEADING_PICK_WEAK, pre_gyro["quality"]["flags"])
+        self.assertIn(FLAG_HEADING_VERTICAL, pre_gyro["quality"]["flags"])
+        self.assertTrue(any("heading_gyro pick=" in note for note in header_pre["notes"]))
+        self.assertNotEqual(
+            whole_gyro["payload"]["z"],
+            pre_gyro["payload"]["z"],
+        )
+
+    def test_rewind_suffix_is_flagged_in_export(self) -> None:
+        prefix = [
+            _row(2_000_000_000 + index * 100_000_000, lat=52.0 + index * 0.0001)
+            for index in range(12)
+        ]
+        suffix = [
+            _row(8_000_000 + index * 100_000_000, lat=53.0 + index * 0.0001)
+            for index in range(10)
+        ]
+        header, frames = export_sensor_frames(prefix + suffix)
+        self.assertIn("timestamp_rewind", header)
+        self.assertEqual(header["timestamp_rewind"]["dropped_rows"], 10)
+        self.assertEqual(header["timestamp_rewind"]["kept_rows"], 12)
+        self.assertTrue(header["timestamp_rewind"]["suffix"])
+        self.assertTrue(any("timestamp_rewind dropped 10" in note for note in header["notes"]))
+        self.assertTrue(
+            all(FLAG_REWIND in row["quality"]["flags"] for row in frames)
+        )
+        accel_times = [int(row["timestamp_ns"]) for row in frames if row["kind"] == "accelerometer"]
+        self.assertEqual(len(accel_times), 12)
+        self.assertLess(min(accel_times), 3_200_000_000)
+        self.assertNotIn(8_000_000, accel_times)
+
+    def test_hold_last_upsample_is_labeled_sensitivity(self) -> None:
+        rows = _period_rows(10)
+        header, frames = export_sensor_frames(rows)
+        self.assertTrue(header["official_row"])
+        self.assertFalse(header["sensitivity"])
+        held_header, held = hold_last_imu_upsample(header, frames, target_hz=100.0)
+        self.assertFalse(held_header["official_row"])
+        self.assertTrue(held_header["sensitivity"])
+        self.assertEqual(held_header["sensitivity_kind"], "hold_last_imu")
+        self.assertAlmostEqual(held_header["hold_last_hz"], 100.0)
+        self.assertTrue(any("sensitivity hold_last_imu" in note for note in held_header["notes"]))
+        self.assertTrue(any(FLAG_HOLD_LAST in row["quality"]["flags"] for row in held))
+
+
+def _straight_then_blackout_turn() -> tuple[list[SmartphoneRow], int]:
+    """Straight pre-mask, 90 deg pitch-tracked turn inside the mask."""
+
+    rows: list[SmartphoneRow] = []
+    lat = 52.0
+    lon = -1.7
+    heading = 0.0
+    turn_rate = 0.15
+    straight_fixes = 16
+    turn_fixes = 12
+    for index in range(straight_fixes + turn_fixes):
+        stamp = index * 1_000_000_000
+        turning = index >= straight_fixes
+        pitch = turn_rate if turning else 0.0
+        for step in range(10):
+            rows.append(
+                _row(
+                    stamp + step * 100_000_000,
+                    ax=0.1,
+                    ay=0.2,
+                    az=9.8,
+                    gyro=(0.01, pitch, -0.02),
+                    lat=lat,
+                    lon=lon,
+                    grav=(0.0, 0.0, 9.8),
+                )
+            )
+        north = 12.0 * math.cos(heading)
+        east = 12.0 * math.sin(heading)
+        lat += (north / EARTH_MEAN_RADIUS_M) * (180.0 / 3.141592653589793)
+        lon += (east / (EARTH_MEAN_RADIUS_M * math.cos(math.radians(lat)))) * (180.0 / 3.141592653589793)
+        if turning:
+            heading += turn_rate
+    return rows, straight_fixes * 1_000_000_000
 
 
 if __name__ == "__main__":

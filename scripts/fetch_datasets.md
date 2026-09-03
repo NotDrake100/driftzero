@@ -94,7 +94,7 @@ mkdir -p data/raw/euroc
 
 ## 7. TimesFM
 
-Do not put weights in this repo. If you run the optional teacher:
+Designed, not run, until `results/timesfm/` exists. Do not put weights in this repo. TimesFM 3.0 weights use `timesfm-non-commercial-license-v1.0` and cannot ship. Distillation from 3.0 needs a license read. 2.5 is Apache-2.0. If you run the optional teacher:
 
 ```bash
 # desktop only, outside Git

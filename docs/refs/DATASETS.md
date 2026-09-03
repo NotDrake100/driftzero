@@ -4,7 +4,7 @@ Retrieved 2026-09-02. Product decisions stay in `PRD.md`. This page is the fetch
 
 No SAC, NRSC, or `isro.gov.in` data pack is named in `PRD.md`, `docs/04_DATASETS_AND_DATA_GOVERNANCE.md`, or `docs/01_SIH_REQUIREMENTS_TRACEABILITY.md`. The official SIH page (`https://www.sih.gov.in/sih2026PS`, ID 26168) is cited as the source of record. In this repo that named pack is IO-VNBD.
 
-TimesFM checkpoints are not stored here.
+TimesFM checkpoints are not stored here. TimesFM 3.0 is designed, not run, until `results/timesfm/` exists. 3.0 cannot ship. Distillation from 3.0 needs a license read. 2.5 is Apache-2.0.
 
 ## What Git contains versus a local checkout
 

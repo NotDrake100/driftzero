@@ -77,12 +77,120 @@ internal fun projectOntoEdge(
     )
 }
 
-internal fun headingDeltaRad(a: Double, b: Double): Double {
-    var d = abs(a - b) % TWO_PI
+/**
+ * Projection onto one geodesic segment. [alongM] is metres from A toward B,
+ * clamped to the segment. [crossTrackM] is signed metres, positive to the
+ * right of A→B (clockwise from the segment heading).
+ */
+internal data class SegmentProjection(
+    val alongM: Double,
+    val segmentLengthM: Double,
+    val crossTrackM: Double,
+    val latitudeDeg: Double,
+    val longitudeDeg: Double,
+    val headingRad: Double,
+    val fraction: Double,
+)
+
+internal fun projectOntoLatLonSegment(
+    latitudeDeg: Double,
+    longitudeDeg: Double,
+    aLatitudeDeg: Double,
+    aLongitudeDeg: Double,
+    bLatitudeDeg: Double,
+    bLongitudeDeg: Double,
+): SegmentProjection {
+    val (an, ae) = Wgs84.northEastMetres(
+        latitudeDeg, longitudeDeg,
+        aLatitudeDeg, aLongitudeDeg,
+    )
+    val (bn, be) = Wgs84.northEastMetres(
+        latitudeDeg, longitudeDeg,
+        bLatitudeDeg, bLongitudeDeg,
+    )
+    val abE = be - ae
+    val abN = bn - an
+    val ab2 = abE * abE + abN * abN
+    val t = if (ab2 < 1e-12) {
+        0.0
+    } else {
+        val raw = ((-ae) * abE + (-an) * abN) / ab2
+        raw.coerceIn(0.0, 1.0)
+    }
+    val pe = ae + t * abE
+    val pn = an + t * abN
+    val segLen = hypot(abE, abN)
+    val (lat, lon) = Wgs84.offsetMetres(latitudeDeg, longitudeDeg, pn, pe)
+    val heading = if (ab2 < 1e-12) {
+        0.0
+    } else {
+        courseEnuRad(abE, abN)
+    }
+    val distToClamp = hypot(pe, pn)
+    val perp = if (segLen < 1e-12) {
+        0.0
+    } else {
+        (abE * an - abN * ae) / segLen
+    }
+    val signed = when {
+        distToClamp < 1e-12 -> 0.0
+        abs(perp) < 1e-12 -> distToClamp
+        perp > 0.0 -> distToClamp
+        else -> -distToClamp
+    }
+    return SegmentProjection(
+        alongM = t * segLen,
+        segmentLengthM = segLen,
+        crossTrackM = signed,
+        latitudeDeg = lat,
+        longitudeDeg = lon,
+        headingRad = wrapHeadingRad(heading),
+        fraction = t,
+    )
+}
+
+/** Smallest signed heading change from [fromRad] to [toRad], in (-π, π]. */
+internal fun signedHeadingDeltaRad(fromRad: Double, toRad: Double): Double {
+    var d = (toRad - fromRad) % TWO_PI
     if (d > PI) {
-        d = TWO_PI - d
+        d -= TWO_PI
+    }
+    if (d <= -PI) {
+        d += TWO_PI
     }
     return d
+}
+
+internal fun headingDeltaRad(a: Double, b: Double): Double = abs(signedHeadingDeltaRad(a, b))
+
+/**
+ * Metres from a point on [edge] to the nearer endpoint whose undirected
+ * degree is at least [minDegree]. Null when neither endpoint is a junction.
+ */
+internal fun distanceToJunctionM(
+    latitudeDeg: Double,
+    longitudeDeg: Double,
+    edge: GraphEdge,
+    graph: RoadGraph,
+    minDegree: Int = 3,
+): Double? {
+    var best: Double? = null
+    for (nodeId in longArrayOf(edge.fromNodeId, edge.toNodeId)) {
+        if (!graph.isJunction(nodeId, minDegree)) {
+            continue
+        }
+        val node = graph.nodes[nodeId] ?: continue
+        val d = Wgs84.distanceMetres(
+            latitudeDeg,
+            longitudeDeg,
+            node.latitude.value,
+            node.longitude.value,
+        )
+        if (best == null || d < best) {
+            best = d
+        }
+    }
+    return best
 }
 
 internal fun courseEnuRad(eastM: Double, northM: Double): Double =

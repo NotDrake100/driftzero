@@ -26,3 +26,11 @@ tasks.register<JavaExec>("replay") {
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("in.driftzero.core.Replay")
 }
+
+tasks.register<JavaExec>("writeGraphBin") {
+    group = "application"
+    description = "Convert OSM highway XML/PBF to compact graph.bin for the live matcher"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("in.driftzero.core.WriteGraphBin")
+    workingDir = rootProject.projectDir
+}

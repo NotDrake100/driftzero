@@ -14,6 +14,7 @@ internal fun lampWordText(word: LampWord): String = stringResource(
         LampWord.REACQUIRING -> R.string.mode_reacquiring
         LampWord.LOW_CONFIDENCE -> R.string.mode_low_confidence
         LampWord.NO_PERMISSION -> R.string.mode_no_permission
+        LampWord.PRECISE_OFF -> R.string.mode_precise_off
         LampWord.WAITING_FIX -> R.string.mode_waiting_fix
     },
 )

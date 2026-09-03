@@ -10,7 +10,7 @@ ADR 001 already chose a hybrid: a compact causal student produces motion pseudo-
 ## Decision
 
 1. Features are causal IMU windows only. No future samples. No GNSS fields inside a blackout feature vector.
-2. The live phone path uses `ZuptAccelMotionModel`. When `models/motion_student_v1/linear.json` is present at assemble, PoseStore loads those speed weights on device. `linear_dp.json` may also load into `ingestDisplacementPseudo` with χ² 11.345. Δp MAE is worse than freeze. Do not claim it. TimesFM never enters the APK. ONNX is still not a phone dependency.
+2. The live phone path uses `ZuptAccelMotionModel`. When `models/motion_student_v1/linear.json` is present at assemble, PoseStore loads those speed weights on device. `linear_dp.json` is not packed unless `-Pdriftzero.packLearnedImu=true`. Δp MAE is worse than freeze. Do not claim it. `gru.json` is not packed. TimesFM never enters the APK. The TimesFM experiment is designed, not run. ONNX is not a phone dependency and nothing exports it.
 3. `MotionPseudoRuntime` infers on the navigation worker (10 Hz tick or engine emit). Sensor callbacks only copy samples.
 4. The ESKF consumes `MotionPseudoMeasurement` through `ingestMotionPseudo`: ZUPT when idle/stop is high, otherwise a gated forward-speed update with `R = exp(logSpeedVariance)`.
 5. The same tick may inject `DisplacementPseudoMeasurement` through `ingestDisplacementPseudo`: RoNIN/TLIO Δp in the start-of-window HACF, `R_ii = exp(2 log σ)`, χ² gate 11.345 (TLIO, 3 dof, 99th percentile), overlapping windows inflate R ×10. A cloned ENU pose at window start is the prior. Full 15-state stochastic cloning is not implemented. A rejected update inflates position P instead of injecting. The student must not overwrite state.

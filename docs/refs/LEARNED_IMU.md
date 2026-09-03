@@ -69,11 +69,11 @@ Not implemented, and not claimed:
 7. Their headset domain, 60 h BMI055, VIO labels, and the published bias / gravity-perturbation schedule as a locked recipe.
 8. Bidirectional LSTM (IONet). Forbidden on the live path.
 9. Visual measurements (RNIN-VIO). Out of scope for the phone navigator.
-10. ONNX export in the APK. Kotlin reads `linear.json` (speed) when assemble finds `models/motion_student_v1/linear.json`. `linear_dp.json` may also pack. Δp MAE is worse than freeze. χ² 11.345 stays. No Δp screening claim.
+10. ONNX export in the APK. Not implemented. Kotlin reads `linear.json` (speed) when assemble finds `models/motion_student_v1/linear.json`. `linear_dp.json` is not packed unless `-Pdriftzero.packLearnedImu=true`. Δp MAE is worse than freeze. χ² 11.345 stays. No Δp screening claim.
 
 ## Leakage rules
 
 - GNSS fields are dropped before the window is built. Blackout truth stays in the evaluator.
 - Magnetometer is not concatenated onto the 6-vector.
 - Trip splits, never row splits.
-- TimesFM is not imported by `learned_imu` or `student.gru`.
+- TimesFM is not imported by `learned_imu` or `student.gru`. TimesFM 3.0 is designed, not run, until `results/timesfm/` exists. 3.0 cannot ship. Distillation from 3.0 needs a license read. 2.5 is Apache-2.0.

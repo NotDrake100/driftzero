@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -22,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 private val SheetShape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
@@ -90,12 +92,22 @@ internal fun ListRow(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        BasicText(text = label, style = InstrumentTheme.type.caption, modifier = Modifier.weight(1f))
-        BasicText(text = value, style = InstrumentTheme.type.readout)
+        BasicText(
+            text = StatusCopy.sheetLabel(label),
+            style = InstrumentTheme.type.caption,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(min = StatusCopy.SHEET_LABEL_MIN_DP.dp),
+        )
+        BasicText(
+            text = value,
+            style = InstrumentTheme.type.readout,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 

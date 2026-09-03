@@ -1,5 +1,10 @@
 package `in`.driftzero.app.ui
 
+import `in`.driftzero.core.GuidanceRoute
+import `in`.driftzero.core.ManeuverModifier
+import `in`.driftzero.core.ManeuverType
+import `in`.driftzero.core.RoutePoint
+import `in`.driftzero.core.RouteStep
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -49,6 +54,7 @@ class TravelSearchTest {
         assertTrue(url.startsWith(StreetMapConfig.OSRM_ROUTE))
         assertTrue(url.contains("73.8,18.5;73.9,18.6"))
         assertTrue(url.contains("geometries=geojson"))
+        assertTrue(url.contains("steps=true"))
     }
 
     @Test
@@ -152,6 +158,86 @@ class TravelSearchTest {
     }
 
     @Test
+    fun searchAndRouteSkipFetchWhenOffline() {
+        var fetched = false
+        val client = TravelSearchClient(
+            online = { false },
+            fetch = {
+                fetched = true
+                "{}"
+            },
+        )
+        assertEquals(PlaceQuery.Network, client.search("pune station", null, null))
+        assertEquals(
+            RouteQuery.Network,
+            client.route(TravelLatLng(18.5, 73.8), TravelLatLng(18.6, 73.9)),
+        )
+        assertFalse(fetched)
+    }
+
+    @Test
+    fun localMissWhileOfflineIsFailedNotNetwork() {
+        var fetched = false
+        val client = TravelSearchClient(
+            online = { false },
+            fetch = {
+                fetched = true
+                "{}"
+            },
+            localRoute = { _, _ -> null },
+        )
+        assertEquals(
+            RouteQuery.Failed,
+            client.route(TravelLatLng(18.5, 73.8), TravelLatLng(18.6, 73.9)),
+        )
+        assertFalse(fetched)
+    }
+
+    @Test
+    fun localMissWhileOnlineFallsThroughToOsrm() {
+        val client = TravelSearchClient(
+            online = { true },
+            fetch = {
+                """{"code":"Ok","routes":[{"distance":50.0,"duration":8.0,
+                  "geometry":{"type":"LineString","coordinates":[[73.8,18.5],[73.9,18.6]]}}]}"""
+            },
+            localRoute = { _, _ -> null },
+        )
+        val result = client.route(TravelLatLng(18.5, 73.8), TravelLatLng(18.6, 73.9))
+        assertTrue(result is RouteQuery.Ok)
+        assertEquals(50.0, (result as RouteQuery.Ok).route.distanceM, 0.01)
+    }
+
+    @Test
+    fun localRouteIsPreferredOverNetwork() {
+        var fetched = false
+        val built = GuidanceRoute(
+            points = listOf(
+                RoutePoint(18.51, 73.85),
+                RoutePoint(18.52, 73.86),
+            ),
+            steps = listOf(
+                RouteStep(ManeuverType.DEPART, ManeuverModifier.STRAIGHT, null, null, 100.0, 10.0, 0),
+                RouteStep(ManeuverType.ARRIVE, ManeuverModifier.NONE, null, null, 0.0, 0.0, 1),
+            ),
+            totalDistanceM = 100.0,
+            totalDurationS = 10.0,
+        )
+        val client = TravelSearchClient(
+            online = { true },
+            fetch = {
+                fetched = true
+                "{}"
+            },
+            localRoute = { _, _ -> built },
+        )
+        val result = client.route(TravelLatLng(18.51, 73.85), TravelLatLng(18.52, 73.86))
+        assertTrue(result is RouteQuery.Ok)
+        assertEquals(100.0, (result as RouteQuery.Ok).route.distanceM, 0.01)
+        assertFalse(fetched)
+    }
+
+    @Test
     fun geoJsonBuildersAreLonLat() {
         val line = lineStringGeoJson(
             listOf(TravelLatLng(18.5, 73.8), TravelLatLng(18.6, 73.9)),
@@ -161,5 +247,60 @@ class TravelSearchTest {
         val point = pointGeoJson(TravelLatLng(18.5, 73.8))
         assertTrue(point.contains("[73.8,18.5]"))
         assertTrue(point.contains("Point"))
+    }
+
+    @Test
+    fun reverseUsesPhotonThenNominatim() {
+        val client = TravelSearchClient { url ->
+            if (url.contains("photon")) {
+                """{"type":"FeatureCollection","features":[{
+                  "geometry":{"coordinates":[73.8567,18.5196]},
+                  "properties":{"name":"Caring Clinic","city":"Pune"}
+                }]}"""
+            } else {
+                error("nominatim should not run")
+            }
+        }
+        val result = client.reverse(18.5196, 73.8567)
+        assertTrue(result is PlaceQuery.Hits)
+        assertEquals("Caring Clinic", (result as PlaceQuery.Hits).places[0].name)
+    }
+
+    @Test
+    fun reverseFallsBackToNominatimObject() {
+        val client = TravelSearchClient { url ->
+            if (url.contains("photon")) {
+                """{"type":"FeatureCollection","features":[]}"""
+            } else {
+                """{"lat":"18.52","lon":"73.85","name":"Somwar Peth","display_name":"Somwar Peth, Pune"}"""
+            }
+        }
+        val result = client.reverse(18.52, 73.85)
+        assertTrue(result is PlaceQuery.Hits)
+        assertEquals("Somwar Peth", (result as PlaceQuery.Hits).places[0].name)
+    }
+
+    @Test
+    fun reverseOfflineIsNetwork() {
+        var fetched = false
+        val client = TravelSearchClient(
+            online = { false },
+            fetch = {
+                fetched = true
+                "{}"
+            },
+        )
+        assertEquals(PlaceQuery.Network, client.reverse(18.52, 73.85))
+        assertFalse(fetched)
+    }
+
+    @Test
+    fun nominatimReverseParserReadsObject() {
+        val place = parseNominatimReverse(
+            """{"lat":"18.5204","lon":"73.8567","name":"Mangalwar Peth","display_name":"Mangalwar Peth, Pune, India"}""",
+        )!!
+        assertEquals("Mangalwar Peth", place.name)
+        assertEquals(18.5204, place.latitudeDeg, 0.0001)
+        assertTrue(place.detail.contains("Pune"))
     }
 }

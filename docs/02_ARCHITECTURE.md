@@ -2,7 +2,7 @@
 
 ## 1. Architecture goals
 
-The navigation loop must be causal, testable, offline, computationally bounded, and useful without any learned checkpoint. Learning improves motion estimates and uncertainty, while a physical state estimator preserves units, covariance, constraints, and fallbacks.
+The navigation loop must be causal, testable, computationally bounded, and useful without any learned checkpoint. Offline tiles and graph apply after a Ready area pack is installed. Until then, hosted OpenFreeMap, Photon, Nominatim, and OSRM use the network. Learning improves motion estimates and uncertainty, while a physical state estimator preserves units, covariance, constraints, and fallbacks.
 
 ## 2. Runtime topology
 
@@ -84,7 +84,7 @@ Feature scalers are fitted on training trips only and serialized with the model.
 
 ### 4.4 Learned motion model
 
-Candidate student architectures are a depthwise causal TCN and a small GRU. Initial target outputs:
+Live student is ridge `linear.json`. GRU is analysis-only and not packed. No TCN on device. Candidate later architectures (desktop only until a keep gate) are a depthwise causal TCN and a small GRU. Target outputs:
 
 - non-negative forward speed or signed speed increment;
 - yaw-rate correction or heading increment;
@@ -154,13 +154,13 @@ At each output epoch:
 
 1. query graph segments intersecting the covariance-bounded search region;
 2. project the estimate onto each segment and calculate emission cost;
-3. include heading agreement, road direction/access, layer/tunnel/bridge, and speed plausibility;
+3. include heading agreement, road direction/access, and speed plausibility. Layer, tunnel, and bridge attributes are planned (docs/07 P4). `OsmGraphLoader` does not store them today;
 4. compare graph path distance and topology with the recent dead-reckoned displacement;
 5. run a rolling Viterbi beam, preserving a small number of hypotheses;
 6. commit older states only after sufficient evidence;
 7. return matched, ambiguous, or unmatched with confidence.
 
-Do not feed a hard snapped point back into the filter at high confidence. Convert the selected road constraint to a soft cross-track or heading measurement whose covariance grows with ambiguity.
+Do not feed a hard snapped point back into the filter at high confidence. Soft cross-track feedback is planned. The matcher is display-only today.
 
 ## 5. TimesFM research topology
 
@@ -169,15 +169,15 @@ TimesFM is isolated under `ml/`:
 ```mermaid
 flowchart LR
     D["Training trips"] --> X["Causal windows"]
-    X --> T["TimesFM 3 zero-shot forecasts"]
+    X --> T["TimesFM 3.0 zero-shot, designed not run"]
     X --> B["Small baseline models"]
     T --> Q["Ablation and calibration"]
     B --> Q
     Q --> S["Distilled student if useful"]
-    S --> E["ONNX export and mobile benchmark"]
+    S --> E["ONNX export planned, not implemented"]
 ```
 
-No Android package may depend on the TimesFM Python environment or checkpoint.
+No Android package may depend on the TimesFM Python environment or checkpoint. TimesFM 3.0 is designed, not run, until `results/timesfm/` exists. 3.0 weights cannot ship. Distillation from 3.0 needs a license read. 2.5 is Apache-2.0.
 
 ## 6. Package boundaries
 
@@ -207,5 +207,5 @@ No Android package may depend on the TimesFM Python environment or checkpoint.
 - [Pose store and GNSS-off coast](adr/004-cv-stub.md)
 - [Motion pseudo-measurement hook](adr/005-motion-pseudo-measurement.md)
 
-TimesFM 3 results are pending. There is no keep/reject report in `results/`. The adapter under `ml/` fails closed when the optional package is missing.
+TimesFM 3.0 is designed, not run. There is no `results/timesfm/` keep/reject report. The adapter under `ml/` fails closed when the optional package is missing. 3.0 cannot ship. Distillation from 3.0 needs a license read.
 

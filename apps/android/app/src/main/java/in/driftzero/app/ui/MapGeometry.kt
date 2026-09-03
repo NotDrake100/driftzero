@@ -17,6 +17,7 @@ object MapGeometry {
     const val CONE_MIN_HALF_ANGLE_RAD = 5.0 * PI / 180.0
     const val CONE_MAX_HALF_ANGLE_RAD = 60.0 * PI / 180.0
     const val CONE_HIDE_SPEED_MPS = 0.5
+    const val HEADING_UP_SPEED_MPS = 2.0
 
     /** Earth circumference over the 512 px tile MapLibre uses at zoom 0. */
     private const val EQUATOR_M_PER_DP_Z0 = 40075016.686 / 512.0
@@ -83,5 +84,17 @@ object MapGeometry {
             else -> false
         }
         return if (holds) current else band
+    }
+
+    /** Map bearing in degrees clockwise from north. Zero when north-up or slow. */
+    fun followBearingDeg(speedMps: Double, headingRad: Double, northUp: Boolean): Double {
+        if (northUp || speedMps <= HEADING_UP_SPEED_MPS) {
+            return 0.0
+        }
+        var deg = Math.toDegrees(headingRad) % 360.0
+        if (deg < 0.0) {
+            deg += 360.0
+        }
+        return deg
     }
 }

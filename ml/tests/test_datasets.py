@@ -77,6 +77,25 @@ class IoVnbdLoaderTests(unittest.TestCase):
         kept = keep_nondecreasing_rows(rows)
         self.assertEqual([row.timestamp_ns for row in kept], [1_000_000_000, 2_000_000_000])
 
+    def test_rewind_suffix_is_reported(self) -> None:
+        from driftzero_ml.datasets.io_vnbd import SmartphoneRow, trim_nondecreasing_rows
+
+        prefix = [
+            SmartphoneRow("t", 2_000_000_000 + index * 100_000_000, 0.0, 0.0, 9.8, None, None, None, 0.0, 0.0, 0.0)
+            for index in range(5)
+        ]
+        suffix = [
+            SmartphoneRow("t", 8_000_000 + index * 100_000_000, 0.0, 0.0, 9.8, None, None, None, 0.0, 0.0, 0.0)
+            for index in range(7)
+        ]
+        kept, rewind = trim_nondecreasing_rows(prefix + suffix)
+        self.assertEqual(len(kept), 5)
+        self.assertIsNotNone(rewind)
+        assert rewind is not None
+        self.assertEqual(rewind.dropped_rows, 7)
+        self.assertTrue(rewind.suffix)
+        self.assertEqual(rewind.first_rewind_ns, 8_000_000)
+
     def test_missing_root_is_explicit(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
             with self.assertRaisesRegex(FileNotFoundError, "IO-VNBD"):

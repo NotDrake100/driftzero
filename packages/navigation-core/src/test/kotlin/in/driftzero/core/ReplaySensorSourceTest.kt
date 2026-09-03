@@ -208,6 +208,168 @@ class ReplaySensorSourceTest {
     }
 
     @Test
+    fun replayCliAcceptsCoastModeAndPersistSpeedPseudo() {
+        val parsed = Replay.parseArgs(
+            arrayOf(
+                "--input",
+                "in.jsonl",
+                "--output",
+                "out.jsonl",
+                "--coast-mode=yaw_speed_hold",
+                "--persist-speed-pseudo",
+            ),
+        )
+        assertEquals(CoastMode.YAW_SPEED_HOLD, parsed.config.coastMode)
+        assertTrue(parsed.persistSpeedPseudo)
+        val defaults = Replay.parseArgs(
+            arrayOf("--input", "in.jsonl", "--output", "out.jsonl"),
+        )
+        assertEquals(CoastMode.STRAPDOWN, defaults.config.coastMode)
+        assertEquals(0.0, defaults.config.gnssReseedAfterS, 0.0)
+        assertTrue(!defaults.config.studentForwardSpeed)
+        assertTrue(!defaults.config.coastSpeedDecay)
+        assertTrue(!defaults.persistSpeedPseudo)
+        assertTrue(!defaults.useEngine)
+        assertTrue(!defaults.config.coastStopDetect)
+        val v4 = Replay.parseArgs(
+            arrayOf(
+                "--input",
+                "in.jsonl",
+                "--output",
+                "out.jsonl",
+                "--coast-mode=yaw_speed_hold",
+                "--coast-stop-detect",
+                "--coast-restart=accel_burst",
+                "--engine",
+            ),
+        )
+        assertTrue(v4.config.coastStopDetect)
+        assertEquals(CoastRestart.ACCEL_BURST, v4.config.coastRestart)
+        assertTrue(v4.useEngine)
+        val v5 = Replay.parseArgs(
+            arrayOf(
+                "--input",
+                "in.jsonl",
+                "--output",
+                "out.jsonl",
+                "--coast-mode=yaw_speed_hold",
+                "--weak-heading-policy=hold_course",
+                "--heading-pick-quality=weak",
+                "--coast-latch-gnss-speed",
+                "--config",
+                "coastStopRequireStoppedPrefix=1",
+            ),
+        )
+        assertEquals(WeakHeadingPolicy.HOLD_COURSE, v5.config.weakHeadingPolicy)
+        assertEquals(true, v5.headingPickWeak)
+        assertTrue(v5.config.coastLatchGnssSpeed)
+        assertTrue(v5.config.coastStopRequireStoppedPrefix)
+        assertEquals(false, Replay.parseArgs(
+            arrayOf(
+                "--input",
+                "in.jsonl",
+                "--output",
+                "out.jsonl",
+                "--heading-pick-quality=accepted",
+            ),
+        ).headingPickWeak)
+        val v6 = Replay.parseArgs(
+            arrayOf(
+                "--input",
+                "in.jsonl",
+                "--output",
+                "out.jsonl",
+                "--coast-mode=yaw_speed_hold",
+                "--gnss-reseed-after-s=3",
+                "--coast-honest-p",
+                "--coast-speed-decay",
+                "--config",
+                "coastSpeedDecayTargetMps=8",
+            ),
+        )
+        assertEquals(3.0, v6.config.gnssReseedAfterS, 0.0)
+        assertTrue(v6.config.coastHonestP)
+        assertTrue(v6.config.coastSpeedDecay)
+        assertEquals(8.0, v6.config.coastSpeedDecayTargetMps, 0.0)
+        assertTrue(!v6.config.studentForwardSpeed)
+        assertTrue(!v6.config.gnssReseedWhileFused)
+        val v7 = Replay.parseArgs(
+            arrayOf(
+                "--input",
+                "in.jsonl",
+                "--output",
+                "out.jsonl",
+                "--gnss-reseed-after-s=6",
+                "--gnss-reseed-while-fused",
+                "--coast-honest-p",
+            ),
+        )
+        assertEquals(6.0, v7.config.gnssReseedAfterS, 0.0)
+        assertTrue(v7.config.gnssReseedWhileFused)
+        assertTrue(v7.config.coastHonestP)
+    }
+
+    @Test
+    fun persistSpeedPseudoOffByDefaultAndFlagsWhenEnabled() {
+        val trip = constantVelocityNorth(imuHz = 100.0)
+        val off = Replay.runFilter(trip.frames, DeadReckoningFilter(SYNTHETIC_CONFIG), trip.mask)
+        val duringOff = off.filter { it.timestamp.value >= trip.mask.startNs }
+        assertTrue(duringOff.isNotEmpty())
+        assertTrue(duringOff.none { it.health.flags.contains(DeadReckoningFilter.FLAG_MOTION_PSEUDO) })
+        val on = Replay.runFilter(
+            trip.frames,
+            DeadReckoningFilter(SYNTHETIC_CONFIG.copy(studentForwardSpeed = true)),
+            trip.mask,
+            persistSpeedPseudo = true,
+        )
+        val duringOn = on.filter { it.timestamp.value >= trip.mask.startNs }
+        assertTrue(duringOn.isNotEmpty())
+        assertTrue(duringOn.any { it.health.flags.contains(DeadReckoningFilter.FLAG_MOTION_PSEUDO) })
+        val mid = duringOn[duringOn.size / 2]
+        assertTrue("persist speed should hold ~10 m/s, got ${mid.motion.speed.value}", mid.motion.speed.value > 8.0)
+    }
+
+    @Test
+    fun yawSpeedHoldReplayMatchesNorthCoast() {
+        val trip = constantVelocityNorth(imuHz = 100.0)
+        val states = Replay.runFilter(
+            trip.frames,
+            DeadReckoningFilter(
+                SYNTHETIC_CONFIG.copy(coastMode = CoastMode.YAW_SPEED_HOLD),
+            ),
+            trip.mask,
+        )
+        val last = states.last()
+        val errorM = Wgs84.distanceMetres(
+            last.position.latitude.value,
+            last.position.longitude.value,
+            trip.endLatitudeDeg,
+            trip.endLongitudeDeg,
+        )
+        assertTrue("YAW_SPEED_HOLD endpoint $errorM m", errorM <= ENDPOINT_TOLERANCE_M)
+        val mid = states.first { it.timestamp.value >= trip.mask.startNs + 2_000_000_000L }
+        assertTrue(mid.motion.speed.value > 8.0)
+    }
+
+    @Test
+    fun engineReplayKeepsNavigationStateSchema() {
+        val trip = constantVelocityNorth(imuHz = 100.0)
+        val consume = Replay.runFilter(trip.frames, DeadReckoningFilter(SYNTHETIC_CONFIG), trip.mask)
+        val engine = Replay.runFilter(
+            trip.frames,
+            DeadReckoningFilter(SYNTHETIC_CONFIG),
+            trip.mask,
+            useEngine = true,
+        )
+        assertTrue(consume.isNotEmpty())
+        assertTrue(engine.isNotEmpty())
+        val consumeKeys = ContractJson.parseObject(ContractJson.stringify(ContractMaps.navigationState(consume.first()))).keys
+        val engineKeys = ContractJson.parseObject(ContractJson.stringify(ContractMaps.navigationState(engine.first()))).keys
+        assertEquals(consumeKeys, engineKeys)
+        NAV_REQUIRED.forEach { key -> assertTrue(key, engineKeys.contains(key)) }
+    }
+
+    @Test
     fun replayCliIsDeterministic() {
         val trip = constantVelocityNorth(imuHz = 100.0)
         val input = folder.newFile("in.jsonl").toPath()

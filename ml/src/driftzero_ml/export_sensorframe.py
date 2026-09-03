@@ -5,10 +5,12 @@ Do not invent IMU samples for the scored row. `--hold-last-hz` is a
 sensitivity helper only. GNSS is emitted only on unique-fix rows.
 phone_align rotates accel into a gravity-aligned frame. Gyro is not
 rotated as a device vector: IO-VNBD yaw/pitch/roll are not that frame.
-Heading rate is the per-trip column that tracks unique-fix course, placed
-on +Z, or the gravity-axis component if the pick is weak. Missing
-sensors stay omitted. Zeros are never invented. Gaps larger than
+Heading rate is the per-interval column that tracks unique-fix course
+strictly before the blackout mask, placed on +Z. A weak pick (fewer than 8
+hops or |r| < 0.25) falls back to the gravity-vertical gyro and is flagged.
+Missing sensors stay omitted. Zeros are never invented. Gaps larger than
 DeadReckoningFilter.maxIntegrateS (0.40 s) are left as timestamp jumps.
+Timestamp rewinds drop the suffix and are flagged in the export header.
 """
 
 from __future__ import annotations
@@ -21,14 +23,14 @@ from statistics import median
 from typing import Sequence
 
 from driftzero_ml.contracts import validate_sensor_frame
-from driftzero_ml.datasets.io_vnbd import SmartphoneRow, keep_nondecreasing_rows
+from driftzero_ml.datasets.io_vnbd import SmartphoneRow, TimestampRewind, trim_nondecreasing_rows
 from driftzero_ml.features.phone_align import (
-    HeadingGyroPick,
+    HeadingGyroDecision,
     TripAlignment,
     estimate_alignment,
+    heading_gyro_decision,
     heading_gyro_radps,
     rotate_vector,
-    select_heading_gyro,
     vertical_gyro_radps,
 )
 from driftzero_ml.gnss_truth import column_speed_to_mps, orientation_rad
@@ -44,6 +46,11 @@ MAX_INTEGRATE_S = 0.40
 NS_PER_S = 1_000_000_000
 DEFAULT_RATE_HZ = 10.0
 MIN_GRAVITY_SAMPLES = 8
+FLAG_HEADING_PICK_WEAK = "gyro_heading_pick_weak"
+FLAG_HEADING_VERTICAL = "gyro_vertical_only"
+FLAG_HEADING_UNAVAILABLE = "gyro_heading_axis_unavailable"
+FLAG_REWIND = "timestamp_rewind_dropped"
+FLAG_HOLD_LAST = "hold_last_imu"
 
 
 def alignment_from_rows(rows: Sequence[SmartphoneRow], trip_id: str) -> TripAlignment | None:
@@ -72,20 +79,29 @@ def export_sensor_frames(
     source_id: str | None = None,
     alignment: TripAlignment | None = None,
     validate: bool = True,
+    mask_start_ns: int | None = None,
 ) -> tuple[dict, list[dict]]:
-    """Build a replay header plus SensorFrame objects. No resampling."""
+    """Build a replay header plus SensorFrame objects. No resampling.
 
-    ordered = keep_nondecreasing_rows(list(rows))
+    Heading-gyro correlation uses unique-fix hops strictly before mask_start_ns
+    when that argument is set. Official blackout export must pass the interval
+    start. A missing mask keeps the whole-trip pick for non-blackout helpers
+    and is labeled in the header.
+    """
+
+    ordered, rewind = trim_nondecreasing_rows(list(rows))
     if not ordered:
         raise ValueError("no smartphone rows to export")
     trip_id = source_id or ordered[0].trip_id
     aligned = alignment if alignment is not None else alignment_from_rows(ordered, trip_id)
-    heading_gyro = _heading_gyro_pick(ordered)
+    gyros, fixes = _gyro_and_unique_fixes(ordered)
+    heading_decision = heading_gyro_decision(gyros, fixes, mask_start_ns=mask_start_ns)
     frames: list[dict] = []
     sequence = 0
     last_fix: tuple[float, float] | None = None
     last_imu_ns: int | None = None
     imu_dts: list[float] = []
+    rewind_flags = [FLAG_REWIND] if rewind is not None else []
 
     for row in ordered:
         stamp = int(row.timestamp_ns)
@@ -97,6 +113,7 @@ def export_sensor_frames(
             if dt > MAX_INTEGRATE_S:
                 gap = True
         accel_flags = _row_flags(row)
+        accel_flags.extend(rewind_flags)
         if aligned is None:
             accel_flags.append("phone_align_unavailable")
         if gap:
@@ -125,8 +142,9 @@ def export_sensor_frames(
             pass
         else:
             raw_gyro = (float(row.gyro_yaw), float(row.gyro_pitch), float(row.gyro_roll))
-            gyro, gyro_extra = _heading_rate_gyro(raw_gyro, aligned, heading_gyro)
+            gyro, gyro_extra = _heading_rate_gyro(raw_gyro, aligned, heading_decision)
             gyro_flags = _row_flags(row)
+            gyro_flags.extend(rewind_flags)
             if aligned is None:
                 gyro_flags.append("phone_align_unavailable")
             gyro_flags.extend(gyro_extra)
@@ -157,6 +175,9 @@ def export_sensor_frames(
         last_fix = pos
         gnss, ok = _gnss_frame(trip_id, sequence, row)
         if ok:
+            gnss_flags = list(gnss["quality"]["flags"])
+            gnss_flags.extend(rewind_flags)
+            gnss["quality"]["flags"] = list(dict.fromkeys(gnss_flags))
             frames.append(gnss)
             sequence += 1
 
@@ -164,6 +185,19 @@ def export_sensor_frames(
         raise ValueError(f"{trip_id} produced no SensorFrame rows")
     rate = _declared_rate_hz(imu_dts)
     header = file_header(trip_id, rate)
+    header["official_row"] = True
+    header["sensitivity"] = False
+    header["heading_gyro"] = _heading_gyro_header(heading_decision)
+    header["notes"] = _export_notes(heading_decision, rewind)
+    if rewind is not None:
+        header["timestamp_rewind"] = {
+            "dropped_rows": rewind.dropped_rows,
+            "kept_rows": rewind.kept_rows,
+            "source_rows": rewind.source_rows,
+            "first_rewind_ns": rewind.first_rewind_ns,
+            "suffix": rewind.suffix,
+            "flag": FLAG_REWIND,
+        }
     if validate:
         for frame in frames:
             validate_sensor_frame(frame)
@@ -177,7 +211,10 @@ def hold_last_imu_upsample(
     target_hz: float = 100.0,
     validate: bool = True,
 ) -> tuple[dict, list[dict]]:
-    """Sensitivity helper. Repeat the last IMU sample. Do not fill gaps > 0.40 s."""
+    """Sensitivity helper. Repeat the last IMU sample. Do not fill gaps > 0.40 s.
+
+    Not an official IO-VNBD row. Output is labeled sensitivity_hold_last_imu.
+    """
 
     if target_hz <= 0.0 or not math.isfinite(target_hz):
         raise ValueError("target_hz must be positive and finite")
@@ -210,6 +247,15 @@ def hold_last_imu_upsample(
         row["sequence"] = index
     out_header = dict(header)
     out_header["declared_rate_hz"] = float(target_hz)
+    out_header["official_row"] = False
+    out_header["sensitivity"] = True
+    out_header["sensitivity_kind"] = "hold_last_imu"
+    out_header["hold_last_hz"] = float(target_hz)
+    notes = list(out_header.get("notes") or [])
+    notes.append(
+        f"sensitivity hold_last_imu at {target_hz:g} Hz. Not an official IO-VNBD row."
+    )
+    out_header["notes"] = notes
     if validate:
         for row in merged:
             validate_sensor_frame(row)
@@ -231,7 +277,7 @@ def write_truth_jsonl(path: Path, rows: Sequence[SmartphoneRow]) -> int:
     last: tuple[float, float] | None = None
     count = 0
     with path.open("w") as handle:
-        for row in keep_nondecreasing_rows(list(rows)):
+        for row in trim_nondecreasing_rows(list(rows))[0]:
             if row.latitude_deg is None or row.longitude_deg is None:
                 continue
             pos = (float(row.latitude_deg), float(row.longitude_deg))
@@ -352,14 +398,18 @@ def _row_flags(row: SmartphoneRow) -> list[str]:
     return [str(flag) for flag in row.quality_flags]
 
 
-def _heading_gyro_pick(rows: Sequence[SmartphoneRow]) -> HeadingGyroPick | None:
+def _gyro_and_unique_fixes(
+    rows: Sequence[SmartphoneRow],
+) -> tuple[list[tuple[int, float, float, float]], list[tuple[int, float, float]]]:
     gyros: list[tuple[int, float, float, float]] = []
     fixes: list[tuple[int, float, float]] = []
     last: tuple[float, float] | None = None
     for row in rows:
         if row.gyro_yaw is not None and row.gyro_pitch is not None and row.gyro_roll is not None:
             if all(math.isfinite(axis) for axis in (row.gyro_yaw, row.gyro_pitch, row.gyro_roll)):
-                gyros.append((int(row.timestamp_ns), float(row.gyro_yaw), float(row.gyro_pitch), float(row.gyro_roll)))
+                gyros.append(
+                    (int(row.timestamp_ns), float(row.gyro_yaw), float(row.gyro_pitch), float(row.gyro_roll))
+                )
         if row.latitude_deg is None or row.longitude_deg is None:
             continue
         pos = (float(row.latitude_deg), float(row.longitude_deg))
@@ -367,29 +417,86 @@ def _heading_gyro_pick(rows: Sequence[SmartphoneRow]) -> HeadingGyroPick | None:
             continue
         last = pos
         fixes.append((int(row.timestamp_ns), pos[0], pos[1]))
-    return select_heading_gyro(gyros, fixes)
+    return gyros, fixes
+
+
+def heading_gyro_from_rows(
+    rows: Sequence[SmartphoneRow],
+    *,
+    mask_start_ns: int | None = None,
+) -> HeadingGyroDecision:
+    """Public pick used by export and by leak checks. Pre-mask when mask_start_ns is set."""
+
+    ordered, _ = trim_nondecreasing_rows(list(rows))
+    gyros, fixes = _gyro_and_unique_fixes(ordered)
+    return heading_gyro_decision(gyros, fixes, mask_start_ns=mask_start_ns)
 
 
 def _heading_rate_gyro(
     raw: tuple[float, float, float],
     alignment: TripAlignment | None,
-    pick: HeadingGyroPick | None,
+    decision: HeadingGyroDecision,
 ) -> tuple[tuple[float, float, float] | None, list[str]]:
     """Place heading rate on +Z. Do not treat yaw/pitch/roll as device XYZ."""
 
+    extra: list[str] = []
     if not all(math.isfinite(axis) for axis in raw):
-        return None, []
+        return None, extra
+    pick = decision.pick
     if pick is not None:
         rate = heading_gyro_radps(raw, pick)
         if not math.isfinite(rate):
-            return None, []
+            return None, extra
         return (0.0, 0.0, rate), [f"gyro_heading_axis_{pick.axis}"]
+    extra.append(FLAG_HEADING_PICK_WEAK)
+    extra.append(f"gyro_heading_pick_{decision.reason}")
     if alignment is None:
-        return None, ["gyro_heading_axis_unavailable"]
+        extra.append(FLAG_HEADING_UNAVAILABLE)
+        return None, extra
     rate = vertical_gyro_radps(raw, alignment)
     if rate is None or not math.isfinite(rate):
-        return None, ["gyro_heading_axis_unavailable"]
-    return (0.0, 0.0, rate), ["gyro_vertical_only"]
+        extra.append(FLAG_HEADING_UNAVAILABLE)
+        return None, extra
+    extra.append(FLAG_HEADING_VERTICAL)
+    return (0.0, 0.0, rate), extra
+
+
+def _heading_gyro_header(decision: HeadingGyroDecision) -> dict:
+    pick = decision.pick
+    source = "pre_mask" if decision.mask_start_ns is not None else "full_trip_no_mask"
+    if pick is None:
+        source = "gravity_vertical_fallback"
+    return {
+        "axis": None if pick is None else pick.axis,
+        "sign": None if pick is None else pick.sign,
+        "correlation": decision.best_correlation,
+        "pair_count": decision.pair_count,
+        "reason": decision.reason,
+        "source": source,
+        "mask_start_ns": decision.mask_start_ns,
+        "best_axis": decision.best_axis,
+    }
+
+
+def _export_notes(decision: HeadingGyroDecision, rewind: TimestampRewind | None) -> list[str]:
+    r_txt = "none" if decision.best_correlation is None else f"{decision.best_correlation:.4f}"
+    axis = "none" if decision.best_axis is None else decision.best_axis
+    chosen = decision.pick.axis if decision.pick is not None else "gravity_vertical_fallback"
+    mask = "none" if decision.mask_start_ns is None else str(decision.mask_start_ns)
+    notes = [
+        (
+            f"heading_gyro pick={chosen} axis={axis} r={r_txt} "
+            f"n={decision.pair_count} reason={decision.reason} mask_start_ns={mask}"
+        )
+    ]
+    if rewind is not None:
+        kind = "suffix" if rewind.suffix else "interspersed"
+        notes.append(
+            f"timestamp_rewind dropped {rewind.dropped_rows} {kind} rows, "
+            f"kept {rewind.kept_rows} of {rewind.source_rows}, "
+            f"first_rewind_ns={rewind.first_rewind_ns}"
+        )
+    return notes
 
 
 def _maybe_rotate(
@@ -410,8 +517,8 @@ def _copy_imu_at(frame: dict, timestamp_ns: int) -> dict:
     copied = json.loads(json.dumps(frame))
     copied["timestamp_ns"] = int(timestamp_ns)
     flags = list(copied["quality"]["flags"])
-    if "hold_last_imu" not in flags:
-        flags.append("hold_last_imu")
+    if FLAG_HOLD_LAST not in flags:
+        flags.append(FLAG_HOLD_LAST)
     copied["quality"]["flags"] = flags
     return copied
 
@@ -435,29 +542,39 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--truth-out", type=Path, default=None)
     parser.add_argument("--hold-last-hz", type=float, default=None)
+    parser.add_argument(
+        "--mask-start-ns",
+        type=int,
+        default=None,
+        help="Blackout start. Heading-gyro pick uses unique-fix hops strictly before this.",
+    )
     args = parser.parse_args(argv)
     from driftzero_ml.datasets.io_vnbd import load_smartphone_csv
 
     rows = load_smartphone_csv(args.csv)
-    header, frames = export_sensor_frames(rows)
+    header, frames = export_sensor_frames(rows, mask_start_ns=args.mask_start_ns)
     if args.hold_last_hz is not None:
         header, frames = hold_last_imu_upsample(header, frames, target_hz=args.hold_last_hz)
     write_sensorframe_jsonl(args.out, header, frames)
     truth_n = 0
     if args.truth_out is not None:
         truth_n = write_truth_jsonl(args.truth_out, rows)
-    print(
-        json.dumps(
-            {
-                "frames": len(frames),
-                "imu_gaps_over_max_integrate_s": imu_gap_count(frames),
-                "declared_rate_hz": header["declared_rate_hz"],
-                "truth_fixes": truth_n,
-                "out": str(args.out),
-            },
-            indent=2,
-        )
-    )
+    payload = {
+        "frames": len(frames),
+        "imu_gaps_over_max_integrate_s": imu_gap_count(frames),
+        "declared_rate_hz": header["declared_rate_hz"],
+        "truth_fixes": truth_n,
+        "out": str(args.out),
+        "official_row": bool(header.get("official_row", True)),
+        "heading_gyro": header.get("heading_gyro"),
+        "notes": header.get("notes"),
+    }
+    if header.get("timestamp_rewind"):
+        payload["timestamp_rewind"] = header["timestamp_rewind"]
+    if header.get("sensitivity"):
+        payload["sensitivity"] = header.get("sensitivity_kind", True)
+        payload["hold_last_hz"] = header.get("hold_last_hz")
+    print(json.dumps(payload, indent=2))
     return 0
 
 

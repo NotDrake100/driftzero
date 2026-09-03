@@ -1,5 +1,6 @@
 package `in`.driftzero.app.ui
 
+import `in`.driftzero.app.pose.LocationGrant
 import `in`.driftzero.core.ComponentHealth
 import `in`.driftzero.core.CORE_VERSION
 import `in`.driftzero.core.DeadReckoningFilter
@@ -45,6 +46,9 @@ class ModeLampTest {
         assertNull(denied.ageS)
         val waiting = lampFor(null, locationPermission = true)
         assertEquals(LampWord.WAITING_FIX, waiting.word)
+        val coarse = lampFor(null, LocationGrant.COARSE)
+        assertEquals(LampWord.PRECISE_OFF, coarse.word)
+        assertEquals(LampTone.ALERT, coarse.tone)
         val fused = lampFor(sample(NavigationMode.GNSS_FUSED, ageS = 0.4), locationPermission = true)
         assertEquals(0.4, fused.ageS!!, 1e-9)
     }

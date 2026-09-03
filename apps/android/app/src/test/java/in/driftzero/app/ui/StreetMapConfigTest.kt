@@ -2,6 +2,7 @@ package `in`.driftzero.app.ui
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -21,6 +22,15 @@ class StreetMapConfigTest {
         assertEquals("https://tiles.openfreemap.org/styles/dark", StreetMapConfig.STYLE_DARK)
         assertEquals(StreetMapConfig.STYLE_LIBERTY, StreetMapConfig.hostedStyle(night = false))
         assertEquals(StreetMapConfig.STYLE_DARK, StreetMapConfig.hostedStyle(night = true))
+        assertEquals(
+            StreetMapConfig.STYLE_LIBERTY,
+            StreetMapConfig.hostedStyleIfNoPack(packStyleJson = null, night = false),
+        )
+        assertEquals(
+            StreetMapConfig.STYLE_DARK,
+            StreetMapConfig.hostedStyleIfNoPack(packStyleJson = null, night = true),
+        )
+        assertNull(StreetMapConfig.hostedStyleIfNoPack("{\"version\":8}", night = false))
         assertFalse(StreetMapConfig.STYLE_DARK.contains("tile.openstreetmap.org"))
     }
 
@@ -31,6 +41,7 @@ class StreetMapConfigTest {
         assertTrue(StreetMapConfig.WORLD_ZOOM < 5.0)
         assertTrue(StreetMapConfig.STREET_ZOOM >= 15.0)
         assertEquals(StreetMapConfig.STREET_ZOOM, StreetMapConfig.CAMERA_ZOOM, 0.0)
+        assertEquals(300.0, StreetMapConfig.LIVE_RECENTER_M, 0.0)
         assertTrue(kotlin.math.abs(StreetMapConfig.WORLD_LAT_DEG - 18.5362) > 1.0)
         assertTrue(kotlin.math.abs(StreetMapConfig.WORLD_LON_DEG - 73.8938) > 1.0)
     }
@@ -47,7 +58,9 @@ class StreetMapConfigTest {
     @Test
     fun hostedSearchAndRouteArePublicMapApis() {
         assertEquals("https://photon.komoot.io/api/", StreetMapConfig.PHOTON_API)
+        assertEquals("https://photon.komoot.io/reverse", StreetMapConfig.PHOTON_REVERSE)
         assertEquals("https://nominatim.openstreetmap.org/search", StreetMapConfig.NOMINATIM_SEARCH)
+        assertEquals("https://nominatim.openstreetmap.org/reverse", StreetMapConfig.NOMINATIM_REVERSE)
         assertEquals("https://router.project-osrm.org/route/v1/driving/", StreetMapConfig.OSRM_ROUTE)
         assertEquals(14, StreetMapConfig.SEARCH_BIAS_ZOOM)
         assertEquals(0.1, StreetMapConfig.SEARCH_BIAS_SCALE, 0.0)
@@ -56,5 +69,35 @@ class StreetMapConfigTest {
         assertFalse(StreetMapConfig.USER_AGENT.contains("LastKnown"))
         assertFalse(StreetMapConfig.USER_AGENT.contains("26168"))
         assertTrue(StreetMapConfig.USER_AGENT.contains("DriftZero"))
+    }
+
+    @Test
+    fun packStylePointsPmtilesAtAbsoluteFileAndLocalGlyphs() {
+        val tiles = java.io.File("/data/data/in.driftzero.app/files/area-packs/installed/pune-core/tiles.pmtiles")
+        val glyphs = java.io.File("/data/data/in.driftzero.app/files/area-packs/installed/pune-core/glyphs")
+        val sprite = java.io.File("/data/data/in.driftzero.app/files/area-packs/installed/pune-core/sprites/ofm")
+        assertEquals(
+            "pmtiles://file:///data/data/in.driftzero.app/files/area-packs/installed/pune-core/tiles.pmtiles",
+            StreetMapConfig.pmtilesFileUri(tiles),
+        )
+        assertEquals(
+            "file:///data/data/in.driftzero.app/files/area-packs/installed/pune-core/glyphs/{fontstack}/{range}.pbf",
+            StreetMapConfig.glyphsFileUri(glyphs),
+        )
+        val src = """{"sources":{"openmaptiles":{"type":"vector","url":"pmtiles://tiles.pmtiles"}},""" +
+            """"glyphs":"https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",""" +
+            """"sprite":"https://tiles.openfreemap.org/sprites/ofm_f384/ofm"}"""
+        val out = StreetMapConfig.rewritePackStyle(
+            src,
+            tiles,
+            StreetMapConfig.glyphsFileUri(glyphs),
+            StreetMapConfig.spriteFileUri(sprite),
+        )
+        assertTrue(out.contains(StreetMapConfig.pmtilesFileUri(tiles)))
+        assertTrue(out.contains(StreetMapConfig.glyphsFileUri(glyphs)))
+        assertTrue(out.contains(StreetMapConfig.spriteFileUri(sprite)))
+        assertFalse(out.contains("pmtiles://tiles.pmtiles"))
+        assertFalse(out.contains("https://tiles.openfreemap.org/fonts"))
+        assertFalse(out.contains("https://tiles.openfreemap.org/sprites"))
     }
 }

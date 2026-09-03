@@ -30,9 +30,9 @@ Do not change a locked test after seeing results. Create a new version and retai
 | B3 | B2 plus NHC/stop constraints | What do vehicle constraints contribute? |
 | B4 | B3 plus compact learned motion | Does task-specific learning help? |
 | B5 | B4 plus HMM map matching | Does road topology help without hiding errors? |
-| B6 | B5 plus TimesFM-distilled student | Did the foundation-model experiment add held-out value? |
+| B6 | B5 plus TimesFM-distilled student | Did the foundation-model experiment add held-out value? No. Desktop run rejected. Distillation was not attempted. |
 
-TimesFM zero-shot forecasting is also scored separately against forecasting baselines. It is not compared as if the full desktop checkpoint were a deployable phone system.
+TimesFM 3.0 zero-shot forecasting was run on desktop and rejected. timesfm==3.0.1, checkpoint `google/timesfm-3.0-pytorch`, seed 26168, MPS, 24.1 min. timesfm_coast drift p50 0.6048 on 35 gated intervals, worse than persist 0.5168, better than linear 0.7132. Ridge beat TimesFM on speed at 1 s, 2 s, and 5 s. TimesFM beat persist on yaw only. Speed PICP 68 was 0.01 to 0.05. Distillation was not attempted. 3.0 weights cannot ship. It stays off the phone. Report: `results/timesfm/summary.md`. Screening row: `results/io_vnbd_screening_v1/summary.md` timesfm_coast. It is not compared as if the full desktop checkpoint were a deployable phone system.
 
 ## 4. Primary metric
 
@@ -136,7 +136,7 @@ checksums.sha256
 
 Plots must label interpolation, smoothing, and score-only truth. A demo screenshot is not a benchmark.
 
-Python screening v1 lives at `results/io_vnbd_screening_v1/summary.md` (git `069e74b` plus the uncommitted `ml/` tree, seed 26168, IO-VNBD checkout `1189396`). 35 gated held-out intervals. The official median drift gate of 0.10 is not met. `filter_only` in that table is the Python coast, not the Kotlin `DeadReckoningFilter`. The Kotlin `DeadReckoningFilter` has been replayed on the locked IO-VNBD screening intervals. The official row `kotlin_eskf` is in `results/io_vnbd_screening_v1/summary.md`. Drift p50 is 6.6863 on 33 of 35 intervals, worse than persist 0.5168. The next step is diagnosis of that gap, not a new model. Latency and satellite figures remain pending. Do not cite a mean-only drift number.
+Python screening v1 lives at `results/io_vnbd_screening_v1/summary.md` (git `069e74b` plus the uncommitted `ml/` tree, seed 26168, IO-VNBD checkout `1189396`). 35 gated held-out intervals. The official median drift gate of 0.10 is not met. `filter_only` in that table is the Python coast, not the Kotlin `DeadReckoningFilter`. Persist is the held-out coast to beat (drift p50 0.5168, endpoint p50 234.47 m on 35 intervals). timesfm_coast is in that same table: drift p50 0.6048, worse than persist 0.5168, better than linear 0.7132. Desktop report: `results/timesfm/summary.md`. Verdict: reject. The product filter is not the screening headline. Keep both Kotlin rows: `kotlin_eskf` drift p50 6.6863 on 33 of 35 intervals, endpoint p50 2669.27 m; `kotlin_eskf_v2` drift p50 7.5650 on 35 intervals, endpoint p50 2996.50 m. Both worse than persist. Diagnosis stopped. The next step is not another silent filter tweak. Latency and satellite figures remain pending. Do not cite a mean-only drift number.
 
 ## 12. Release decision
 

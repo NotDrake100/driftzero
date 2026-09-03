@@ -16,7 +16,7 @@ This avoids reverse-engineering topology from rendered tiles and lets each artif
 - Build vector tiles and style into PMTiles. [Protomaps](https://docs.protomaps.com/guide/getting-started) documents PMTiles extracts and basemap tooling. `tools/maps/pack_bbox.py` writes the generic manifest for that bbox.
 - Build the road graph from the same OSM snapshot.
 - Package metadata: bounding region, build time, OSM replication timestamp, schema version, style version, hashes, size, and supported app version.
-- Copy bundled PMTiles from Android assets to app storage before opening. MapLibre's [Android PMTiles example](https://www.maplibre.org/maplibre-native/android/examples/data/PMTiles/) documents local file use. Until a Ready pack with `style.json` is installed, the app uses hosted OpenFreeMap.
+- No PMTiles pack is bundled in the APK. MapLibre's [Android PMTiles example](https://www.maplibre.org/maplibre-native/android/examples/data/PMTiles/) documents local file use. Until a Ready pack with `style.json` is sideloaded, the app uses hosted OpenFreeMap.
 
 Do not bulk-download `tile.openstreetmap.org`. The [OSM tile usage policy](https://operations.osmfoundation.org/policies/tiles/) prohibits offline or bulk use of that public service. Self-host or use a provider that explicitly permits the required workflow.
 
@@ -29,7 +29,7 @@ Each directed segment stores:
 - start/end node and adjacency offsets;
 - road class, service type, surface where useful;
 - one-way and access restrictions;
-- bridge, tunnel, layer, ramp/link, and roundabout flags;
+- road class and oneway (stored today). Bridge, tunnel, layer, ramp/link, and roundabout flags are planned (docs/07 P4). `OsmGraphLoader` does not store layer, bridge, or tunnel today;
 - typical or tagged speed prior, never assumed exact;
 - name/ref only for display, not core matching;
 - bounding box and cumulative length.
@@ -55,7 +55,7 @@ Use:
 - heading agreement, weakened at low speed;
 - vehicle direction versus one-way/access rule;
 - road class and speed plausibility as weak priors;
-- bridge/tunnel/layer consistency from recent context;
+- bridge/tunnel/layer consistency from recent context (planned. Not in the live matcher);
 - sensor/map health and phone confidence.
 
 ### Transition score
@@ -77,12 +77,14 @@ Use a rolling Viterbi beam with bounded candidates and history. Retain N-best hy
 Map matching is correlated with the navigation estimate and can create feedback loops. Therefore:
 
 - never replace filter position with a snapped coordinate;
-- use a soft cross-track or road-heading pseudo-measurement;
-- inflate map covariance when candidate entropy is high;
+- `RoadHeadingAid.decide` may return a heading plus an optional along-track speed hint, gated as below. The matcher remains display-only for lat/lon;
+- inflate map covariance when candidate entropy is high (planned);
 - disable feedback at junctions, parallel roads, or when unmatched;
 - log whether an update came from road geometry.
 
-Evaluate filter-only, visual snap-only, and soft-feedback variants separately.
+When status is `MATCHED`, posterior is at least `matchedMinPosterior`, the second-best ratio is below `ambiguousSecondRatio`, the hypothesis is not within `junctionRadiusM` (default 25 m) of a node with undirected degree >= 3, and speed is at least 1 m/s, the aid returns edge bearing (ENU rad) and a heading std that shrinks with posterior and floors at 3 deg. The filter owner applies that as `applyRoadHeading(prior)`, a 1-dof Joseph update with a chi-square gate. Lat and lon from the matcher never enter the filter. `displayPose` is overlay only. On `AMBIGUOUS`, `UNMATCHED`, `NO_MAP`, or near a junction, the aid returns null and the filter receives no map information.
+
+Evaluate filter-only, visual snap-only, and soft-feedback variants separately when feedback exists.
 
 ## 6. Essential test fixtures
 
@@ -100,12 +102,12 @@ Evaluate filter-only, visual snap-only, and soft-feedback variants separately.
 
 ## 7. Build versus reference engines
 
-Use a compact custom matcher on Android for bounded offline operation. Validate it against established references such as [GraphHopper map matching](https://github.com/graphhopper/graphhopper/blob/master/map-matching/README.md) or [Valhalla Meili](https://valhalla.github.io/valhalla/contributing/architecture/meili/) on desktop. Reference agreement is diagnostic, not ground truth.
+Use a compact custom matcher on Android for bounded offline operation after a Ready pack. GraphHopper and Valhalla Meili comparison is planned. Not run.
 
 ## 8. Storage strategy
 
-- Ship only a tiny sample corridor in the development build.
-- Let the user install one or more city/corridor packages, including an India extract as an example.
+- No sample corridor is shipped in the APK. `data/area-packs/manhattan-sample/` is a manifest only.
+- The user may sideload a city/corridor package. An India extract is a planned Pune pack (docs/07 P4), not a shipped asset.
 - Queue from the visible camera bbox (`AreaPackStore.queue`) or sideload a built directory (`installSideload`).
 - Display exact download and installed sizes.
 - Use resumable download, checksum, atomic activation, and rollback.

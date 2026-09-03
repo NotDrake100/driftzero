@@ -1,14 +1,23 @@
+# Desktop research config. Run 2026-09-03 writes results/timesfm/.
+# TimesFM 3.0 weights: timesfm-non-commercial-license-v1.0
+# (non-commercial, non-production). Cannot ship. Distillation from 3.0 is
+# not attempted. 2.5 weights remain Apache-2.0 if a teacher is ever needed.
+# Kotlin does not read this file.
 schema_version: "1.0.0"
 experiment_id: timesfm3_zero_shot_motion_v1
 research_only: true
 model:
   provider: google
   checkpoint: google/timesfm-3.0-pytorch
-  revision: PIN_BEFORE_RUN
+  revision: 43046b85ec22d584a13f8098c2ed39c889e129c2
+  package: timesfm==3.0.1
   runtime: pytorch
+  device: mps_or_cpu
 data:
   sampling_rate_hz: 10
   split_manifest: data/manifests/splits.yaml
+  seed: "26168"
+  split: session_grouped
   training_only_normalization: true
 features:
   schema_id: motion_features_v1
@@ -17,17 +26,17 @@ features:
     - gyro_vehicle_xyz
     - vibration_energy
     - causal_speed_estimate
-    - causal_yaw_rate
     - stop_probability
-    - accepted_gnss_innovation_history
-    - gnss_health
-    - map_curvature_candidates
+    - accepted_gnss_speed_held
   mask_gnss_after_outage: true
 forecast:
-  context_lengths: [128, 256, 512]
-  horizon_lengths: [8, 16, 32]
+  context_lengths: [640]
+  context_note: "64 s at 10 Hz. Model max context is 15360. Used 640 for wall time."
+  horizon_lengths: [10, 20, 50]
   targets: [forward_speed_mps, yaw_rate_radps]
   quantiles: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+  picp_68_band: [0.2, 0.8]
+  picp_95: not_emitted_by_timesfm_3_0
 baselines:
   - persistence
   - constant_turn_rate_velocity

@@ -47,4 +47,4 @@ Keep that style. Do not put secrets, machine paths, or raw dataset dumps in a co
 
 ## Definition of done
 
-Tests pass on the surfaces you touched. Offline behavior is preserved. Edge cases and fallbacks have tests. Docs state whether the change is prototype, research-only, or production-path.
+Tests pass on the surfaces you touched. After a Ready area pack is installed, rendering can stay local. Until then, hosted tiles, Photon, Nominatim, and OSRM use the network. Edge cases and fallbacks have tests. Docs state whether the change is prototype, research-only, or production-path.

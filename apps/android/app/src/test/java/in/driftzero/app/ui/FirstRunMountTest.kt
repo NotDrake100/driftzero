@@ -102,6 +102,13 @@ class FirstRunMountTest {
         assertFalse(FirstRunMount.shouldWriteProfile(CalibrationStatus.FailedMoving))
         assertTrue(FirstRunMount.abortBecauseMoving(tooFast = true, running = true))
         assertFalse(FirstRunMount.abortBecauseMoving(tooFast = true, running = false))
+        assertTrue(FirstRunMount.locationBackOpensMap())
+        assertTrue(FirstRunMount.showSkip(CalibrationStatus.Still, missingSensors = false))
+        assertTrue(FirstRunMount.showSkip(CalibrationStatus.FailedMoving, missingSensors = false))
+        assertTrue(FirstRunMount.showSkip(CalibrationStatus.FailedShort, missingSensors = false))
+        assertFalse(FirstRunMount.showSkip(CalibrationStatus.Still, missingSensors = true))
+        assertFalse(FirstRunMount.showSkip(CalibrationStatus.FailedNoGyro, missingSensors = false))
+        assertFalse(FirstRunMount.showSkip(done, missingSensors = false))
     }
 
     @Test

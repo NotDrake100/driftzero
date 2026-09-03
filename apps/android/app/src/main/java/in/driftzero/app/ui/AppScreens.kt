@@ -21,9 +21,11 @@ internal fun ScreenScaffold(
     title: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    backLabel: String? = null,
     content: @Composable () -> Unit,
 ) {
     val colors = InstrumentTheme.colors
+    val back = backLabel ?: stringResource(R.string.action_back)
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -33,7 +35,7 @@ internal fun ScreenScaffold(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         BasicText(text = title, style = InstrumentTheme.type.title)
-        SecondaryButton(label = stringResource(R.string.action_back), onClick = onBack)
+        SecondaryButton(label = back, onClick = onBack)
         Column(
             modifier = Modifier
                 .fillMaxWidth()

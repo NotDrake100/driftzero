@@ -60,7 +60,7 @@ class TravelSearchClient(
     fun route(from: TravelLatLng, to: TravelLatLng): RouteQuery {
         if (localRoute != null) {
             localRoute.invoke(from, to)?.let { built ->
-                return RouteQuery.Ok(built.toTravelRoute())
+                return RouteQuery.Ok(built.toTravelRoute(), fromLocal = true)
             }
             if (!online()) {
                 return RouteQuery.Failed
@@ -75,7 +75,7 @@ class TravelSearchClient(
             return RouteQuery.Network
         }
         val parsed = parseOsrmRoute(body) ?: return RouteQuery.Failed
-        return RouteQuery.Ok(parsed)
+        return RouteQuery.Ok(parsed, fromLocal = false)
     }
 
     private fun fetchPlaces(url: String, photon: Boolean): PlaceQuery {

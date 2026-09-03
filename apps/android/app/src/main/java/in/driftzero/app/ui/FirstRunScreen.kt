@@ -49,7 +49,8 @@ internal fun FirstRunScreen(
     when (step) {
         0 -> ScreenScaffold(
             title = stringResource(R.string.firstrun_location_title),
-            onBack = { step = 1 },
+            onBack = if (FirstRunMount.locationBackOpensMap()) onFinished else { { step = 1 } },
+            backLabel = stringResource(R.string.action_skip),
         ) {
             BasicText(
                 text = if (denied) {
@@ -242,6 +243,13 @@ private fun MountStep(
                 modifier = Modifier.fillMaxWidth(),
             )
             MountPrimaryAction.NONE -> Unit
+        }
+        if (FirstRunMount.showSkip(status, missingSensors)) {
+            SecondaryButton(
+                label = stringResource(R.string.action_skip),
+                onClick = onFinished,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

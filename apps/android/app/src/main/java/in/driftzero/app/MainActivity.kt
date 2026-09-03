@@ -24,15 +24,12 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import `in`.driftzero.app.maps.AreaPack
 import `in`.driftzero.app.maps.AreaPackState
 import `in`.driftzero.app.maps.AreaPackStore
+import `in`.driftzero.app.maps.LocalGraphPolicy
 import `in`.driftzero.app.maps.installAreaPackFromUri
 import `in`.driftzero.app.pose.newestLastKnownLocation
 import `in`.driftzero.app.pose.BlackoutOverlay
 import `in`.driftzero.app.ui.LastFixStore
 import `in`.driftzero.core.LocalRouter
-import `in`.driftzero.core.OsmGraphLoader
-import `in`.driftzero.core.Wgs84Bbox
-import kotlin.math.max
-import kotlin.math.min
 import `in`.driftzero.app.pose.MotionStudentAssets
 import `in`.driftzero.app.pose.rememberPoseStore
 import `in`.driftzero.app.settings.MotionMode
@@ -126,36 +123,20 @@ class MainActivity : ComponentActivity() {
                     val installed = packs.installed()
                     val queued = packs.queued()
                     val active = installed.firstOrNull { it.state == AreaPackState.Ready }
-                    val graphFile = packs.graphBinOnDisk()
-                    val lastFix = LastFixStore.prefs(context).read()
-                    val live = newestLastKnownLocation(context)
-                    val originLat = live?.latitude ?: lastFix?.latitudeDeg
-                    val originLon = live?.longitude ?: lastFix?.longitudeDeg
-                    val destParts = pendingDest?.split(",")
-                    val destLat = destParts?.getOrNull(0)?.trim()?.toDoubleOrNull()
-                    val destLon = destParts?.getOrNull(1)?.trim()?.toDoubleOrNull()
-                    val window = routeWindow(originLat, originLon, destLat, destLon)
+                    val graphFile = packs.graphFile(active)
                     val router = graphFile?.let { file ->
-                        if (window == null) {
-                            Log.w(LOCAL_ROUTER_TAG, "graph.bin skipped: no origin window")
-                            return@let null
-                        }
                         try {
-                            val graph = OsmGraphLoader.load(
-                                file.toPath(),
-                                active?.manifest?.id?.value ?: file.parentFile?.name ?: "pack",
-                                window,
-                            )
-                            if (graph.isEmpty()) {
+                            val packageId = active?.manifest?.id?.value ?: file.parentFile?.name ?: "pack"
+                            val (graph, names) = LocalGraphPolicy.loadGraphAndNames(file, packageId)
+                            val built = LocalGraphPolicy.routerOf(graph, names)
+                            if (built == null) {
                                 Log.i(LOCAL_ROUTER_TAG, "graph.bin empty ${file.absolutePath}")
                                 null
                             } else {
                                 Log.i(
                                     LOCAL_ROUTER_TAG,
                                     "loaded ${file.name} edges=${graph.edges.size} " +
-                                        "nodes=${graph.nodes.size} " +
-                                        "window=${window.southLatDeg},${window.westLonDeg}," +
-                                        "${window.northLatDeg},${window.eastLonDeg}",
+                                        "nodes=${graph.nodes.size} names=${names.size}",
                                 )
                                 Log.i(
                                     LOCAL_ROUTER_TAG,
@@ -165,7 +146,7 @@ class MainActivity : ComponentActivity() {
                                 withContext(Dispatchers.Main.immediate) {
                                     poses.setRoadGraph(graph)
                                 }
-                                LocalRouter(graph)
+                                built
                             }
                         } catch (error: Throwable) {
                             Log.w(LOCAL_ROUTER_TAG, "graph.bin load failed: ${error.message}")
@@ -427,39 +408,6 @@ class MainActivity : ComponentActivity() {
 }
 
 private const val LOCAL_ROUTER_TAG = "LocalRouter"
-
-/** Inclusive WGS84 window around origin, expanded to dest if present. Not a city. */
-internal fun routeWindow(
-    originLatDeg: Double?,
-    originLonDeg: Double?,
-    destLatDeg: Double?,
-    destLonDeg: Double?,
-    padDeg: Double = 0.03,
-): Wgs84Bbox? {
-    val lat = originLatDeg ?: destLatDeg ?: return null
-    val lon = originLonDeg ?: destLonDeg ?: return null
-    if (!lat.isFinite() || !lon.isFinite() || padDeg <= 0.0) {
-        return null
-    }
-    var south = lat - padDeg
-    var north = lat + padDeg
-    var west = lon - padDeg
-    var east = lon + padDeg
-    if (destLatDeg != null && destLonDeg != null && destLatDeg.isFinite() && destLonDeg.isFinite()) {
-        south = min(south, destLatDeg - 0.01)
-        north = max(north, destLatDeg + 0.01)
-        west = min(west, destLonDeg - 0.01)
-        east = max(east, destLonDeg + 0.01)
-    }
-    south = south.coerceIn(-90.0, 90.0)
-    north = north.coerceIn(-90.0, 90.0)
-    west = west.coerceIn(-180.0, 180.0)
-    east = east.coerceIn(-180.0, 180.0)
-    if (south >= north || west >= east) {
-        return null
-    }
-    return Wgs84Bbox(south, west, north, east)
-}
 
 internal fun packImportNote(state: AreaPackState?, id: String?): String = when (state) {
     AreaPackState.Ready -> "Ready ${id ?: ""}".trim()

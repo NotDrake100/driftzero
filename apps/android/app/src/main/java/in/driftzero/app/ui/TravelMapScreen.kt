@@ -188,7 +188,8 @@ fun TravelMapScreen(
     val lampNow by rememberUpdatedState(lamp)
     val interpolator = remember { PuckInterpolator() }
     interpolator.reduceMotion = reduceMotion
-    fun bindRoute(place: TravelPlace, built: TravelRoute) {
+    var routeFromLocal by remember { mutableStateOf<Boolean?>(null) }
+    fun bindRoute(place: TravelPlace, built: TravelRoute, fromLocal: Boolean) {
         val guided = built.toGuidance()
         route = built
         destination = place
@@ -198,6 +199,7 @@ fun TravelMapScreen(
         guidanceState = null
         lastRerouteNs = pose?.timestamp?.value
         searchNote = null
+        routeFromLocal = fromLocal
         controller.setDestination(TravelLatLng(place.latitudeDeg, place.longitudeDeg))
         controller.setRoute(built.points)
         controller.fitRoute(built.points)
@@ -249,7 +251,7 @@ fun TravelMapScreen(
                         search.route(origin, TravelLatLng(dest.latitudeDeg, dest.longitudeDeg))
                     }
                     when (result) {
-                        is RouteQuery.Ok -> bindRoute(dest, result.route)
+                        is RouteQuery.Ok -> bindRoute(dest, result.route, result.fromLocal)
                         RouteQuery.Network -> searchNote = routeNetworkNote
                         RouteQuery.Failed -> searchNote = routeFailNote
                     }
@@ -269,7 +271,7 @@ fun TravelMapScreen(
                     lastSeq = current.sequence
                     interpolator.target(current, frameNs, guidanceForPuck)
                 }
-                if (frameNs - lastUiNs < 100_000_000L) {
+                if (!PuckInterpolator.shouldApplyDisplayPose(lastUiNs, frameNs)) {
                     return@withFrameNanos
                 }
                 lastUiNs = frameNs
@@ -373,8 +375,8 @@ fun TravelMapScreen(
         focus.clearFocus()
     }
 
-    fun applyRoute(place: TravelPlace, built: TravelRoute) {
-        bindRoute(place, built)
+    fun applyRoute(place: TravelPlace, built: TravelRoute, fromLocal: Boolean) {
+        bindRoute(place, built, fromLocal)
     }
 
     fun flyToPlace(place: TravelPlace) {
@@ -384,6 +386,7 @@ fun TravelMapScreen(
         guidanceRoute = null
         guidanceState = null
         lastRerouteNs = null
+        routeFromLocal = null
         controller.setDestination(TravelLatLng(place.latitudeDeg, place.longitudeDeg))
         controller.clearRoute()
         controller.flyTo(TravelLatLng(place.latitudeDeg, place.longitudeDeg))
@@ -406,7 +409,7 @@ fun TravelMapScreen(
                 search.route(origin, TravelLatLng(place.latitudeDeg, place.longitudeDeg))
             }
             when (result) {
-                is RouteQuery.Ok -> applyRoute(place, result.route)
+                is RouteQuery.Ok -> applyRoute(place, result.route, result.fromLocal)
                 RouteQuery.Network -> {
                     route = null
                     flyToPlace(place)
@@ -505,6 +508,7 @@ fun TravelMapScreen(
         controller.stopFollow()
         searchNote = null
         searchExpanded = true
+        routeFromLocal = null
     }
 
     val dockVisible = route != null && destination != null
@@ -550,7 +554,7 @@ fun TravelMapScreen(
     val sheetRows = remember(
         pose, lastGnssSeenNs, nowNs, studentLoaded, navic, areaPack, packBytes, p95GapMs,
         mountQuality, mountYawConfidence, mountReason, roadAid, rowRouting, networkUp, localRouter,
-        locationGrant, locationReason, labUnlocked, stripSpeed,
+        locationGrant, locationReason, labUnlocked, stripSpeed, routeFromLocal,
     ) {
         if (pose == null) {
             if (locationReason != null) listOf("Reason" to locationReason) else emptyList()
@@ -571,7 +575,12 @@ fun TravelMapScreen(
                 lab = labUnlocked,
                 speedText = stripSpeed,
             ).toMutableList()
-            StatusCopy.routingStatus(networkUp, localRouter != null)?.let { rows += rowRouting to it }
+            StatusCopy.routingStatus(
+                network = networkUp,
+                localRouter = localRouter != null,
+                packReady = areaPack != null,
+            )?.let { rows += rowRouting to it }
+            StatusCopy.routeSource(routeFromLocal, localRouter != null)?.let { rows += rowRouting to it }
             rows
         }
     }

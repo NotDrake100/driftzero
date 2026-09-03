@@ -131,6 +131,33 @@ internal object FirstRunMount {
 
     fun abortBecauseMoving(tooFast: Boolean, running: Boolean): Boolean = tooFast && running
 
+    /**
+     * First screen has nowhere to go back to. Skip opens the map. Live
+     * [MountSession] still captures a later still window.
+     */
+    fun locationBackOpensMap(): Boolean = true
+
+    /**
+     * Skip is offered whenever the still window is optional: waiting, failed,
+     * or in progress. Missing sensors already have Done. Success auto-finishes.
+     */
+    fun showSkip(
+        status: CalibrationStatus,
+        missingSensors: Boolean,
+    ): Boolean {
+        if (missingSensors) {
+            return false
+        }
+        return when (status) {
+            is CalibrationStatus.Done, CalibrationStatus.FailedNoGyro -> false
+            CalibrationStatus.Still,
+            CalibrationStatus.Moving,
+            CalibrationStatus.FailedShort,
+            CalibrationStatus.FailedMoving,
+            -> true
+        }
+    }
+
     private fun elapsedNs(
         firstSampleNs: Long?,
         lastSampleNs: Long?,

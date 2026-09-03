@@ -18,6 +18,7 @@ import `in`.driftzero.core.NavigationState
 import `in`.driftzero.core.Provenance
 import `in`.driftzero.core.Uncertainty
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -72,6 +73,21 @@ class PuckInterpolatorTest {
         puck.sample(0L)
         puck.target(state(lat = 1.0, lon = 0.0, headingRad = 0.0), nowNs = 10L)
         assertEquals(1.0, puck.sample(11L)!!.latitudeDeg, 1e-12)
+    }
+
+    @Test
+    fun displayPoseAppliesEveryVsync() {
+        assertEquals(0L, PuckInterpolator.DISPLAY_MIN_APPLY_NS)
+        assertTrue(PuckInterpolator.shouldApplyDisplayPose(0L, 1L))
+        assertTrue(PuckInterpolator.shouldApplyDisplayPose(1_000_000L, 2_000_000L))
+        assertTrue(PuckInterpolator.shouldApplyDisplayPose(100_000_000L, 100_000_001L))
+        assertFalse(
+            PuckInterpolator.shouldApplyDisplayPose(
+                lastApplyNs = 1L,
+                frameNs = 50_000_000L,
+                minNs = 100_000_000L,
+            ),
+        )
     }
 
     private fun state(lat: Double, lon: Double, headingRad: Double, radiusM: Double = 12.0): NavigationState =

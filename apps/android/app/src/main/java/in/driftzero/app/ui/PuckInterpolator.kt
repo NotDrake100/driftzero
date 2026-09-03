@@ -82,6 +82,24 @@ class PuckInterpolator(
 
     companion object {
         const val DEFAULT_CATCH_UP_NS: Long = 100_000_000L
+
+        /**
+         * MapLibre GeoJSON is applied every vsync. A positive min-ns
+         * reintroduces 10 Hz stepping the interpolator exists to hide.
+         */
+        const val DISPLAY_MIN_APPLY_NS: Long = 0L
+
+        fun shouldApplyDisplayPose(
+            lastApplyNs: Long,
+            frameNs: Long,
+            minNs: Long = DISPLAY_MIN_APPLY_NS,
+        ): Boolean {
+            if (minNs <= 0L || lastApplyNs <= 0L) {
+                return true
+            }
+            return frameNs - lastApplyNs >= minNs
+        }
+
         private const val TWO_PI = 2.0 * PI
 
         fun lerp(a: Double, b: Double, t: Double): Double = a + (b - a) * t

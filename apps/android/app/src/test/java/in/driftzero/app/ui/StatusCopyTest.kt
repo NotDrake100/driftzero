@@ -125,6 +125,20 @@ class StatusCopyTest {
         assertEquals("Routing needs network", StatusCopy.routingStatus(network = false))
         assertNull(StatusCopy.routingStatus(network = true))
         assertNull(StatusCopy.routingStatus(network = false, localRouter = true))
+        assertEquals(
+            StatusCopy.NO_LOCAL_GRAPH,
+            StatusCopy.routingStatus(network = true, localRouter = false, packReady = true),
+        )
+        assertNull(StatusCopy.routingStatus(network = false, localRouter = true, packReady = true))
+        assertNull(StatusCopy.routeSource(fromLocal = true, localRouterAvailable = true))
+        assertNull(StatusCopy.routeSource(fromLocal = null, localRouterAvailable = true))
+        assertNull(StatusCopy.routeSource(fromLocal = false, localRouterAvailable = false))
+        assertEquals(
+            StatusCopy.NETWORK_ROUTE_LOCAL_MISS,
+            StatusCopy.routeSource(fromLocal = false, localRouterAvailable = true),
+        )
+        assertFalse(StatusCopy.NO_LOCAL_GRAPH.contains("\n"))
+        assertFalse(StatusCopy.NETWORK_ROUTE_LOCAL_MISS.contains("—"))
     }
 
     @Test

@@ -27,6 +27,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -362,6 +363,11 @@ internal fun TravelTopChrome(
     val searchOpen = !searchCollapsed || places.isNotEmpty()
     val network = networkReachable(LocalContext.current)
     var overflowOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(places.size) {
+        if (OverflowMenu.shouldDismiss(places.size)) {
+            overflowOpen = false
+        }
+    }
     val holdHint = if (
         SearchNotes.holdHintVisible(
             longPressArmed = onLampLongPress != null,
@@ -472,7 +478,7 @@ private fun OverflowButton(
     modifier: Modifier = Modifier,
 ) {
     val colors = InstrumentTheme.colors
-    val label = stringResource(R.string.chrome_more)
+    val label = stringResource(if (open) R.string.action_close else R.string.chrome_more)
     Box(
         modifier = modifier
             .size(48.dp)
@@ -486,7 +492,11 @@ private fun OverflowButton(
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        BasicText(text = label, style = InstrumentTheme.type.label)
+        if (open) {
+            ClearMark(size = 24.dp)
+        } else {
+            OverflowMark(size = 24.dp)
+        }
     }
 }
 
@@ -505,10 +515,23 @@ private fun OverflowPanel(
             .shadow(2.dp, SheetCorner)
             .background(colors.panel, SheetCorner),
     ) {
-        OverflowItem(label = stringResource(R.string.chrome_areas), onClick = onOpenOffline)
-        OverflowItem(label = stringResource(R.string.link_about), onClick = onOpenAbout)
-        OverflowItem(label = stringResource(R.string.link_settings), onClick = onOpenSettings)
-        OverflowItem(label = stringResource(R.string.link_trips), onClick = onOpenTrips)
+        val items = listOf(
+            stringResource(R.string.chrome_areas) to onOpenOffline,
+            stringResource(R.string.link_about) to onOpenAbout,
+            stringResource(R.string.link_settings) to onOpenSettings,
+            stringResource(R.string.link_trips) to onOpenTrips,
+        )
+        items.forEachIndexed { index, (label, onClick) ->
+            if (index > 0) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(colors.hairline),
+                )
+            }
+            OverflowItem(label = label, onClick = onClick)
+        }
     }
 }
 

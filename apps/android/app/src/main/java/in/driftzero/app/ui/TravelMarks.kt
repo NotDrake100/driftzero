@@ -101,6 +101,20 @@ internal fun LocateMark(modifier: Modifier = Modifier, size: Dp = 48.dp) {
 }
 
 @Composable
+internal fun OverflowMark(modifier: Modifier = Modifier, size: Dp = 24.dp) {
+    val colors = InstrumentTheme.colors
+    Canvas(modifier.size(size)) {
+        val cy = this.size.height / 2f
+        val cx = this.size.width / 2f
+        val radius = 2.dp.toPx()
+        val gap = 6.dp.toPx()
+        drawCircle(color = colors.ink, radius = radius, center = Offset(cx - gap, cy))
+        drawCircle(color = colors.ink, radius = radius, center = Offset(cx, cy))
+        drawCircle(color = colors.ink, radius = radius, center = Offset(cx + gap, cy))
+    }
+}
+
+@Composable
 internal fun ClearMark(modifier: Modifier = Modifier, size: Dp = 24.dp) {
     val colors = InstrumentTheme.colors
     Canvas(modifier.size(size)) {

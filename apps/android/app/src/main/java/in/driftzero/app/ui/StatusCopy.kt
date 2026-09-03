@@ -176,14 +176,32 @@ object StatusCopy {
         }
     }
 
-    fun routingStatus(network: Boolean, localRouter: Boolean = false): String? {
+    fun routingStatus(
+        network: Boolean,
+        localRouter: Boolean = false,
+        packReady: Boolean = false,
+    ): String? {
         if (localRouter) {
             return null
+        }
+        if (packReady) {
+            return NO_LOCAL_GRAPH
         }
         if (!network) {
             return "Routing needs network"
         }
         return null
+    }
+
+    /**
+     * This-trip routing source. Only when a Ready pack's graph is live and
+     * this route still came from the network.
+     */
+    fun routeSource(fromLocal: Boolean?, localRouterAvailable: Boolean): String? {
+        if (fromLocal == null || fromLocal || !localRouterAvailable) {
+            return null
+        }
+        return NETWORK_ROUTE_LOCAL_MISS
     }
 
     fun outputRate(p95Ms: Double?): String? {
@@ -268,6 +286,8 @@ object StatusCopy {
     }
 
     const val WEAK_GPS: String = "Weak GPS. Wait outdoors."
+    const val NO_LOCAL_GRAPH: String = "No local graph. Routing from network"
+    const val NETWORK_ROUTE_LOCAL_MISS: String = "Network route. Local graph missed."
 }
 
 private const val NavicSnapshotIRNSS: String = "IRNSS"

@@ -205,7 +205,9 @@ class TravelSearchTest {
         )
         val result = client.route(TravelLatLng(18.5, 73.8), TravelLatLng(18.6, 73.9))
         assertTrue(result is RouteQuery.Ok)
-        assertEquals(50.0, (result as RouteQuery.Ok).route.distanceM, 0.01)
+        val ok = result as RouteQuery.Ok
+        assertEquals(50.0, ok.route.distanceM, 0.01)
+        assertFalse(ok.fromLocal)
     }
 
     @Test
@@ -233,7 +235,9 @@ class TravelSearchTest {
         )
         val result = client.route(TravelLatLng(18.51, 73.85), TravelLatLng(18.52, 73.86))
         assertTrue(result is RouteQuery.Ok)
-        assertEquals(100.0, (result as RouteQuery.Ok).route.distanceM, 0.01)
+        val ok = result as RouteQuery.Ok
+        assertEquals(100.0, ok.route.distanceM, 0.01)
+        assertTrue(ok.fromLocal)
         assertFalse(fetched)
     }
 

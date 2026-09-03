@@ -148,7 +148,7 @@ sealed class PlaceQuery {
 }
 
 sealed class RouteQuery {
-    data class Ok(val route: TravelRoute) : RouteQuery()
+    data class Ok(val route: TravelRoute, val fromLocal: Boolean = false) : RouteQuery()
     data object Failed : RouteQuery()
     data object Network : RouteQuery()
 }

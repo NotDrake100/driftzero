@@ -231,6 +231,14 @@ internal fun edgeTouchesBbox(edge: GraphEdge, bbox: Wgs84Bbox): Boolean {
         minLon = min(minLon, p.longitude.value)
         maxLon = max(maxLon, p.longitude.value)
     }
+    if (minLat >= maxLat) {
+        minLat -= 1e-9
+        maxLat += 1e-9
+    }
+    if (minLon >= maxLon) {
+        minLon -= 1e-9
+        maxLon += 1e-9
+    }
     return bbox.intersects(Wgs84Bbox(minLat, minLon, maxLat, maxLon))
 }
 

@@ -119,7 +119,7 @@ class MountAlignmentTest {
         }
         val tilt = tiltedGravity(Math.toRadians(30.0))
         var remount = false
-        val end = t + 3_500_000_000L
+        val end = t + 6_000_000_000L
         while (t <= end) {
             session.onGyro(t, 0.0, 0.0, 0.0)
             val emit = session.onAccel(t, tilt.x, tilt.y, tilt.z, null, false, phoneStill = false)

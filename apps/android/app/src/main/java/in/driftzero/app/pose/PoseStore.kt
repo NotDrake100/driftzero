@@ -228,8 +228,8 @@ class PoseStore(
             x,
             y,
             z,
-            gnssSpeedDeltaMps = if (still) null else gnssSpeedDeltaForYaw(),
-            gnssAccepted = !still && gnssAcceptedForYaw(),
+            gnssSpeedDeltaMps = gnssSpeedDeltaForYaw(),
+            gnssAccepted = gnssAcceptedForYaw(),
             phoneStill = still,
         )
         applyMountEmit(accel = true, emit = emit)

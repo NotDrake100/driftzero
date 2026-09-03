@@ -48,7 +48,7 @@ flowchart TD
 
 ### GNSS outage
 
-Mode words on `NavigationState.mode`. Halo radius is `uncertainty.horizontal95`. Optional `RoadHeadingAid` is heading-only when MATCHED. `PoseStore` does not call it today. Lat/lon are never snapped.
+Mode words on `NavigationState.mode`. Halo radius is `uncertainty.horizontal95`. Optional `RoadHeadingAid` is heading-only when MATCHED. Live `PoseStore` and Replay `--road-graph` apply it while coasting. Lat/lon are never snapped.
 
 ```mermaid
 flowchart TD

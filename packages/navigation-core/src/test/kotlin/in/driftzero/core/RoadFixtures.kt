@@ -241,6 +241,27 @@ internal object RoadFixtures {
         """.trimIndent()
     }
 
+    fun singleRoadOsmXml(
+        originLat: Double = ORIGIN_LAT,
+        originLon: Double = ORIGIN_LON,
+        lengthM: Double = LENGTH_M,
+    ): String {
+        val a = Wgs84.offsetMetres(originLat, originLon, 0.0, 0.0)
+        val b = Wgs84.offsetMetres(originLat, originLon, lengthM, 0.0)
+        return """
+            <?xml version="1.0"?>
+            <osm version="0.6">
+              <node id="1" lat="${a.first}" lon="${a.second}"/>
+              <node id="2" lat="${b.first}" lon="${b.second}"/>
+              <way id="40">
+                <nd ref="1"/><nd ref="2"/>
+                <tag k="highway" v="primary"/>
+                <tag k="oneway" v="yes"/>
+              </way>
+            </osm>
+        """.trimIndent()
+    }
+
     fun tunnelOsmXml(
         originLat: Double = ORIGIN_LAT,
         originLon: Double = ORIGIN_LON,

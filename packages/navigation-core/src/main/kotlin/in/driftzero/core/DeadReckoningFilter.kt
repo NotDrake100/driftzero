@@ -83,6 +83,7 @@ class DeadReckoningFilter(
     private var accelHistCount: Int = 0
     private var lastZupt: Boolean = false
     private var lastNhc: Boolean = false
+    private var lastRoadHeading: Boolean = false
     private var lastPseudo: Boolean = false
     private var lastDisplacement: Boolean = false
     private var lastDisplacementGated: Boolean = false
@@ -149,6 +150,13 @@ class DeadReckoningFilter(
     }
 
     fun isGnssHeld(): Boolean = synchronized(lock) { gnssHeld }
+
+    /** Held GNSS or age older than [InsConfig.staleAfterS]. Same predicate as [applyRoadHeading]. */
+    fun isCoastingAt(now: Nanoseconds): Boolean = synchronized(lock) { isCoasting(now.value) }
+
+    fun noteRoadHeadingSkipped() {
+        synchronized(lock) { lastRoadHeading = false }
+    }
 
     /**
      * Live-phone table still. When true, still-ZUPT is not skipped for a
@@ -297,7 +305,8 @@ class DeadReckoningFilter(
     }
 
     /**
-     * 1-dof road heading update for a later matcher (Stream D). Joseph form.
+     * 1-dof road heading update. Joseph form. [RoadHeadingFeedback] and
+     * Replay `--road-graph` call this while coasting.
      * Applied only while coasting. Position is restored after inject so the
      * bearing never snaps lat/lon. [speedHintMps] may rotate held speed onto
      * the accepted heading. Chi-square gate is [InsConfig.roadHeadingChi2Gate]
@@ -309,6 +318,7 @@ class DeadReckoningFilter(
         speedHintMps: Double?,
     ): RoadHeadingResult {
         synchronized(lock) {
+            lastRoadHeading = false
             if (!initialized || !numericalOk) {
                 return RoadHeadingResult(accepted = false, reason = RoadHeadingReason.NOT_INITIALIZED)
             }
@@ -356,6 +366,7 @@ class DeadReckoningFilter(
                 vu = 0.0
             }
             lastHeadingRad = newHeading
+            lastRoadHeading = true
             return RoadHeadingResult(accepted = true, reason = RoadHeadingReason.ACCEPTED, chi2 = chi2)
         }
     }
@@ -414,6 +425,7 @@ class DeadReckoningFilter(
             accelHistCount = 0
             lastZupt = false
             lastNhc = false
+            lastRoadHeading = false
             lastPseudo = false
             lastDisplacement = false
             lastDisplacementGated = false
@@ -518,6 +530,7 @@ class DeadReckoningFilter(
                 if (gnssHeld) add(FLAG_GPS_HELD)
                 if (lastZupt) add(FLAG_ZUPT)
                 if (lastNhc) add(FLAG_NHC)
+                if (lastRoadHeading) add(FLAG_ROAD_HEADING)
                 if (lastPseudo) add(FLAG_MOTION_PSEUDO)
                 if (lastDisplacement) add(FLAG_DISPLACEMENT_PSEUDO)
                 if (lastDisplacementGated) add(FLAG_DISPLACEMENT_GATED)
@@ -644,6 +657,7 @@ class DeadReckoningFilter(
             numericalOk = true
             lastDisplacement = false
             lastDisplacementGated = false
+            lastRoadHeading = false
             lastAcceptedDisplacementNs = -1L
             clones.clear()
             setInitialP(posStdM)
@@ -1866,6 +1880,7 @@ class DeadReckoningFilter(
         const val FLAG_GPS_HELD: String = "gps_held"
         const val FLAG_ZUPT: String = "zupt"
         const val FLAG_NHC: String = "nhc"
+        const val FLAG_ROAD_HEADING: String = "road_heading"
         const val FLAG_MOTION_PSEUDO: String = "motion_pseudo"
         const val FLAG_DISPLACEMENT_PSEUDO: String = "displacement_pseudo"
         const val FLAG_DISPLACEMENT_GATED: String = "displacement_gated"

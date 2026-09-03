@@ -49,6 +49,9 @@ data class ReplayExecution(
  * `--coast-honest-p` grows coast position P from held-speed uncertainty.
  * `--coast-speed-decay` decays held speed toward `coastSpeedDecayTargetMps`.
  * `--student-forward-speed` enables the gated learned forward-speed update. Default off.
+ * `--road-graph=` loads OSM XML, OSM PBF, or `graph.bin` and applies
+ * [RoadHeadingFeedback] while coasting (heading only, never a lat/lon snap).
+ * Off by default so official IO-VNBD hashes stay map-free.
  * `--engine` routes consume through
  * [DeadReckoningEngine] so a later student can be injected. Default remains
  * consume-only. Same input bytes yield the same output bytes.
@@ -100,6 +103,12 @@ object Replay {
         }
         val filter = DeadReckoningFilter(args.config)
         args.headingPickWeak?.let { filter.setHeadingPickWeak(it, forced = true) }
+        val roadGraph = args.roadGraph?.let { path ->
+            if (!Files.isRegularFile(path)) {
+                throw ReplayFailedException("road graph not found: $path")
+            }
+            OsmGraphLoader.load(path)
+        }
         val consumed = ArrayList<SensorFrame>()
         val states = runFilter(
             frames = ready.source.frames,
@@ -107,6 +116,7 @@ object Replay {
             mask = args.mask,
             persistSpeedPseudo = args.persistSpeedPseudo,
             useEngine = args.useEngine,
+            roadGraph = roadGraph,
             onConsume = { consumed.add(it) },
         )
         val run = summaryOf(states, consumed.size, countMasked(ready.source.frames, args.mask))
@@ -120,12 +130,23 @@ object Replay {
         persistSpeedPseudo: Boolean = false,
         persistSpeedStdMps: Double = PERSIST_SPEED_PSEUDO_STD_MPS,
         useEngine: Boolean = false,
+        roadGraph: RoadGraph? = null,
+        roadMatcher: RoadMatcher? = null,
         onConsume: ((SensorFrame) -> Unit)? = null,
     ): List<NavigationState> {
         val states = ArrayList<NavigationState>()
         var lastEmitNs = -1L
         var lastGnssSpeedMps: Double? = null
-        val engine = if (useEngine) DeadReckoningEngine(filter) else null
+        val matcher = when {
+            roadGraph == null || roadGraph.isEmpty() -> null
+            roadMatcher != null -> roadMatcher
+            else -> HmmRoadMatcher()
+        }
+        val engine = if (useEngine) {
+            DeadReckoningEngine(filter, matcher = matcher, graph = roadGraph)
+        } else {
+            null
+        }
         for (frame in frames) {
             if (mask != null) {
                 filter.setGnssHeld(mask.contains(frame.timestamp.value))
@@ -141,7 +162,7 @@ object Replay {
             }
             onConsume?.invoke(frame)
             if (engine != null) {
-                val pose = engine.ingestForReplay(frame) ?: continue
+                var pose = engine.ingestForReplay(frame) ?: continue
                 if (persistSpeedPseudo && filter.isGnssHeld()) {
                     val speed = lastGnssSpeedMps
                     if (speed != null) {
@@ -150,12 +171,10 @@ object Replay {
                             frame.timestamp,
                         )
                     }
+                    val raw = filter.poseAt(frame.timestamp) ?: pose
+                    pose = applyRoadHeadingIfMapped(filter, raw, matcher, roadGraph)
                 }
-                states.add(if (persistSpeedPseudo && filter.isGnssHeld()) {
-                    filter.poseAt(frame.timestamp) ?: pose
-                } else {
-                    pose
-                })
+                states.add(pose)
                 continue
             }
             filter.consume(frame)
@@ -172,11 +191,30 @@ object Replay {
                     )
                 }
             }
-            val pose = filter.poseAt(frame.timestamp) ?: continue
+            val raw = filter.poseAt(frame.timestamp) ?: continue
             lastEmitNs = timestampNs
-            states.add(pose)
+            states.add(applyRoadHeadingIfMapped(filter, raw, matcher, roadGraph))
         }
         return states
+    }
+
+    private fun applyRoadHeadingIfMapped(
+        filter: DeadReckoningFilter,
+        pose: NavigationState,
+        matcher: RoadMatcher?,
+        graph: RoadGraph?,
+    ): NavigationState {
+        if (matcher == null || graph == null || graph.isEmpty()) {
+            return pose
+        }
+        return RoadHeadingFeedback.apply(
+            filter = filter,
+            pose = pose,
+            matcher = matcher,
+            graph = graph,
+            coasting = filter.isCoastingAt(pose.timestamp),
+            now = pose.timestamp,
+        ).pose
     }
 
     fun formatSummary(load: ReplayLoadStats, run: ReplayRunSummary): String {
@@ -216,6 +254,7 @@ object Replay {
         var coastHonestP = false
         var coastSpeedDecay = false
         var studentForwardSpeed = false
+        var roadGraph: Path? = null
         var index = 0
         while (index < args.size) {
             val token = args[index]
@@ -243,6 +282,7 @@ object Replay {
                 "--coast-honest-p" -> coastHonestP = inline?.toBoolean() ?: true
                 "--coast-speed-decay" -> coastSpeedDecay = inline?.toBoolean() ?: true
                 "--student-forward-speed" -> studentForwardSpeed = inline?.toBoolean() ?: true
+                "--road-graph" -> roadGraph = Path.of(readValue(args, index, inline).also { if (inline == null) index++ })
                 "--config" -> {
                     val spec = readValue(args, index, inline).also { if (inline == null) index++ }
                     val eq = spec.indexOf('=')
@@ -280,6 +320,7 @@ object Replay {
             persistSpeedPseudo = persistSpeedPseudo,
             useEngine = useEngine,
             headingPickWeak = headingPickWeak,
+            roadGraph = roadGraph,
         )
     }
 
@@ -349,6 +390,7 @@ data class ReplayCliArgs(
     val persistSpeedPseudo: Boolean = false,
     val useEngine: Boolean = false,
     val headingPickWeak: Boolean? = null,
+    val roadGraph: Path? = null,
 )
 
 internal class ReplayFailedException(message: String) : Exception(message)

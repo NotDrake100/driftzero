@@ -17,8 +17,12 @@ object RoadGraphBin {
         return load(bytes, packageId)
     }
 
-    fun load(bytes: ByteArray, packageId: String): Pair<RoadGraph, Map<Long, String>> {
-        val graph = OsmGraphLoader.load(bytes, packageId, OsmFormat.PBF)
+    fun load(
+        bytes: ByteArray,
+        packageId: String,
+        bbox: Wgs84Bbox? = null,
+    ): Pair<RoadGraph, Map<Long, String>> {
+        val graph = OsmGraphLoader.load(bytes, packageId, OsmFormat.PBF, bbox)
         val names = OsmPbfWriter.readWayNames(bytes)
         return graph to names
     }

@@ -16,5 +16,5 @@ Use MapLibre Native with local PMTiles for display and build a separate versione
 - The APK stays small by installing corridor/city packages separately. Users queue the visible map bbox or sideload a built directory. No Ready pack is bundled today. Hosted OpenFreeMap is the stand-in.
 - Visual styling can change without changing graph identity.
 - Builds require a reproducible map pipeline and package compatibility checks. `tools/maps/pack_bbox.py` writes the generic manifest; Planetiler and the graph packer fill tiles and topology. Those fill steps are not run in CI.
-- Map feedback must be soft and confidence-aware. Soft filter feedback is planned. The matcher is display-only today.
+- Map feedback must be soft and confidence-aware. `RoadHeadingFeedback` applies a MATCHED heading prior only. The matcher remains display-only for lat/lon. See ADR 008.
 

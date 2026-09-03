@@ -5,12 +5,10 @@ import `in`.driftzero.core.ClockDomain
 import `in`.driftzero.core.CoastFix
 import `in`.driftzero.core.CoastMode
 import `in`.driftzero.core.DeadReckoningFilter
-import `in`.driftzero.core.FilterSnapshot
 import `in`.driftzero.core.GeoPoint
 import `in`.driftzero.core.GraphEdge
 import `in`.driftzero.core.HmmRoadMatcher
 import `in`.driftzero.core.InsConfig
-import `in`.driftzero.core.MapMatchResult
 import `in`.driftzero.core.MapMatchStatus
 import `in`.driftzero.core.MetresPerSecond
 import `in`.driftzero.core.MotionPseudoMeasurement
@@ -24,8 +22,8 @@ import `in`.driftzero.core.NavigationState
 import `in`.driftzero.core.Quality
 import `in`.driftzero.core.ResetReason
 import `in`.driftzero.core.RoadGraph
-import `in`.driftzero.core.RoadHeadingAid
 import `in`.driftzero.core.RoadHeadingDecision
+import `in`.driftzero.core.RoadHeadingFeedback
 import `in`.driftzero.core.RoadMatcher
 import `in`.driftzero.core.SensorFrame
 import `in`.driftzero.core.SensorKind
@@ -33,7 +31,6 @@ import `in`.driftzero.core.Vector3Payload
 import `in`.driftzero.core.VectorFrame
 import `in`.driftzero.core.VectorPayload
 import `in`.driftzero.core.Wgs84
-import `in`.driftzero.core.withMapMatch
 import kotlin.math.ln
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,6 +44,8 @@ import kotlinx.coroutines.flow.asStateFlow
  * injects Δp when `linear_dp.json` loaded. Δp is χ²-gated and is not a
  * screening claim. The speed student is the live IMU measurement.
  * [navic] is chipset constellation counts. It is not a filter input.
+ * While coasting, [RoadHeadingFeedback] may apply a MATCHED heading prior.
+ * Matcher lat/lon are overlay only.
  *
  * Mount: after a still capture, [MountSession] holds gravity (m/s^2) and gyro
  * bias (rad/s) in the phone frame. Yaw is resolved only while GNSS is accepted,
@@ -98,7 +97,7 @@ class PoseStore(
     private val _mountYawConfidence = MutableStateFlow<Double?>(null)
     val mountYawConfidence: StateFlow<Double?> = _mountYawConfidence.asStateFlow()
     private val _roadDecision = MutableStateFlow<RoadHeadingDecision?>(null)
-    /** Last [RoadHeadingAid.decide] while coasting. Null when not coasting or no match. */
+    /** Last [RoadHeadingFeedback] decision while coasting. Null when not coasting or no match. */
     val roadDecision: StateFlow<RoadHeadingDecision?> = _roadDecision.asStateFlow()
     private val _lastAccelEmit = MutableStateFlow<MountImuEmit?>(null)
     val lastAccelEmit: StateFlow<MountImuEmit?> = _lastAccelEmit.asStateFlow()
@@ -449,33 +448,20 @@ class PoseStore(
     private fun publish() {
         val now = nowNs()
         val raw = filter.poseAt(now)
-        val activeMatcher = matcher
-        val activeGraph = graph
-        val matchResult = if (
-            raw != null &&
-            activeMatcher != null &&
-            activeGraph != null &&
-            !activeGraph.isEmpty()
-        ) {
-            activeMatcher.update(FilterSnapshot(raw), activeGraph)
+        val tick = if (raw != null) {
+            RoadHeadingFeedback.apply(
+                filter = filter,
+                pose = raw,
+                matcher = matcher,
+                graph = graph,
+                coasting = isCoastingNow(),
+                now = now,
+            )
         } else {
             null
         }
-        if (raw != null && matchResult != null && isCoastingNow()) {
-            applyCoastRoadAid(matchResult, raw)
-        } else {
-            _roadDecision.value = null
-        }
-        val afterAid = if (_roadDecision.value?.prior != null) {
-            filter.poseAt(now) ?: raw
-        } else {
-            raw
-        }
-        val matched = if (afterAid != null && matchResult != null) {
-            afterAid.withMapMatch(matchResult)
-        } else {
-            afterAid
-        }
+        _roadDecision.value = tick?.decision
+        val matched = tick?.pose ?: raw
         val displayed = if (matched != null && lastPushedStill && !_replayActive.value) {
             matched.copy(motion = matched.motion.copy(speed = MetresPerSecond(0.0)))
         } else {
@@ -585,23 +571,6 @@ class PoseStore(
             lastPushedStill = still
             filter.setImuStill(still)
         }
-    }
-
-    /**
-     * Heading-only map aid while coasting. Calls the public 3-arg
-     * [DeadReckoningFilter.applyRoadHeading]. Does not invent a prior overload.
-     */
-    private fun applyCoastRoadAid(match: MapMatchResult, pose: NavigationState) {
-        val heading = pose.motion.heading.value
-        val speed = pose.motion.speed.value
-        if (!heading.isFinite() || !speed.isFinite() || speed < 0.0) {
-            _roadDecision.value = null
-            return
-        }
-        val decision = RoadHeadingAid.decide(match, heading, speed)
-        _roadDecision.value = decision
-        val prior = decision.prior ?: return
-        filter.applyRoadHeading(prior.edgeBearingRad, prior.stdRad, prior.alongTrackSpeedHintMps)
     }
 
     private fun decorateHealth(state: NavigationState): NavigationState {

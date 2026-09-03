@@ -36,6 +36,57 @@ class LocalRouterTest {
     }
 
     @Test
+    fun twoKmDestOutsideOriginPadStillRoutes() {
+        val originLat = 12.0
+        val originLon = 77.0
+        val dest = Wgs84.offsetMetres(originLat, originLon, 2_000.0, 0.0)
+        val bytes = northCorridorPbf(originLat, originLon, lengthM = 2_400.0, stepM = 200.0)
+        val originPad = LocalGraphPolicy.routeWindow(originLat, originLon, null, null, 500.0)!!
+        val union = LocalGraphPolicy.routeWindow(originLat, originLon, dest.first, dest.second, 500.0)!!
+        assertTrue(
+            "dest 2 km north must sit outside a 500 m origin pad",
+            !originPad.contains(dest.first, dest.second),
+        )
+        assertTrue(union.contains(originLat, originLon))
+        assertTrue(union.contains(dest.first, dest.second))
+
+        val originOnly = RoadGraphBin.load(bytes, "corridor-origin", originPad).first
+        val covering = RoadGraphBin.load(bytes, "corridor-union", union).first
+        assertTrue(
+            "union window must keep dest-end edges origin-only drops",
+            covering.edges.size > originOnly.edges.size,
+        )
+        assertNull(LocalRouter(originOnly).route(originLat, originLon, dest.first, dest.second))
+        val built = LocalRouter(covering).route(originLat, originLon, dest.first, dest.second)
+        assertNotNull(built)
+        assertTrue(built!!.points.size >= 2)
+        assertTrue(built.totalDistanceM > 1_500.0)
+    }
+
+    @Test
+    fun loadUsesUnionWindowWhenHeapIsTight() {
+        val originLat = 12.0
+        val originLon = 77.0
+        val dest = Wgs84.offsetMetres(originLat, originLon, 2_000.0, 0.0)
+        val bytes = northCorridorPbf(originLat, originLon, lengthM = 2_400.0, stepM = 200.0)
+        val tightHeap = bytes.size.toLong()
+        assertTrue(!LocalGraphPolicy.canLoadFull(bytes.size.toLong(), tightHeap))
+        val originOnly = LocalRouter.load(
+            bytes, "corridor-tight-origin",
+            originLat, originLon, null, null, tightHeap,
+        )
+        assertNull(originOnly?.route(originLat, originLon, dest.first, dest.second))
+        val covering = LocalRouter.load(
+            bytes, "corridor-tight-union",
+            originLat, originLon, dest.first, dest.second, tightHeap,
+        )
+        val built = covering?.route(originLat, originLon, dest.first, dest.second)
+        assertNotNull(built)
+        assertTrue(built!!.points.size >= 2)
+        assertTrue(built.totalDistanceM > 1_500.0)
+    }
+
+    @Test
     fun namesFromCompactBinSurviveLoad() {
         val a = Wgs84.offsetMetres(RoadFixtures.ORIGIN_LAT, RoadFixtures.ORIGIN_LON, 0.0, 0.0)
         val b = Wgs84.offsetMetres(RoadFixtures.ORIGIN_LAT, RoadFixtures.ORIGIN_LON, 200.0, 0.0)
@@ -54,6 +105,33 @@ class LocalRouterTest {
         val router = LocalRouter(loaded, names)
         assertEquals("High Street", router.nameOf(loaded.edges.first()))
     }
+}
+
+internal fun northCorridorPbf(
+    originLat: Double,
+    originLon: Double,
+    lengthM: Double,
+    stepM: Double,
+): ByteArray {
+    val nodes = ArrayList<Triple<Long, Double, Double>>()
+    val ways = ArrayList<PbfWay>()
+    var id = 1L
+    var walked = 0.0
+    val first = Wgs84.offsetMetres(originLat, originLon, 0.0, 0.0)
+    nodes += Triple(id, first.first, first.second)
+    while (walked + stepM <= lengthM + 1e-6) {
+        walked += stepM
+        val nextId = id + 1L
+        val at = Wgs84.offsetMetres(originLat, originLon, walked, 0.0)
+        nodes += Triple(nextId, at.first, at.second)
+        ways += PbfWay(
+            nextId,
+            listOf(id, nextId),
+            mapOf("highway" to "residential", "oneway" to "yes"),
+        )
+        id = nextId
+    }
+    return OsmPbfWriter.write(nodes, ways)
 }
 
 class RoadGraphBinTest {

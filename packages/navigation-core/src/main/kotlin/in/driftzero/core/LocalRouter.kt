@@ -286,6 +286,36 @@ class LocalRouter(
         private const val MAX_NODES: Int = 40_000
         private const val MIN_WEIGHT: Double = 0.8
 
+        /**
+         * Load [graph.bin] for A→B. Full pack when the heap can hold it.
+         * Otherwise the in-memory clip is union(origin, dest) plus margin.
+         */
+        fun load(
+            bytes: ByteArray,
+            packageId: String,
+            originLatDeg: Double?,
+            originLonDeg: Double?,
+            destLatDeg: Double?,
+            destLonDeg: Double?,
+            maxHeapBytes: Long,
+            marginM: Double = LocalGraphPolicy.MARGIN_M,
+        ): LocalRouter? {
+            val window = LocalGraphPolicy.clipForLoad(
+                packBytes = bytes.size.toLong(),
+                maxHeapBytes = maxHeapBytes,
+                originLatDeg = originLatDeg,
+                originLonDeg = originLonDeg,
+                destLatDeg = destLatDeg,
+                destLonDeg = destLonDeg,
+                marginM = marginM,
+            )
+            val (graph, names) = RoadGraphBin.load(bytes, packageId, window)
+            if (graph.isEmpty()) {
+                return null
+            }
+            return LocalRouter(graph, names)
+        }
+
         fun highwayWeight(highway: String): Double = when (highway) {
             "motorway", "motorway_link" -> 0.8
             "trunk", "trunk_link" -> 0.9

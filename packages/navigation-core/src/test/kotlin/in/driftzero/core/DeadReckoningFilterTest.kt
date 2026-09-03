@@ -1322,6 +1322,194 @@ class DeadReckoningFilterTest {
     }
 
     @Test
+    fun oneHzHistoricalNineSecondHopDoesNotReseedWhenSparseRequired() {
+        val g = Wgs84.gravityMps2(0.0)
+        val filter = DeadReckoningFilter(
+            InsConfig(
+                coastMode = CoastMode.YAW_SPEED_HOLD,
+                gnssReseedAfterS = 8.0,
+                gnssReseedRequireSparseSpacing = true,
+                gnssReseedMinSparseHops = 3,
+                gnssGateInflate = false,
+                nhcMinSpeedMps = 100.0,
+                lowConfidenceRadiusM = 10_000.0,
+            ),
+        )
+        filter.seedForTest(
+            timestamp = Nanoseconds(0L),
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            velocityEnu = Vec3(0.0, 10.0, 0.0),
+            quat = Quat.IDENTITY,
+            posStdM = 5.0,
+            frame = VectorFrame.UNSPECIFIED,
+            headingRad = 0.0,
+        )
+        val dtNs = 100_000_000L
+        for (sec in 1..5) {
+            for (i in 1..10) {
+                val t = (sec - 1) * 1_000_000_000L + i * dtNs
+                stepImu(filter, Nanoseconds(t), 0.0, 0.0, g, frame = VectorFrame.UNSPECIFIED)
+            }
+            val (lat, lon) = Wgs84.offsetMetres(0.0, 0.0, sec * 10.0, 0.0)
+            filter.ingestGnss(
+                CoastFix(
+                    timestamp = Nanoseconds(sec * 1_000_000_000L),
+                    latitudeDeg = lat,
+                    longitudeDeg = lon,
+                    speedMps = 10.0,
+                    headingRad = 0.0,
+                    horizontalAccuracyM = 4.0,
+                ),
+            )
+            assertEquals(DeadReckoningFilter.GNSS_GATE_ADMIT, filter.lastGnssAdmitForTest())
+        }
+        for (i in 1..90) {
+            stepImu(
+                filter,
+                Nanoseconds(5_000_000_000L + i * dtNs),
+                0.0,
+                0.0,
+                g,
+                frame = VectorFrame.UNSPECIFIED,
+            )
+        }
+        val (lat, lon) = Wgs84.offsetMetres(0.0, 0.0, 140.0, 0.0)
+        filter.ingestGnss(
+            CoastFix(
+                timestamp = Nanoseconds(14_000_000_000L),
+                latitudeDeg = lat,
+                longitudeDeg = lon,
+                speedMps = 10.0,
+                headingRad = 0.0,
+                horizontalAccuracyM = 4.0,
+            ),
+        )
+        assertTrue(
+            "1 Hz plus one 9 s hop must not reseed, admit=${filter.lastGnssAdmitForTest()}",
+            filter.lastGnssAdmitForTest() != DeadReckoningFilter.GNSS_RESEED_AFTER_GAP,
+        )
+        assertTrue(filter.lastReseedBlockedSparseForTest())
+        assertTrue(filter.uniqueGapCountForTest() >= 3)
+    }
+
+    @Test
+    fun sparseNineSecondStreamReseedsAfterProvenSpacing() {
+        val g = Wgs84.gravityMps2(0.0)
+        val filter = DeadReckoningFilter(
+            InsConfig(
+                coastMode = CoastMode.YAW_SPEED_HOLD,
+                gnssReseedAfterS = 8.0,
+                gnssReseedRequireSparseSpacing = true,
+                gnssReseedMinSparseHops = 3,
+                gnssGateInflate = false,
+                nhcMinSpeedMps = 100.0,
+                lowConfidenceRadiusM = 10_000.0,
+            ),
+        )
+        filter.seedForTest(
+            timestamp = Nanoseconds(0L),
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            velocityEnu = Vec3(10.0, 0.0, 0.0),
+            quat = Quat.IDENTITY,
+            posStdM = 5.0,
+            frame = VectorFrame.UNSPECIFIED,
+            headingRad = PI / 2.0,
+        )
+        val dtNs = 100_000_000L
+        val admits = mutableListOf<String>()
+        for (hop in 1..3) {
+            val tEnd = hop * 9_000_000_000L
+            val tStart = (hop - 1) * 9_000_000_000L
+            for (i in 1..90) {
+                stepImu(filter, Nanoseconds(tStart + i * dtNs), 0.0, 0.0, g, frame = VectorFrame.UNSPECIFIED)
+            }
+            val (lat, lon) = Wgs84.offsetMetres(0.0, 0.0, 0.0, hop * 90.0)
+            filter.ingestGnss(
+                CoastFix(
+                    timestamp = Nanoseconds(tEnd),
+                    latitudeDeg = lat,
+                    longitudeDeg = lon,
+                    speedMps = 10.0,
+                    headingRad = PI / 2.0,
+                    horizontalAccuracyM = 5.0,
+                ),
+            )
+            admits.add(filter.lastGnssAdmitForTest())
+        }
+        assertEquals(
+            "first two 9 s hops fail closed; third proves sparse",
+            listOf(
+                DeadReckoningFilter.GNSS_GATE_ADMIT,
+                DeadReckoningFilter.GNSS_GATE_ADMIT,
+                DeadReckoningFilter.GNSS_RESEED_AFTER_GAP,
+            ),
+            admits,
+        )
+        assertFalse(filter.lastReseedBlockedSparseForTest())
+    }
+
+    @Test
+    fun sparseRequireOffStillReseedsAnyNineSecondHop() {
+        val g = Wgs84.gravityMps2(0.0)
+        val filter = DeadReckoningFilter(
+            InsConfig(
+                coastMode = CoastMode.YAW_SPEED_HOLD,
+                gnssReseedAfterS = 8.0,
+                gnssReseedRequireSparseSpacing = false,
+                gnssGateInflate = false,
+                nhcMinSpeedMps = 100.0,
+                lowConfidenceRadiusM = 10_000.0,
+            ),
+        )
+        filter.seedForTest(
+            timestamp = Nanoseconds(0L),
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            velocityEnu = Vec3(0.0, 10.0, 0.0),
+            quat = Quat.IDENTITY,
+            posStdM = 5.0,
+            frame = VectorFrame.UNSPECIFIED,
+            headingRad = 0.0,
+        )
+        val dtNs = 100_000_000L
+        for (sec in 1..3) {
+            for (i in 1..10) {
+                val t = (sec - 1) * 1_000_000_000L + i * dtNs
+                stepImu(filter, Nanoseconds(t), 0.0, 0.0, g, frame = VectorFrame.UNSPECIFIED)
+            }
+            val (lat, lon) = Wgs84.offsetMetres(0.0, 0.0, sec * 10.0, 0.0)
+            filter.ingestGnss(
+                CoastFix(
+                    timestamp = Nanoseconds(sec * 1_000_000_000L),
+                    latitudeDeg = lat,
+                    longitudeDeg = lon,
+                    speedMps = 10.0,
+                    headingRad = 0.0,
+                    horizontalAccuracyM = 4.0,
+                ),
+            )
+        }
+        for (i in 1..90) {
+            stepImu(filter, Nanoseconds(3_000_000_000L + i * dtNs), 0.0, 0.0, g, frame = VectorFrame.UNSPECIFIED)
+        }
+        val (lat, lon) = Wgs84.offsetMetres(0.0, 0.0, 120.0, 0.0)
+        filter.ingestGnss(
+            CoastFix(
+                timestamp = Nanoseconds(12_000_000_000L),
+                latitudeDeg = lat,
+                longitudeDeg = lon,
+                speedMps = 10.0,
+                headingRad = 0.0,
+                horizontalAccuracyM = 4.0,
+            ),
+        )
+        assertEquals(DeadReckoningFilter.GNSS_RESEED_AFTER_GAP, filter.lastGnssAdmitForTest())
+        assertFalse(filter.lastReseedBlockedSparseForTest())
+    }
+
+    @Test
     fun liveDefaultsDoNotReseedTwoSecondLateFix() {
         val live = InsConfig(coastMode = CoastMode.YAW_SPEED_HOLD)
         assertEquals(0.0, live.gnssReseedAfterS, 0.0)
@@ -1329,6 +1517,7 @@ class DeadReckoningFilterTest {
         assertFalse(live.coastStopDetect)
         assertFalse(live.coastSpeedDecay)
         assertFalse(live.gnssReseedWhileFused)
+        assertFalse(live.gnssReseedRequireSparseSpacing)
 
         val g = Wgs84.gravityMps2(0.0)
         val dtNs = 100_000_000L

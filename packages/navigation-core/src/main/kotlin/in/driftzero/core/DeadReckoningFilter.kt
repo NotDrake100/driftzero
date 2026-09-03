@@ -32,7 +32,10 @@ import kotlin.math.sqrt
  * (including accuracy-ok fixes the position gate rejected). After a unique-fix
  * gap of at least [InsConfig.gnssReseedAfterS] a sanity-ok GNSS re-seeds pose
  * instead of gating, except while already fused unless
- * [InsConfig.gnssReseedWhileFused]. The 15-state ESKF remains so ZUPT, NHC, and
+ * [InsConfig.gnssReseedWhileFused]. When
+ * [InsConfig.gnssReseedRequireSparseSpacing] is on, that reseed also requires
+ * the recent unique-fix median spacing to be sparse. A single historical hop
+ * on a 1 Hz stream does not reseed. The 15-state ESKF remains so ZUPT, NHC, and
  * [applyRoadHeading] still land. NHC runs only in [VectorFrame.VEHICLE_FLU].
  *
  * [MotionModel] is not owned here. [MotionPseudoRuntime] infers on the 10 Hz
@@ -124,6 +127,8 @@ class DeadReckoningFilter(
     private var lastAcceptedUniqueNs: Long = -1L
     private var lastAcceptedUniqueLat: Double = 0.0
     private var lastAcceptedUniqueLon: Double = 0.0
+    private val uniqueGapsS: ArrayDeque<Double> = ArrayDeque()
+    private var lastReseedBlockedSparse: Boolean = false
     /** Phone IMU still for the live path. Replay leaves this false. */
     private var imuStill: Boolean = false
     private val gnssTrail: ArrayDeque<TrailFix> = ArrayDeque()
@@ -409,6 +414,8 @@ class DeadReckoningFilter(
             lastAcceptedUniqueNs = -1L
             lastAcceptedUniqueLat = 0.0
             lastAcceptedUniqueLon = 0.0
+            uniqueGapsS.clear()
+            lastReseedBlockedSparse = false
             imuStill = false
             lastImuNs = -1L
             accelHistCount = 0
@@ -528,6 +535,7 @@ class DeadReckoningFilter(
                 if (coastStopDisarmed) add(FLAG_COAST_STOP_DISARMED)
                 if (lastGnssReseed) add(FLAG_GNSS_RESEED)
                 if (lastWouldAdmitWithoutReseed) add(FLAG_GNSS_WOULD_ADMIT)
+                if (lastReseedBlockedSparse) add(FLAG_GNSS_RESEED_SPARSE_SKIP)
             }
             val score = if (coasting) {
                 (1.0 / (1.0 + ageS)).coerceIn(0.0, 1.0)
@@ -587,6 +595,10 @@ class DeadReckoningFilter(
     internal fun lastGnssAdmitForTest(): String = synchronized(lock) { lastGnssAdmit }
 
     internal fun lastWouldAdmitWithoutReseedForTest(): Boolean = synchronized(lock) { lastWouldAdmitWithoutReseed }
+
+    internal fun lastReseedBlockedSparseForTest(): Boolean = synchronized(lock) { lastReseedBlockedSparse }
+
+    internal fun uniqueGapCountForTest(): Int = synchronized(lock) { uniqueGapsS.size }
 
     internal fun plantReportedGnssSpeedForTest(speed: Double, tNs: Long) {
         synchronized(lock) {
@@ -1057,8 +1069,13 @@ class DeadReckoningFilter(
             (fix.timestamp.value - lastAcceptedUniqueNs) / NS_PER_S
         }
         val fused = !isCoasting(fix.timestamp.value)
+        val sparseOk = currentSpacingSparse(uniqueGapS)
+        lastReseedBlockedSparse = config.gnssReseedAfterS > 0.0 &&
+            uniqueGapS >= config.gnssReseedAfterS &&
+            !sparseOk
         val wantReseed = config.gnssReseedAfterS > 0.0 &&
             uniqueGapS >= config.gnssReseedAfterS &&
+            sparseOk &&
             canReseed(fix) &&
             (!fused || config.gnssReseedWhileFused)
         if (wantReseed) {
@@ -1152,9 +1169,45 @@ class DeadReckoningFilter(
         if (!isNew) {
             return
         }
+        if (lastAcceptedUniqueNs >= 0L) {
+            val gapS = (fix.timestamp.value - lastAcceptedUniqueNs) / NS_PER_S
+            if (gapS > 0.0) {
+                uniqueGapsS.addLast(gapS)
+                while (uniqueGapsS.size > UNIQUE_GAP_CAP) {
+                    uniqueGapsS.removeFirst()
+                }
+            }
+        }
         lastAcceptedUniqueNs = fix.timestamp.value
         lastAcceptedUniqueLat = fix.latitudeDeg
         lastAcceptedUniqueLon = fix.longitudeDeg
+    }
+
+    /**
+     * True when a unique-gap reseed is allowed by spacing, not only by the
+     * last hop. [currentGapS] is the candidate unique interval (seconds).
+     *
+     * With [InsConfig.gnssReseedRequireSparseSpacing] off, always true (v6/v7).
+     * With it on, the median of the last [InsConfig.gnssReseedMinSparseHops]
+     * unique intervals, including this hop, must be at least
+     * [InsConfig.gnssReseedAfterS]. Fewer hops than that fail closed: a 1 Hz
+     * stream with one 9 s hop is not sparse.
+     */
+    private fun currentSpacingSparse(currentGapS: Double): Boolean {
+        if (!config.gnssReseedRequireSparseSpacing) {
+            return true
+        }
+        val samples = ArrayList<Double>(uniqueGapsS.size + 1)
+        samples.addAll(uniqueGapsS)
+        if (currentGapS > 0.0) {
+            samples.add(currentGapS)
+        }
+        val need = config.gnssReseedMinSparseHops
+        if (need <= 0 || samples.size < need) {
+            return false
+        }
+        val recent = samples.subList(samples.size - need, samples.size)
+        return medianOf(recent) >= config.gnssReseedAfterS
     }
 
     private fun canReseed(fix: CoastFix): Boolean {
@@ -1877,6 +1930,7 @@ class DeadReckoningFilter(
         const val FLAG_HEADING_PICK_WEAK: String = "gyro_heading_pick_weak"
         const val FLAG_GNSS_RESEED: String = "gnss_reseed_after_gap"
         const val FLAG_GNSS_WOULD_ADMIT: String = "gnss_gate_would_admit"
+        const val FLAG_GNSS_RESEED_SPARSE_SKIP: String = "gnss_reseed_sparse_skip"
         const val GNSS_RESEED_AFTER_GAP: String = "gnss_reseed_after_gap"
         const val GNSS_GATE_ADMIT: String = "gnss_gate_admit"
         const val GNSS_GATE_REJECT: String = "gnss_gate_reject"
@@ -1893,6 +1947,7 @@ class DeadReckoningFilter(
         private const val CLONE_CAP: Int = 200
         private const val PREFIX_VAR_CAP: Int = 40
         private const val TRAIL_CAP: Int = 40
+        private const val UNIQUE_GAP_CAP: Int = 16
     }
 }
 
@@ -2056,6 +2111,18 @@ data class InsConfig(
      * still fused. 1 Hz streams stay on the Joseph path.
      */
     val gnssReseedWhileFused: Boolean = false,
+    /**
+     * When true, unique-gap reseed also requires the recent unique-fix
+     * median spacing to be sparse. Default off keeps v6/v7 "any hop >= T"
+     * hashes. Replay v8 passes `--gnss-reseed-require-sparse`.
+     */
+    val gnssReseedRequireSparseSpacing: Boolean = false,
+    /**
+     * How many unique-fix intervals, including the candidate hop, must be
+     * present before [gnssReseedRequireSparseSpacing] can prove sparseness.
+     * Fail closed with fewer hops.
+     */
+    val gnssReseedMinSparseHops: Int = 3,
     /**
      * Bias-like coast position covariance: after T seconds,
      * sqrt(P_h) grows as hypot(sigma_v, v * sigma_heading) * T.

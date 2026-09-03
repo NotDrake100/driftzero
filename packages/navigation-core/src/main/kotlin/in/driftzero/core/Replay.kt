@@ -46,6 +46,8 @@ data class ReplayExecution(
  * latches last reported GNSS speed if it is within 2 s of coast start.
  * `--gnss-reseed-after-s=T` re-seeds pose after a unique-fix gap of at least T seconds,
  * while coasting. `--gnss-reseed-while-fused` also allows that reseed during fused GNSS.
+ * `--gnss-reseed-require-sparse` also requires the recent unique-fix median spacing
+ * to be sparse, so a 1 Hz trip with one historical 9 s hop does not snap.
  * `--coast-honest-p` grows coast position P from held-speed uncertainty.
  * `--coast-speed-decay` decays held speed toward `coastSpeedDecayTargetMps`.
  * `--student-forward-speed` enables the gated learned forward-speed update. Default off.
@@ -213,6 +215,7 @@ object Replay {
         var coastLatchGnssSpeed = false
         var gnssReseedAfterS = 0.0
         var gnssReseedWhileFused = false
+        var gnssReseedRequireSparseSpacing = false
         var coastHonestP = false
         var coastSpeedDecay = false
         var studentForwardSpeed = false
@@ -240,6 +243,7 @@ object Replay {
                 "--coast-latch-gnss-speed" -> coastLatchGnssSpeed = inline?.toBoolean() ?: true
                 "--gnss-reseed-after-s" -> gnssReseedAfterS = readValue(args, index, inline).also { if (inline == null) index++ }.toDouble()
                 "--gnss-reseed-while-fused" -> gnssReseedWhileFused = inline?.toBoolean() ?: true
+                "--gnss-reseed-require-sparse" -> gnssReseedRequireSparseSpacing = inline?.toBoolean() ?: true
                 "--coast-honest-p" -> coastHonestP = inline?.toBoolean() ?: true
                 "--coast-speed-decay" -> coastSpeedDecay = inline?.toBoolean() ?: true
                 "--student-forward-speed" -> studentForwardSpeed = inline?.toBoolean() ?: true
@@ -273,6 +277,7 @@ object Replay {
                 coastLatchGnssSpeed = coastLatchGnssSpeed,
                 gnssReseedAfterS = gnssReseedAfterS,
                 gnssReseedWhileFused = gnssReseedWhileFused,
+                gnssReseedRequireSparseSpacing = gnssReseedRequireSparseSpacing,
                 coastHonestP = coastHonestP,
                 coastSpeedDecay = coastSpeedDecay,
                 studentForwardSpeed = studentForwardSpeed,
@@ -421,6 +426,14 @@ private fun InsConfig.overrideField(name: String, value: Double): InsConfig {
         "coaststopstoppedmaxmps" -> copy(coastStopStoppedMaxMps = value)
         "gnssreseedafters" -> copy(gnssReseedAfterS = value)
         "gnssreseedwhilefused" -> copy(gnssReseedWhileFused = value != 0.0)
+        "gnssreseedrequiresparsespacing" -> copy(gnssReseedRequireSparseSpacing = value != 0.0)
+        "gnssreseedminsparsehops" -> copy(
+            gnssReseedMinSparseHops = value.toInt().also { n ->
+                require(n >= 1 && kotlin.math.abs(value - n) < 1e-9) {
+                    "gnssReseedMinSparseHops must be an integer >= 1"
+                }
+            },
+        )
         "gnssreseedheadingmotionm" -> copy(gnssReseedHeadingMotionM = value)
         "gnssreseedslowmps" -> copy(gnssReseedSlowMps = value)
         "gnssreseedslowyawstdrad" -> copy(gnssReseedSlowYawStdRad = value)

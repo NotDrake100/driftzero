@@ -5,7 +5,13 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from driftzero_ml.eval_kotlin_replay import replay_cli_args, replay_mask_ns, slim_replay_header
+from driftzero_ml.eval_kotlin_replay import (
+    locked_gated_interval_ids,
+    replay_cli_args,
+    replay_mask_ns,
+    slim_replay_header,
+)
+from driftzero_ml.screening import GATED_INTERVAL_IDS
 
 
 class ReplayMaskTests(unittest.TestCase):
@@ -48,6 +54,14 @@ class ReplayMaskTests(unittest.TestCase):
             set(slim),
             {"declared_rate_hz", "clock_domain", "frame", "source_id"},
         )
+
+    def test_locked_gated_ids_fall_back_to_screening_set(self) -> None:
+        missing = Path("/tmp/does-not-exist-metrics_per_interval.csv")
+        ids = locked_gated_interval_ids(missing)
+        self.assertEqual(len(ids), 35)
+        self.assertEqual(set(ids), set(GATED_INTERVAL_IDS))
+        self.assertIn("S-Vta2:d50", ids)
+        self.assertIn("S-S1:mid", ids)
 
 
 if __name__ == "__main__":

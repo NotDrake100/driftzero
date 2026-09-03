@@ -68,13 +68,36 @@ def gated_interval_ids(path: Path) -> tuple[str, ...]:
 
 
 def java_home() -> str:
-    probe = subprocess.run(
-        ["/usr/libexec/java_home", "-v", "17"],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return probe.stdout.strip()
+    explicit = os.environ.get("JAVA_HOME")
+    if explicit:
+        return explicit
+    mac = Path("/usr/libexec/java_home")
+    if mac.is_file() or mac.is_symlink():
+        probe = subprocess.run(
+            [str(mac), "-v", "17"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return probe.stdout.strip()
+    import shutil
+
+    java = shutil.which("java")
+    if java:
+        resolved = Path(java).resolve()
+        if resolved.parent.name == "bin":
+            return str(resolved.parent.parent)
+    raise RuntimeError("JAVA_HOME is not set and no java binary was found")
+
+
+def locked_gated_interval_ids(path: Path) -> tuple[str, ...]:
+    """Gated IDs from the persist CSV, or the locked 35 if that file is missing."""
+
+    if path.is_file():
+        return gated_interval_ids(path)
+    from driftzero_ml.screening import GATED_INTERVAL_IDS
+
+    return tuple(sorted(GATED_INTERVAL_IDS))
 
 
 def ensure_replay_binary(
@@ -220,7 +243,7 @@ def export_premask_frames(
     repo = repo.resolve()
     frames_dir = frames_dir if frames_dir.is_absolute() else repo / frames_dir
     frames_dir.mkdir(parents=True, exist_ok=True)
-    gated = gated_interval_ids(repo / GATED_CSV)
+    gated = locked_gated_interval_ids(repo / GATED_CSV)
     root = repo / "data" / "raw" / "io_vnbd"
     tables = {path.stem: path for path in screening_csv_paths(root)}
     needed_trips = sorted({interval_id.split(":", 1)[0] for interval_id in gated})
@@ -454,7 +477,7 @@ def run(
         if flag not in replay_extra and "--coast-mode" not in replay_extra:
             replay_extra.append(flag)
 
-    gated = gated_interval_ids(repo / GATED_CSV)
+    gated = locked_gated_interval_ids(repo / GATED_CSV)
     root = repo / "data" / "raw" / "io_vnbd"
     tables = {path.stem: path for path in screening_csv_paths(root)}
     needed_trips = sorted({interval_id.split(":", 1)[0] for interval_id in gated})

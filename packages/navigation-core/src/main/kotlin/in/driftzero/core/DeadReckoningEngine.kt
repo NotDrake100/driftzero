@@ -12,7 +12,8 @@ import kotlinx.coroutines.flow.asSharedFlow
  * [MotionPseudoMeasurement] and optional [DisplacementPseudoMeasurement]
  * into the filter. The filter does not own the student.
  *
- * Optional [RoadMatcher] writes [NavigationState.mapMatch] only. It does not
+ * Optional [RoadMatcher] writes [NavigationState.mapMatch]. When MATCHED and
+ * coasting, [RoadHeadingFeedback] applies a heading-only prior. It does not
  * replace the ESKF lat/lon.
  */
 class DeadReckoningEngine(
@@ -71,12 +72,14 @@ class DeadReckoningEngine(
     }
 
     private fun overlayMatch(state: NavigationState): NavigationState {
-        val activeMatcher = matcher
-        val activeGraph = graph
-        if (activeMatcher == null || activeGraph == null || activeGraph.isEmpty()) {
-            return state
-        }
-        return state.withMapMatch(activeMatcher.update(FilterSnapshot(state), activeGraph))
+        return RoadHeadingFeedback.apply(
+            filter = filter,
+            pose = state,
+            matcher = matcher,
+            graph = graph,
+            coasting = filter.isCoastingAt(state.timestamp),
+            now = state.timestamp,
+        ).pose
     }
 
     companion object {

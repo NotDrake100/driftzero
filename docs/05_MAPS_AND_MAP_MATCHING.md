@@ -86,6 +86,8 @@ When status is `MATCHED`, posterior is at least `matchedMinPosterior`, the secon
 
 Evaluate filter-only, visual snap-only, and soft-feedback variants separately when feedback exists.
 
+Live `PoseStore` and JVM `Replay --road-graph` both call `RoadHeadingFeedback.apply` while coasting. Official IO-VNBD replay stays map-free. Synthetic cross-track vs v5 is `RoadHeadingReplayTest`.
+
 ## 6. Essential test fixtures
 
 | Fixture | Expected behavior |

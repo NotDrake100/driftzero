@@ -267,9 +267,11 @@ Judge: yes. Module name is on the PS. Demo: rotate the phone 90 deg, lamp reason
 
 ### d. Road-network-constrained DR during blackout
 
+Status 2026-09-03: heading-only feedback is on the live path and on Replay `--road-graph`. Lat/lon snap is still forbidden. IO-VNBD is not scored with a map (no pinned extract). See ADR 008 and `RoadHeadingReplayTest`.
+
 Largest drift cut on real Pune roads. Explicitly permitted. OSM is named. NHC is named. Matcher example on the PS is UKF + Hidden Markov Map Matching.
 
-What exists: `HmmRoadMatcher` is display-only. Search radius from covariance 15 to 250 m. Gaussian emission, heading term off below 1 m/s, Dijkstra transition, beam 8, posterior, entropy, `MATCHED` / `AMBIGUOUS` / `UNMATCHED`. `displayPose` is the centreline for the overlay. `PoseStore.matchedRoad` returns a polyline only when `MATCHED`. `OsmGraphLoader` stores highway class and oneway. Layer, bridge, tunnel: not stored. Soft feedback into the ESKF: absent. `docs/05` section 5 and ADR 001 / 003 say never replace filter lat/lon with a snap.
+What exists: `HmmRoadMatcher` is display-only for position. `RoadHeadingFeedback` may apply yaw when MATCHED. Search radius from covariance 15 to 250 m. Gaussian emission, heading term off below 1 m/s, Dijkstra transition, beam 8, posterior, entropy, `MATCHED` / `AMBIGUOUS` / `UNMATCHED`. `displayPose` is the centreline for the overlay. `PoseStore.matchedRoad` returns a polyline only when `MATCHED`. `OsmGraphLoader` stores highway class and oneway. Layer, bridge, tunnel: not stored. Soft feedback into the ESKF: absent. `docs/05` section 5 and ADR 001 / 003 say never replace filter lat/lon with a snap.
 
 Safety rule so this does not become map-derived truth:
 

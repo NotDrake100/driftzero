@@ -27,7 +27,7 @@ Drive the same `DeadReckoningFilter` used on the phone:
 JAVA_HOME="$(/usr/libexec/java_home -v 17)" ./gradlew :navigation-core:replay --args="--input frames.jsonl --output states.jsonl"
 ```
 
-Optional `--mask-start-ns` and `--mask-end-ns` drop GNSS kinds in that inclusive nanosecond interval before the filter sees them. Optional `--declared-rate-hz` and `--config name=value` override the header and `InsConfig`. Output is one `NavigationState` JSON object per line at 10 Hz on the recorded clock.
+Optional `--mask-start-ns` and `--mask-end-ns` drop GNSS kinds in that inclusive nanosecond interval before the filter sees them. Optional `--declared-rate-hz` and `--config name=value` override the header and `InsConfig`. Optional `--road-graph path` loads OSM XML, OSM PBF, or `graph.bin` and applies MATCHED heading-only feedback while coasting. Lat/lon are never snapped. Default is no graph, so official IO-VNBD hashes stay map-free. Output is one `NavigationState` JSON object per line at 10 Hz on the recorded clock.
 
 ## Output
 
@@ -60,7 +60,7 @@ interface NavigationEngine {
 }
 ```
 
-`DeadReckoningFilter` is the live estimator. `DeadReckoningEngine` implements `NavigationEngine` on top of it. `MotionPseudoRuntime` calls `infer` on the 10 Hz emit path and `ingestMotionPseudo` applies ZUPT or a gated forward-speed update. `ingestDisplacementPseudo` applies a gated HACF Δp update when a `DisplacementModel` is present. The Δp χ² gate is 11.345. Do not treat `linear_dp.json` as beating freeze. `HmmRoadMatcher` is Newson-Krumm Viterbi on a directed OSM graph. It writes `mapMatch` and a display pose only. It does not replace the ESKF lat/lon. `OsmGraphLoader` reads OSM XML or PBF for any WGS84 bbox. Do not put TimesFM in this package.
+`DeadReckoningFilter` is the live estimator. `DeadReckoningEngine` implements `NavigationEngine` on top of it. `MotionPseudoRuntime` calls `infer` on the 10 Hz emit path and `ingestMotionPseudo` applies ZUPT or a gated forward-speed update. `ingestDisplacementPseudo` applies a gated HACF Δp update when a `DisplacementModel` is present. The Δp χ² gate is 11.345. Do not treat `linear_dp.json` as beating freeze. `HmmRoadMatcher` is Newson-Krumm Viterbi on a directed OSM graph. It writes `mapMatch` and a display pose only. It does not replace the ESKF lat/lon. `RoadHeadingFeedback` may apply a MATCHED heading prior while coasting. `OsmGraphLoader` reads OSM XML or PBF for any WGS84 bbox. Do not put TimesFM in this package.
 
 Use strongly typed wrappers for nanoseconds, metres, radians, metres/second, geographic coordinates, and frames. Avoid bare `Double` across package boundaries where units can be confused.
 

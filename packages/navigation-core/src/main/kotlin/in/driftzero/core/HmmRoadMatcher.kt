@@ -17,7 +17,8 @@ import kotlin.math.min
  * Viterbi is log-space with a bounded beam.
  *
  * The ESKF lat/lon is never overwritten. [MapMatchResult.displayPose] is the
- * centerline projection for the map overlay only. Tunnel edges set
+ * centerline projection for the map overlay only. Heading-only feedback is
+ * [RoadHeadingFeedback]. Tunnel edges set
  * [MapMatchResult.onTunnel] so a GNSS gap can be treated as physical, not as
  * a reason to snap. Junction proximity is [MapMatchResult.nearJunction].
  */

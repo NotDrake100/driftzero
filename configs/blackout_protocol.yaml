@@ -3,7 +3,7 @@
 # minimum_truth_quality is not implemented as a loader check (docs/07 D4).
 schema_version: "1.0.0"
 protocol_id: ioh_vnbd_blackouts_v1
-seed: 26168
+seed: 20260902
 selection:
   operate_on_complete_trips: true
   minimum_truth_quality: valid  # documentation only. Not enforced by a loader.

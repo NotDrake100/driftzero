@@ -4,7 +4,7 @@
 
 | Priority | Dataset | Use in DriftZero | Important caveat |
 |---|---|---|---|
-| Mandatory | [IO-VNBD](https://github.com/onyekpeu/IO-VNBD) | SIH screening, smartphone speed/DR research, vehicle reference comparisons | Non-Indian routes; inspect exact files and metadata before assuming a field |
+| Mandatory | [IO-VNBD](https://github.com/onyekpeu/IO-VNBD) | Locked baseline evaluation, smartphone speed/DR research, vehicle reference comparisons | Non-Indian routes; inspect exact files and metadata before assuming a field |
 | High | [Google Smartphone Decimeter Challenge 2023](https://www.kaggle.com/competitions/smartphone-decimeter-2023/data) | Phone diversity, raw GNSS plus inertial behavior, precise ground truth | Competition collection conditions differ from target roads |
 | High | [UrbanNav](https://github.com/IPNL-POLYU/UrbanNavDataset) | Urban-canyon GNSS and multisensor/reference diagnostics | Sensor rigs and cities differ from standalone phone deployment |
 | Supporting | [KITTI](https://www.cvlibs.net/datasets/kitti/) | Filter sanity and reproduction of vehicle-IMU methods | Not representative of consumer smartphone MEMS |

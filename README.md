@@ -306,6 +306,8 @@ Numbered files are 01 through 11. Existing numbers stay so citations do not brea
 | [SECURITY.md](SECURITY.md) | Local processing and how to report issues |
 | [NOTICE.md](NOTICE.md) | Prototype notice and third-party attribution |
 | [docs/01_SIH_REQUIREMENTS_TRACEABILITY.md](docs/01_SIH_REQUIREMENTS_TRACEABILITY.md) | Official requirement IDs |
+| [docs/01_REQUIREMENTS_TRACEABILITY.md](docs/01_REQUIREMENTS_TRACEABILITY.md) | Alias to the locked matrix |
+| [docs/RELATED_APPS.md](docs/RELATED_APPS.md) | Location-puck UX spec |
 | [docs/02_ARCHITECTURE.md](docs/02_ARCHITECTURE.md) | Runtime topology and package boundaries |
 | [docs/03_TIMESFM3_STRATEGY.md](docs/03_TIMESFM3_STRATEGY.md) | TimesFM 3.0 desktop teacher, reject |
 | [docs/04_DATASETS_AND_DATA_GOVERNANCE.md](docs/04_DATASETS_AND_DATA_GOVERNANCE.md) | Splits, blackouts, India collection |
@@ -327,6 +329,9 @@ Numbered files are 01 through 11. Existing numbers stay so citations do not brea
 | [docs/adr/004-cv-stub.md](docs/adr/004-cv-stub.md) | Pose store and GNSS-off coast (filename is historical) |
 | [docs/adr/005-motion-pseudo-measurement.md](docs/adr/005-motion-pseudo-measurement.md) | Motion pseudo-measurement |
 | [docs/adr/007-mount-alignment.md](docs/adr/007-mount-alignment.md) | Mount still plus straight |
+| [docs/adr/008-integrity-suite.md](docs/adr/008-integrity-suite.md) | GNSS trust, drift budget, road DNA |
+| [docs/adr/009-persist-coast-seed.md](docs/adr/009-persist-coast-seed.md) | Persist-like coast seed picker |
+| [docs/adr/010-road-particle-coast.md](docs/adr/010-road-particle-coast.md) | Research road-particle coast |
 | [docs/refs/INS_ESKF.md](docs/refs/INS_ESKF.md) | Strapdown and ESKF equations |
 | [docs/refs/DATASETS.md](docs/refs/DATASETS.md) | Dataset scorecard |
 | [docs/refs/LEARNED_IMU.md](docs/refs/LEARNED_IMU.md) | RoNIN / TLIO / IONet heads |

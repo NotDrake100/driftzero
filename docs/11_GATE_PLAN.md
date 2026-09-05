@@ -281,6 +281,8 @@ Safety rule so this does not become map-derived truth:
 
 Expected effect: urban underpass. Estimate: cross-track from tens of metres to a lane-ish error on a single carriageway, still not a lane claim. Junctions remain `AMBIGUOUS`. This is how persist 0.52 becomes something near 0.10 on Pune. It will not invent GNSS. A wrong edge is a parallel-road failure. Show that failure in the deck.
 
+ADR 010 starts this as a Python particle coast on \((e, s, v)\) with \(\omega \approx v\kappa(s)\). Fixture only (`ml/tests/test_road_particle.py`). Not live, not IO-VNBD, not `results/pune_v1/`. Kotlin port waits for real Pune Holds.
+
 Work: 4 agent-days. One day tunnel/layer tags. One day soft heading update with the gate above. One day fixtures: parallel, flyover, tunnel, U-turn. One day Pune pack via `tools/maps/build_pune_pack.sh`.
 
 Risk: high if someone writes lat/lon back. Medium if heading-only and gated. Dependency: filter must not be 2 km off or the search radius cannot see the road.
@@ -298,10 +300,11 @@ Emulator IMU is fake. IO-VNBD is 10 Hz with 1 to 9 s truth. The 10 percent gate 
 Protocol:
 
 1. Owner, 5 to 8 Sep. Windshield or dash mount. First-run still, then 30 s of straight driving before any Hold GNSS.
-2. Eight drives, not more: underpass, basement, flyover with service road, stop-go, remount, plus three repeats of the underpass at different times. 100 Hz raw IMU, 10 Hz `NavigationState`. A second phone or the same phone's GNSS before and after the structure is score-only truth. Airplane mode after a Ready pack, or tiles cached then airplane, stated in the log.
-3. Split by complete drive. Do not train on the scoring underpass. Train self-cal only on pre-blackout of that drive, which is allowed.
-4. Artificial blackout: mask GNSS in Replay the same as IO-VNBD. Natural blackout: the structure itself. Report both, labeled.
-5. Bundle: `results/pune_v1/` with the same filenames as `docs/06` section 11. No invented metres.
+2. Measurement recipe on each scored drive: still, then straight, then Hold GNSS, then a 50 m segment, release, then later Hold GNSS for about 1 km. Trip record stays on. Live IMU request is `SENSOR_DELAY_FASTEST`. Logged Hz is measured from timestamp deltas. Do not write 100 Hz until that log exists.
+3. Eight drives, not more: underpass, basement, flyover with service road, stop-go, remount, plus three repeats of the underpass at different times. Requested raw IMU is FASTEST (often near 100 Hz if the phone allows). 10 Hz `NavigationState`. The same phone's 1 Hz GNSS during Hold is score-only truth. Airplane mode after a Ready pack, or tiles cached then airplane, stated in the log.
+4. Split by complete drive. Do not train on the scoring underpass. Train self-cal only on pre-blackout of that drive, which is allowed.
+5. Artificial blackout: mask GNSS in Replay the same as IO-VNBD. Natural blackout: the structure itself. Report both, labeled.
+6. Bundle: `results/pune_v1/` with the same filenames as `docs/06` section 11. No invented metres. Harness: `PYTHONPATH=ml/src python3 -m driftzero_ml.eval_pune --logs <trip> --out results/pune_v1`. Aborts if logs are missing.
 
 Expected effect: this is the table that can show 0.10. Estimate, not a promise: a 200 to 400 m underpass at 30 km/h with map heading and calibrated gyro has a plausible shot at <10 percent. A 1 km tunnel at 60 km/h on a phone without a map is still unlikely.
 

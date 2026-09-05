@@ -468,6 +468,7 @@ object OsmGraphLoader {
         val lon = 1e-9 * (lonOffset + granularity.toLong() * lonRaw)
         if (!lat.isFinite() || !lon.isFinite()) return
         if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return
+        if (bbox != null && !bbox.contains(lat, lon)) return
         nodes[id] = GraphNode(id, LatitudeDeg(lat), LongitudeDeg(lon))
     }
 

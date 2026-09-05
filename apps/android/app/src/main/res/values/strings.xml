@@ -90,7 +90,7 @@
     <string name="firstrun_location_denied">Map opens without a fix. The blue mark waits for location.</string>
     <string name="firstrun_no_gyro">Dead reckoning limited to speed and last heading</string>
     <string name="firstrun_no_accel">Dead reckoning unavailable on this phone</string>
-    <string name="firstrun_mount_title">Mount the phone</string>
+    <string name="firstrun_mount_title">Place the phone</string>
     <string name="firstrun_mount_moving">Stop the vehicle first</string>
     <string name="calib_still">Still</string>
     <string name="calib_moving">Moving</string>
@@ -159,5 +159,15 @@
     <string name="about_notices_body">DriftZero is a research prototype. It is not certified for autonomous control or safety-of-life navigation. IBM Plex fonts are SIL OFL 1.1. MapLibre is BSD 2-Clause. Street tiles are OpenFreeMap from OpenStreetMap (ODbL). Photon, Nominatim, and OSRM are hosted services. See NOTICE.md in the source tree.</string>
     <string name="row_mount">Mount</string>
     <string name="row_road_heading">Road heading</string>
-    <string name="firstrun_mount_still">Fix the phone in its mount. Keep the vehicle still for 5 s. A short straight drive completes alignment.</string>
+    <string name="row_integrity">Integrity</string>
+    <string name="row_safe_range">Safe range</string>
+    <string name="row_integrity_lamp">Integrity lamp</string>
+    <string name="row_blackout">Blackout</string>
+    <string name="row_tunnel">Tunnel</string>
+    <string name="row_precondition">Precondition</string>
+    <string name="row_gnss_trust">GNSS trust</string>
+    <string name="row_placement">Placement</string>
+    <string name="row_sih_remain">SIH remain</string>
+    <string name="row_blackout_raw">Blackout raw</string>
+    <string name="firstrun_mount_still">A passenger seat or cup holder is valid. Keep the vehicle still for 5 s. A short straight drive completes alignment.</string>
 </resources>

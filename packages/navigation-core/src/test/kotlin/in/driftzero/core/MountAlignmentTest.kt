@@ -133,6 +133,7 @@ class MountAlignmentTest {
         }
         assertTrue(remount)
         assertEquals(MountQuality.PENDING, session.quality())
+        assertEquals(PhonePlacement.HANDHELD, session.placement())
     }
 
     @Test

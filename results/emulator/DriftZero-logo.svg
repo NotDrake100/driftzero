@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DriftZero mark. Paper ring (radius 22, stroke 5) with a 90 degree gap centred
+     on north-east; marker blue heading wedge (tip radius 32, tail radius 12, notch
+     at centre) carrying through the gap. Solid shapes only. Same geometry as
+     apps/android/app/src/main/res/drawable/ic_launcher_foreground.xml. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <rect width="108" height="108" fill="#0B0D0A"/>
+  <path d="M76,54 A22,22 0 1 1 54,32" fill="none" stroke="#F4F1E8" stroke-width="5"/>
+  <path d="M76.63,31.37 L59.07,64.88 L54,54 L43.12,48.93 Z" fill="#1E6BFF"/>
+</svg>

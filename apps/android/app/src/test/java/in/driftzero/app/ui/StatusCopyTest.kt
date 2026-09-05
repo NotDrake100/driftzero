@@ -9,9 +9,16 @@ import `in`.driftzero.app.pose.LocationGrant
 import `in`.driftzero.app.pose.NavicMonitor
 import `in`.driftzero.app.pose.NavicSnapshot
 import `in`.driftzero.app.pose.PoseStore
+import `in`.driftzero.core.BlackoutInputs
+import `in`.driftzero.core.BlackoutRisk
 import `in`.driftzero.core.CORE_VERSION
 import `in`.driftzero.core.ComponentHealth
 import `in`.driftzero.core.DeadReckoningFilter
+import `in`.driftzero.core.DriftBudgetMath
+import `in`.driftzero.core.GnssTrust
+import `in`.driftzero.core.IntegritySnapshot
+import `in`.driftzero.core.MountPlacement
+import `in`.driftzero.core.PhonePlacement
 import `in`.driftzero.core.GeoPoint
 import `in`.driftzero.core.GnssHealth
 import `in`.driftzero.core.HeadingRadians
@@ -288,6 +295,66 @@ class StatusCopyTest {
         assertEquals("Mount" to "still only", onRows.find { it.first == "Mount" })
         assertEquals("Road heading" to "on", onRows.find { it.first == "Road heading" })
         assertEquals("pending, drive straight", StatusCopy.mount(MountQuality.PENDING))
+    }
+
+    @Test
+    fun integrityRowsUseDriverWordsAndLabRemain() {
+        val drift = DriftBudgetMath.evaluate(
+            horizontal95M = 8.4,
+            timestampNs = 1_000_000_000L,
+            speedMps = 12.0,
+            travelledM = 400.0,
+        )
+        val blackout = BlackoutRisk.evaluate(
+            BlackoutInputs(
+                usedSats = 3,
+                meanUsedCn0DbHz = 18.0,
+                horizontalAccuracyM = 40.0,
+                tunnelAheadM = 280.0,
+                mapPresent = true,
+            ),
+        )
+        val snap = IntegritySnapshot(
+            drift = drift,
+            blackout = blackout,
+            gnssQuarantined = true,
+            placement = PhonePlacement.PASSENGER_SEAT,
+        )
+        val rows = StatusCopy.of(
+            state = sample(NavigationMode.GNSS_FUSED),
+            lastGnssSeenNs = 600_000_000L,
+            nowNs = 1_000_000_000L,
+            studentLoaded = false,
+            navic = NavicSnapshot.NONE,
+            pack = null,
+            packBytes = null,
+            p95Ms = null,
+            integrity = snap,
+        )
+        assertEquals("Navigation confidence" to "93%", rows.find { it.first == "Navigation confidence" })
+        assertEquals("Integrity lamp" to "High confidence", rows.find { it.first == "Integrity lamp" })
+        assertNull(rows.find { it.first == "Integrity" })
+        assertEquals("Tunnel" to "Tunnel 280 m ahead", rows.find { it.first == "Tunnel" })
+        assertEquals("GNSS trust" to GnssTrust.GNSS_ANOMALY_COPY, rows.find { it.first == "GNSS trust" })
+        assertEquals("Placement" to "passenger seat", rows.find { it.first == "Placement" })
+        assertEquals("unknown", StatusCopy.placement(PhonePlacement.UNKNOWN))
+        assertNull(rows.find { it.first == "SIH remain" })
+        val lab = StatusCopy.of(
+            state = sample(NavigationMode.GNSS_FUSED),
+            lastGnssSeenNs = null,
+            nowNs = 1_000_000_000L,
+            studentLoaded = false,
+            navic = NavicSnapshot.NONE,
+            pack = null,
+            packBytes = null,
+            p95Ms = null,
+            lab = true,
+            integrity = snap,
+        )
+        assertTrue(lab.any { it.first == "SIH remain" })
+        assertTrue(lab.any { it.first == "Blackout raw" })
+        assertFalse(rows.any { it.second.contains("—") })
+        assertEquals(MountPlacement.RECALIBRATE_COPY, StatusCopy.placement(PhonePlacement.HANDHELD))
     }
 
     private fun sample(

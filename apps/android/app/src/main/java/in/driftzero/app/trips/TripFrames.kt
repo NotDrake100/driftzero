@@ -18,9 +18,17 @@ import `in`.driftzero.core.VectorFrame
 import `in`.driftzero.core.VectorPayload
 import `in`.driftzero.core.wrapHeadingRad
 
-/** Contract [SensorFrame] copies for trip JSONL. No filter work. */
+/**
+ * Contract [SensorFrame] copies for trip JSONL. No filter work.
+ *
+ * Units: accel m/s^2, gyro rad/s, GNSS latitude/longitude deg, speed m/s,
+ * course bearing_rad (radians, clockwise from north, wrapped), timestamps
+ * integer nanoseconds on [ClockDomain.ANDROID_ELAPSED_REALTIME].
+ * [FLAG_GNSS_HELD] marks a Hold GNSS fix that must stay score-only.
+ */
 internal object TripFrames {
     const val SOURCE_ID: String = "phone"
+    const val FLAG_GNSS_HELD: String = "gnss_held"
 
     fun accel(sequence: Long, timestamp: Nanoseconds, x: Double, y: Double, z: Double): SensorFrame =
         vector(sequence, timestamp, SensorKind.ACCELEROMETER, "m/s^2", x, y, z)
@@ -28,13 +36,53 @@ internal object TripFrames {
     fun gyro(sequence: Long, timestamp: Nanoseconds, x: Double, y: Double, z: Double): SensorFrame =
         vector(sequence, timestamp, SensorKind.GYROSCOPE, "rad/s", x, y, z)
 
-    fun gnss(sequence: Long, fix: CoastFix): SensorFrame = SensorFrame(
+    fun gravity(sequence: Long, timestamp: Nanoseconds, x: Double, y: Double, z: Double): SensorFrame =
+        vector(sequence, timestamp, SensorKind.GRAVITY, "m/s^2", x, y, z)
+
+    fun linearAccel(sequence: Long, timestamp: Nanoseconds, x: Double, y: Double, z: Double): SensorFrame =
+        vector(sequence, timestamp, SensorKind.LINEAR_ACCELERATION, "m/s^2", x, y, z)
+
+    fun gyroUncal(
+        sequence: Long,
+        timestamp: Nanoseconds,
+        x: Double,
+        y: Double,
+        z: Double,
+        biasX: Double,
+        biasY: Double,
+        biasZ: Double,
+    ): SensorFrame = SensorFrame(
+        sourceId = SOURCE_ID,
+        sequence = sequence,
+        timestamp = timestamp,
+        clockDomain = ClockDomain.ANDROID_ELAPSED_REALTIME,
+        kind = SensorKind.GYROSCOPE_UNCALIBRATED,
+        quality = Quality(available = true, accuracyCode = 2),
+        payload = VectorPayload(
+            Vector3Payload(
+                x,
+                y,
+                z,
+                "rad/s",
+                VectorFrame.ANDROID_DEVICE,
+                biasX = biasX,
+                biasY = biasY,
+                biasZ = biasZ,
+            ),
+        ),
+    )
+
+    fun gnss(sequence: Long, fix: CoastFix, held: Boolean = false): SensorFrame = SensorFrame(
         sourceId = SOURCE_ID,
         sequence = sequence,
         timestamp = fix.timestamp,
         clockDomain = ClockDomain.ANDROID_ELAPSED_REALTIME,
         kind = SensorKind.GNSS_FIX,
-        quality = Quality(available = true, accuracyCode = 2),
+        quality = Quality(
+            available = true,
+            accuracyCode = 2,
+            flags = if (held) setOf(FLAG_GNSS_HELD) else emptySet(),
+        ),
         payload = FixPayload(
             GnssFixPayload(
                 latitude = LatitudeDeg(fix.latitudeDeg),
@@ -44,6 +92,8 @@ internal object TripFrames {
                 altitudeM = fix.altitudeM,
                 speedMps = fix.speedMps?.let { MetresPerSecond(it) },
                 bearingRad = fix.headingRad?.let { HeadingRadians(wrapHeadingRad(it)) },
+                speedAccuracyMps = fix.speedAccuracyMps?.let { MetresPerSecond(it) },
+                bearingAccuracyRad = fix.bearingAccuracyRad,
             ),
         ),
     )

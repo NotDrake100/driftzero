@@ -12,17 +12,24 @@ import kotlinx.coroutines.flow.asSharedFlow
  * [MotionPseudoMeasurement] and optional [DisplacementPseudoMeasurement]
  * into the filter. The filter does not own the student.
  *
- * Optional [RoadMatcher] writes [NavigationState.mapMatch] only. It does not
- * replace the ESKF lat/lon.
+ * Optional [RoadMatcher] writes [NavigationState.mapMatch]. When a graph is
+ * attached and GNSS is held or stale, [MapCoastSession] may apply a heading
+ * prior or along-track Road DNA heal. It does not replace ESKF lat/lon.
+ * Official [Replay] constructs this without a graph.
  */
 class DeadReckoningEngine(
     private val filter: DeadReckoningFilter = DeadReckoningFilter(),
     private val motion: MotionPseudoRuntime = MotionPseudoRuntime(),
     private val matcher: RoadMatcher? = null,
     private val graph: RoadGraph? = null,
+    private val mapCoast: MapCoastSession = MapCoastSession(),
 ) : NavigationEngine {
     private val _states = MutableSharedFlow<NavigationState>(extraBufferCapacity = 16)
     private var lastEmitNs: Long = -1L
+
+    init {
+        mapCoast.setGraph(graph)
+    }
 
     override suspend fun consume(frame: SensorFrame) {
         filter.consume(frame)
@@ -35,6 +42,7 @@ class DeadReckoningEngine(
     override fun reset(reason: ResetReason) {
         filter.reset(reason)
         matcher?.reset()
+        mapCoast.reset()
         lastEmitNs = -1L
     }
 
@@ -76,7 +84,14 @@ class DeadReckoningEngine(
         if (activeMatcher == null || activeGraph == null || activeGraph.isEmpty()) {
             return state
         }
-        return state.withMapMatch(activeMatcher.update(FilterSnapshot(state), activeGraph))
+        val result = activeMatcher.update(FilterSnapshot(state), activeGraph)
+        val coasting = filter.isGnssHeld() || state.mode == NavigationMode.DEAD_RECKONING
+        if (coasting) {
+            mapCoast.apply(filter, result, state, state.timestamp.value)
+            val after = filter.poseAt(state.timestamp) ?: state
+            return after.withMapMatch(result)
+        }
+        return state.withMapMatch(result)
     }
 
     companion object {

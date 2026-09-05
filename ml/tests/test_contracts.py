@@ -13,6 +13,10 @@ class ContractTests(unittest.TestCase):
         payload = json.loads((EXAMPLES / "sensor_frame.accelerometer.json").read_text())
         validate_sensor_frame(payload)
 
+    def test_example_gravity_frame_is_valid(self) -> None:
+        payload = json.loads((EXAMPLES / "sensor_frame.gravity.json").read_text())
+        validate_sensor_frame(payload)
+
     def test_example_navigation_state_is_valid(self) -> None:
         payload = json.loads((EXAMPLES / "navigation_state.sample.json").read_text())
         validate_navigation_state(payload)

@@ -1,6 +1,6 @@
 # Android application specification
 
-The `apps/android/app` module ships the travel map chrome plus a MapLibre Native street map (`AndroidView` `MapView`, OpenFreeMap liberty, bright fallback). Live pose comes from `PoseStore` / `DeadReckoningFilter` (strapdown INS plus ESKF). `PhoneImuSource` copies accel/gyro only. The 10 Hz tick runs `ZuptAccelMotionModel` into `ingestMotionPseudo`. Assemble packs `motion_student_v1/linear.json` into assets when that file exists. `learned_imu_v1/linear_dp.json` is not packed unless you pass `-Pdriftzero.packLearnedImu=true`; its train report is worse than freeze. `gru.json` is never packed and there is no Kotlin GRU runtime. No TimesFM and no ONNX Runtime in the APK. The hosted style is a stand-in until an installed PMTiles area package owns rendering. After a Ready pack is sideloaded, MapLibre loads local `tiles.pmtiles` via `pmtiles://file://` and local glyphs. Routing still uses public OSRM. No Google Maps SDK.
+The `apps/android/app` module ships the travel map chrome plus a MapLibre Native street map (`AndroidView` `MapView`, OpenFreeMap liberty, bright fallback). Live pose comes from `PoseStore` / `DeadReckoningFilter` (strapdown INS plus ESKF). `PhoneImuSource` copies accel, gyro, mag, and when present gravity, linear acceleration, and uncalibrated gyro. Only accel and gyro enter the ESKF. The 10 Hz tick runs `ZuptAccelMotionModel` into `ingestMotionPseudo`. Assemble packs `motion_student_v1/linear.json` into assets when that file exists. `learned_imu_v1/linear_dp.json` is not packed unless you pass `-Pdriftzero.packLearnedImu=true`; its train report is worse than freeze. `gru.json` is never packed and there is no Kotlin GRU runtime. No TimesFM and no ONNX Runtime in the APK. The hosted style is a stand-in until an installed PMTiles area package owns rendering. After a Ready pack is sideloaded, MapLibre loads local `tiles.pmtiles` via `pmtiles://file://` and local glyphs. Routing still uses public OSRM. No Google Maps SDK.
 
 ## Proposed identity
 
@@ -54,7 +54,7 @@ The platform-neutral filter and map-matching logic belongs under `packages/`, no
 
 - Ask for precise foreground location in context when navigation starts.
 - Avoid background location until a real, disclosed feature requires it.
-- Declare any high sensor sampling permission only when measured need justifies it.
+- Declare `HIGH_SAMPLING_RATE_SENSORS` so `SENSOR_DELAY_FASTEST` may exceed 200 Hz on Android 12+. Logged IMU Hz is still measured from timestamp deltas.
 - Keep the core useful at 50 to 100 Hz raw sensor sampling and 10 Hz output.
 - Explain why GNSS/status data is used and retain it locally by default.
 
@@ -77,7 +77,7 @@ TravelMapScreen
 Idle: map, search, lamp, locate, collapsed sheet. No empty speed, DIST, or ETA slab.
 Navigating: the same, plus a route line and destination, distance, and ETA in the sheet.
 
-Opt-in trip recording writes `sensors.jsonl` and `states.jsonl` under `files/trips/<id>/`. Replay uses `ReplaySensorSource` from that sensor file. Export is a local zip after a consent dialog. The APK packs `motion_student_v1/linear.json` only.
+Opt-in trip recording writes `sensors.jsonl` and `states.jsonl` under `files/trips/<id>/`. IMU timestamps are integer nanoseconds. Accel is m/s^2. Gyro is rad/s. GNSS includes speed_mps and bearing_rad. Hold GNSS rows carry `gnss_held` and stay score-only. Manifest `measured_*_hz` is median 1/dt, not the preferred 100 Hz request. Replay uses `ReplaySensorSource` from that sensor file. Export is a local zip after a consent dialog. The APK packs `motion_student_v1/linear.json` only.
 
 Search uses Photon, then Nominatim, biased to fused pose/GPS or the camera. Routing uses public OSRM. Tiles are hosted OpenFreeMap until an installed area pack owns rendering. Long-press Locate queues the visible bbox for an offline pack.
 

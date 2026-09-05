@@ -17,7 +17,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import `in`.driftzero.core.DeadReckoningFilter
 import `in`.driftzero.core.MotionPseudoRuntime
+import `in`.driftzero.core.ShadowMapStore
 import `in`.driftzero.core.ZuptAccelMotionModel
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -124,8 +126,10 @@ internal fun newestLastKnownLocation(context: Context): Location? {
 /**
  * Pose store plus GNSS and IMU adapters. Ticks the filter at
  * [DeadReckoningFilter.OUTPUT_HZ]. IMU stays on during Simulate GPS off so the
- * motion pseudo-measurement hook can fire. Location permission is requested
- * by the map surface.
+ * motion pseudo-measurement hook can fire. LocationManager also stays on
+ * during Hold GNSS so 1 Hz fixes can be logged as score-only truth. The
+ * filter does not ingest those fixes. Location permission is requested by
+ * the map surface.
  */
 @Composable
 fun rememberPoseStore(): PoseStore {
@@ -139,12 +143,14 @@ fun rememberPoseStore(): PoseStore {
                 displacement = LearnedImuAssets.load(context.applicationContext),
             ),
             profiles = PrefsMountProfileStore.open(context.applicationContext),
+            shadowStore = ShadowMapStore(
+                File(context.applicationContext.filesDir, ShadowMapStore.FILE_NAME),
+            ),
         )
     }
-    val gpsOff by store.simulateGpsOff.collectAsState()
     val replaying by store.replayActive.collectAsState()
     val periodMs = (1000.0 / DeadReckoningFilter.OUTPUT_HZ).toLong()
-    LaunchedEffect(store, gpsOff, replaying) {
+    LaunchedEffect(store, replaying) {
         if (replaying) {
             return@LaunchedEffect
         }
@@ -155,7 +161,7 @@ fun rememberPoseStore(): PoseStore {
         var gnssStarted = false
         try {
             while (isActive) {
-                if (!gpsOff && hasLocationPermission(context)) {
+                if (hasLocationPermission(context)) {
                     if (!gnssStarted) {
                         gnssStarted = withContext(Dispatchers.Main.immediate) {
                             source.start()
@@ -172,7 +178,15 @@ fun rememberPoseStore(): PoseStore {
                     source.stop()
                     gnssStarted = false
                 }
-                store.tick()
+                withContext(Dispatchers.Default) {
+                    store.tick()
+                }
+                val shadowJson = store.takePendingShadowJson()
+                if (shadowJson != null) {
+                    withContext(Dispatchers.IO) {
+                        store.writeShadowJson(shadowJson)
+                    }
+                }
                 delay(periodMs)
             }
         } finally {

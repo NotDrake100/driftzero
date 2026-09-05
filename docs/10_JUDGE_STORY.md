@@ -46,7 +46,7 @@ What to notice. The matcher can say Ambiguous 0.52. It does not invent a lane.
 
 Same `DeadReckoningFilter`. Three ways in.
 
-1. Live phone. `PhoneImuSource` registers accelerometer and gyroscope at `SENSOR_DELAY_GAME`, frame `ANDROID_DEVICE`. `GnssLocationSource` copies `Location` into `CoastFix` and copies `GnssStatus` into `NavicMonitor`. Status counts do not enter the filter.
+1. Live phone. `PhoneImuSource` registers accelerometer and gyroscope at `SENSOR_DELAY_FASTEST`, frame `ANDROID_DEVICE`. Measured Hz is logged from timestamp deltas. `GnssLocationSource` copies `Location` into `CoastFix` and copies `GnssStatus` into `NavicMonitor`. Status counts do not enter the filter. During Hold GNSS the 1 Hz fix is logged with `gnss_held` and is score-only.
 2. IO-VNBD file. Python `ml/src/driftzero_ml/export_sensorframe.py` writes SensorFrame JSONL after per-trip `phone_align`. Frame is `unspecified`. Official scored rate is the 10 Hz table. Do not invent IMU samples for that row.
 3. Higher-rate file. `ReplaySensorSource` accepts a header `declared_rate_hz` from 10 to 200. It does not resample. A scored 200 Hz FOG run is pending. Sensitivity at 100 Hz on `S-Vta2:d50` is in `results/io_vnbd_screening_v1/summary.md` section "Kotlin DeadReckoningFilter replay" and is not the official row.
 

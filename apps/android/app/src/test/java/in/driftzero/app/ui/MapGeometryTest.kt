@@ -65,6 +65,53 @@ class MapGeometryTest {
     }
 
     @Test
+    fun haloNeedsRedrawSkipsSubMetreJitter() {
+        assertTrue(
+            MapGeometry.haloNeedsRedraw(
+                lastLatDeg = Double.NaN,
+                lastLonDeg = Double.NaN,
+                lastRadiusM = Double.NaN,
+                lastHeadingRad = Double.NaN,
+                lastZoom = Double.NaN,
+                nextLatDeg = 18.52,
+                nextLonDeg = 73.85,
+                nextRadiusM = 12.0,
+                nextHeadingRad = 0.0,
+                nextZoom = 16.0,
+            ),
+        )
+        assertFalse(
+            MapGeometry.haloNeedsRedraw(
+                lastLatDeg = 18.52,
+                lastLonDeg = 73.85,
+                lastRadiusM = 12.0,
+                lastHeadingRad = 0.0,
+                lastZoom = 16.0,
+                nextLatDeg = 18.520005,
+                nextLonDeg = 73.85,
+                nextRadiusM = 12.2,
+                nextHeadingRad = 0.02,
+                nextZoom = 16.01,
+            ),
+        )
+        val moved = Wgs84.offsetMetres(18.52, 73.85, 8.0, 0.0)
+        assertTrue(
+            MapGeometry.haloNeedsRedraw(
+                lastLatDeg = 18.52,
+                lastLonDeg = 73.85,
+                lastRadiusM = 12.0,
+                lastHeadingRad = 0.0,
+                lastZoom = 16.0,
+                nextLatDeg = moved.first,
+                nextLonDeg = moved.second,
+                nextRadiusM = 12.0,
+                nextHeadingRad = 0.0,
+                nextZoom = 16.0,
+            ),
+        )
+    }
+
+    @Test
     fun followBearingIsNorthWhenSlowOrLocked() {
         assertEquals(0.0, MapGeometry.followBearingDeg(1.5, headingRad = 1.0, northUp = false), 0.0)
         assertEquals(0.0, MapGeometry.followBearingDeg(10.0, headingRad = 1.0, northUp = true), 0.0)

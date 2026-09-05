@@ -105,6 +105,14 @@ class FirstRunMountTest {
     }
 
     @Test
+    fun skipLocationPromptOnlyWhenFineGrantedAndNotDenied() {
+        assertTrue(FirstRunMount.skipLocationPrompt(fineGranted = true, denied = false))
+        assertFalse(FirstRunMount.skipLocationPrompt(fineGranted = false, denied = false))
+        assertFalse(FirstRunMount.skipLocationPrompt(fineGranted = true, denied = true))
+        assertFalse(FirstRunMount.skipLocationPrompt(fineGranted = false, denied = true))
+    }
+
+    @Test
     fun sampleClockIgnoresNegativeAndKeepsFirst() {
         val clock = StillSampleClock()
         clock.onSample(-1L)

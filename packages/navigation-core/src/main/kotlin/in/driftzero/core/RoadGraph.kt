@@ -16,6 +16,8 @@ class RoadGraph(
 
     val outgoing: Map<Long, IntArray> = buildOutgoing(edges)
 
+    val edgesById: Map<String, GraphEdge> = edges.associateBy { it.id }
+
     /**
      * Undirected neighbor count. A through-road shape node is 2. A T-junction
      * or crossing is >= 3. Used by the matcher as the junction test.
@@ -25,6 +27,20 @@ class RoadGraph(
     internal val grid: EdgeGrid = EdgeGrid.build(nodes, edges)
 
     fun isEmpty(): Boolean = edges.isEmpty()
+
+    /**
+     * Edges whose grid cells meet a WGS84 point plus [radiusM]. Used by
+     * Road DNA so a unique MATCHED heal can still refuse nearby lookalikes.
+     * Empty when the pack is not loaded.
+     */
+    fun edgesNear(latitudeDeg: Double, longitudeDeg: Double, radiusM: Double): List<GraphEdge> {
+        require(latitudeDeg.isFinite() && longitudeDeg.isFinite()) { "query lat/lon must be finite" }
+        require(radiusM.isFinite() && radiusM >= 0.0) { "radius_m must be finite and >= 0" }
+        if (edges.isEmpty()) {
+            return emptyList()
+        }
+        return grid.query(latitudeDeg, longitudeDeg, radiusM).map { edges[it] }
+    }
 
     fun degreeOf(nodeId: Long): Int = undirectedDegree[nodeId] ?: 0
 

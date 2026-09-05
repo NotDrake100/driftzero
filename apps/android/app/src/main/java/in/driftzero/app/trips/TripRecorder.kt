@@ -1,5 +1,7 @@
 package `in`.driftzero.app.trips
 
+import `in`.driftzero.app.pose.ImuRateMeter
+import `in`.driftzero.app.pose.PhoneImuSource
 import `in`.driftzero.app.pose.RingBuffer
 import `in`.driftzero.core.ClockDomain
 import `in`.driftzero.core.CoastFix
@@ -9,6 +11,7 @@ import `in`.driftzero.core.Nanoseconds
 import `in`.driftzero.core.NavigationMode
 import `in`.driftzero.core.NavigationState
 import `in`.driftzero.core.SensorFrame
+import `in`.driftzero.core.SensorKind
 import `in`.driftzero.core.VectorFrame
 import `in`.driftzero.core.Wgs84
 import java.io.File
@@ -18,7 +21,8 @@ import java.util.concurrent.Executors
 /**
  * Copies frames and 10 Hz states into rings, then writes JSONL off the
  * caller thread. Sensor callbacks must only [offerAccel], [offerGyro], or
- * [offerGnss].
+ * [offerGnss]. IMU rate in the manifest is measured from timestamp deltas.
+ * [DECLARED_RATE_HZ] is the preferred request, not a measured Hertz.
  */
 class TripRecorder(
     val dir: File,
@@ -44,6 +48,8 @@ class TripRecorder(
     private var drCount: Int = 0
     private var firstNs: Long? = null
     private var lastNs: Long? = null
+    private val accelRate = ImuRateMeter()
+    private val gyroRate = ImuRateMeter()
 
     fun start() {
         synchronized(lock) {
@@ -65,8 +71,8 @@ class TripRecorder(
         offerSensor(TripFrames.gyro(nextSequence(), timestamp, x, y, z))
     }
 
-    fun offerGnss(fix: CoastFix) {
-        offerSensor(TripFrames.gnss(nextSequence(), fix))
+    fun offerGnss(fix: CoastFix, held: Boolean = false) {
+        offerSensor(TripFrames.gnss(nextSequence(), fix, held = held))
     }
 
     fun offerSensor(frame: SensorFrame) {
@@ -74,6 +80,11 @@ class TripRecorder(
         synchronized(lock) {
             if (!active) {
                 return
+            }
+            when (frame.kind) {
+                SensorKind.ACCELEROMETER -> accelRate.accept(frame.timestamp.value)
+                SensorKind.GYROSCOPE -> gyroRate.accept(frame.timestamp.value)
+                else -> Unit
             }
             sensors.add(frame)
             shouldFlush = true
@@ -137,6 +148,8 @@ class TripRecorder(
             val start = firstNs ?: 0L
             val end = lastNs ?: start
             val distance = distanceM()
+            val accel = accelRate.snapshot()
+            val gyro = gyroRate.snapshot()
             return TripSummary(
                 id = id,
                 dir = dir,
@@ -147,6 +160,11 @@ class TripRecorder(
                 stateCount = stateCount,
                 drCount = drCount,
                 holds = holds.toList(),
+                requestedSensorDelay = REQUESTED_SENSOR_DELAY,
+                measuredAccelHz = accel.medianHz,
+                measuredGyroHz = gyro.medianHz,
+                accelSampleCount = accel.sampleCount,
+                gyroSampleCount = gyro.sampleCount,
             )
         }
     }
@@ -217,9 +235,15 @@ class TripRecorder(
     private fun headerLine(): String = ContractWrite.stringify(
         linkedMapOf(
             "declared_rate_hz" to DECLARED_RATE_HZ,
+            "requested_sensor_delay" to REQUESTED_SENSOR_DELAY,
             "clock_domain" to ClockDomain.ANDROID_ELAPSED_REALTIME.contractName(),
             "frame" to VectorFrame.ANDROID_DEVICE.contractName(),
             "source_id" to TripFrames.SOURCE_ID,
+            "accel_unit" to "m/s^2",
+            "gyro_unit" to "rad/s",
+            "gnss_speed_unit" to "m/s",
+            "gnss_course_unit" to "rad",
+            "timestamp_unit" to "ns",
         ),
     )
 
@@ -229,7 +253,9 @@ class TripRecorder(
         const val MANIFEST: String = "manifest.json"
         const val SENSOR_CAP: Int = 256
         const val STATE_CAP: Int = 32
-        const val DECLARED_RATE_HZ: Double = 50.0
+        /** Preferred request. Not a measured Hertz. See manifest measured_*_hz. */
+        const val DECLARED_RATE_HZ: Double = 100.0
+        const val REQUESTED_SENSOR_DELAY: String = PhoneImuSource.REQUESTED_DELAY_NAME
         private val WRITER: Executor = Executors.newSingleThreadExecutor { task ->
             Thread(task, "driftzero-trip").apply { isDaemon = true }
         }

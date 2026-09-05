@@ -136,6 +136,13 @@ checksums.sha256
 
 Plots must label interpolation, smoothing, and score-only truth. A demo screenshot is not a benchmark.
 
+Pune phone-drive scoring is a separate bundle. Run
+`PYTHONPATH=ml/src python3 -m driftzero_ml.eval_pune --logs <trip-dir> --out results/pune_v1`.
+The harness writes metrics only from real trip JSONL. It aborts if logs are
+missing. Driver protocol (still, straight, Hold GNSS, 50 m, 1 km) is in
+`results/pune_v1/README.md` and `docs/11_GATE_PLAN.md` section e. No Pune
+field p50 exists in this tree. That folder is not IO-VNBD.
+
 Python screening v1 lives at `results/io_vnbd_screening_v1/summary.md` (git `069e74b` plus the uncommitted `ml/` tree, seed 26168, IO-VNBD checkout `1189396`). 35 gated held-out intervals. The official median drift gate of 0.10 is not met. `filter_only` in that table is the Python coast, not the Kotlin `DeadReckoningFilter`. Persist is the held-out coast to beat (drift p50 0.5168, endpoint p50 234.47 m on 35 intervals). timesfm_coast is in that same table: drift p50 0.6048, worse than persist 0.5168, better than linear 0.7132. Desktop report: `results/timesfm/summary.md`. Verdict: reject. The product filter is not the screening headline. Keep both Kotlin rows: `kotlin_eskf` drift p50 6.6863 on 33 of 35 intervals, endpoint p50 2669.27 m; `kotlin_eskf_v2` drift p50 7.5650 on 35 intervals, endpoint p50 2996.50 m. Both worse than persist. Diagnosis stopped. The next step is not another silent filter tweak. Latency and satellite figures remain pending. Do not cite a mean-only drift number.
 
 ## 12. Release decision

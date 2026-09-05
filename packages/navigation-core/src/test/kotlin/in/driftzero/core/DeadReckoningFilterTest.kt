@@ -1040,6 +1040,57 @@ class DeadReckoningFilterTest {
     }
 
     @Test
+    fun coastPreconditionArmsLatchAfterGnssSpeedAgesOut() {
+        val g = Wgs84.gravityMps2(0.0)
+        val armed = DeadReckoningFilter(
+            InsConfig(
+                coastMode = CoastMode.YAW_SPEED_HOLD,
+                coastLatchGnssSpeed = true,
+                coastLatchGnssMaxS = 2.0,
+                nhcMinSpeedMps = 100.0,
+                lowConfidenceRadiusM = 10_000.0,
+            ),
+        )
+        armed.seedForTest(
+            timestamp = Nanoseconds(5_000_000_000L),
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            velocityEnu = Vec3(0.0, 15.0, 0.0),
+            quat = Quat.IDENTITY,
+            posStdM = 5.0,
+            frame = VectorFrame.UNSPECIFIED,
+            headingRad = 0.0,
+        )
+        armed.plantReportedGnssSpeedForTest(0.0, 0L)
+        armed.armCoastPrecondition(Nanoseconds(5_000_000_000L), reportedSpeedMps = 0.0)
+        assertTrue(armed.coastPreconditionArmed())
+        armed.setGnssHeld(true)
+        stepImu(armed, Nanoseconds(5_100_000_000L), 0.0, 0.0, g, frame = VectorFrame.UNSPECIFIED)
+        assertEquals("precondition must keep GNSS 0 after 2 s window", 0.0, armed.heldSpeedForTest(), 0.05)
+
+        val ignored = DeadReckoningFilter(
+            InsConfig(
+                coastMode = CoastMode.YAW_SPEED_HOLD,
+                coastLatchGnssSpeed = false,
+                nhcMinSpeedMps = 100.0,
+                lowConfidenceRadiusM = 10_000.0,
+            ),
+        )
+        ignored.seedForTest(
+            timestamp = Nanoseconds(5_000_000_000L),
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            velocityEnu = Vec3(0.0, 15.0, 0.0),
+            quat = Quat.IDENTITY,
+            posStdM = 5.0,
+            frame = VectorFrame.UNSPECIFIED,
+            headingRad = 0.0,
+        )
+        ignored.armCoastPrecondition(Nanoseconds(5_000_000_000L), reportedSpeedMps = 0.0)
+        assertFalse(ignored.coastPreconditionArmed())
+    }
+
+    @Test
     fun coastStopRequireStoppedPrefixDisarmsWithoutStoppedBaseline() {
         val g = Wgs84.gravityMps2(0.0)
         val filter = DeadReckoningFilter(
@@ -1258,6 +1309,128 @@ class DeadReckoningFilterTest {
     }
 
     @Test
+    fun oneHzMedianBlocksReseedOnSingleNineSecondHop() {
+        val g = Wgs84.gravityMps2(0.0)
+        val filter = DeadReckoningFilter(
+            InsConfig(
+                coastMode = CoastMode.YAW_SPEED_HOLD,
+                gnssReseedAfterS = 8.0,
+                gnssReseedMinMedianUniqueS = 8.0,
+                coastHonestP = true,
+                gnssGateInflate = false,
+                nhcMinSpeedMps = 100.0,
+                lowConfidenceRadiusM = 10_000.0,
+            ),
+        )
+        filter.seedForTest(
+            timestamp = Nanoseconds(0L),
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            velocityEnu = Vec3(0.0, 10.0, 0.0),
+            quat = Quat.IDENTITY,
+            posStdM = 5.0,
+            frame = VectorFrame.UNSPECIFIED,
+            headingRad = 0.0,
+        )
+        val dtNs = 100_000_000L
+        for (sec in 1..16) {
+            for (i in 1..10) {
+                val t = (sec - 1) * 1_000_000_000L + i * dtNs
+                stepImu(filter, Nanoseconds(t), 0.0, 0.0, g, frame = VectorFrame.UNSPECIFIED)
+            }
+            val (lat, lon) = Wgs84.offsetMetres(0.0, 0.0, sec * 10.0, 0.0)
+            filter.ingestGnss(
+                CoastFix(
+                    timestamp = Nanoseconds(sec * 1_000_000_000L),
+                    latitudeDeg = lat,
+                    longitudeDeg = lon,
+                    speedMps = 10.0,
+                    headingRad = 0.0,
+                    horizontalAccuracyM = 4.0,
+                ),
+            )
+            assertEquals(
+                "1 Hz unique must stay on the Joseph path, sec=$sec admit=${filter.lastGnssAdmitForTest()}",
+                DeadReckoningFilter.GNSS_GATE_ADMIT,
+                filter.lastGnssAdmitForTest(),
+            )
+        }
+        for (i in 1..90) {
+            stepImu(
+                filter,
+                Nanoseconds(16_000_000_000L + i * dtNs),
+                0.0,
+                0.0,
+                g,
+                frame = VectorFrame.UNSPECIFIED,
+            )
+        }
+        val late = Wgs84.offsetMetres(0.0, 0.0, 250.0, 0.0)
+        filter.ingestGnss(
+            CoastFix(
+                timestamp = Nanoseconds(25_000_000_000L),
+                latitudeDeg = late.first,
+                longitudeDeg = late.second,
+                speedMps = 10.0,
+                headingRad = 0.0,
+                horizontalAccuracyM = 4.0,
+            ),
+        )
+        assertTrue(
+            "one 9 s hop on a 1 Hz trip must not reseed, admit=${filter.lastGnssAdmitForTest()}",
+            filter.lastGnssAdmitForTest() != DeadReckoningFilter.GNSS_RESEED_AFTER_GAP,
+        )
+        val median = filter.medianUniqueSpacingSForTest()
+        assertTrue("1 Hz median must stay near 1 s, median=$median", median != null && median < 2.0)
+        val pose = filter.poseAt(Nanoseconds(25_000_000_000L))!!
+        assertFalse(pose.health.flags.contains(DeadReckoningFilter.FLAG_GNSS_RESEED))
+    }
+
+    @Test
+    fun sparseNineSecondMedianAllowsReseed() {
+        val g = Wgs84.gravityMps2(0.0)
+        val filter = DeadReckoningFilter(
+            InsConfig(
+                coastMode = CoastMode.YAW_SPEED_HOLD,
+                gnssReseedAfterS = 8.0,
+                gnssReseedMinMedianUniqueS = 8.0,
+                nhcMinSpeedMps = 100.0,
+                lowConfidenceRadiusM = 10_000.0,
+            ),
+        )
+        filter.seedForTest(
+            timestamp = Nanoseconds(0L),
+            latitudeDeg = 0.0,
+            longitudeDeg = 0.0,
+            velocityEnu = Vec3(0.0, 20.0, 0.0),
+            quat = Quat.IDENTITY,
+            posStdM = 5.0,
+            frame = VectorFrame.UNSPECIFIED,
+            headingRad = 0.0,
+        )
+        val dtNs = 100_000_000L
+        for (i in 1..90) {
+            stepImu(filter, Nanoseconds(i * dtNs), 0.0, 0.0, g, frame = VectorFrame.UNSPECIFIED)
+        }
+        val (lat, lon) = Wgs84.offsetMetres(0.0, 0.0, 0.0, 150.0)
+        filter.ingestGnss(
+            CoastFix(
+                timestamp = Nanoseconds(9_000_000_000L),
+                latitudeDeg = lat,
+                longitudeDeg = lon,
+                speedMps = 8.0,
+                headingRad = PI / 2.0,
+                horizontalAccuracyM = 5.0,
+            ),
+        )
+        assertEquals(DeadReckoningFilter.GNSS_RESEED_AFTER_GAP, filter.lastGnssAdmitForTest())
+        val median = filter.medianUniqueSpacingSForTest()
+        assertTrue("sparse median must be ~9 s, median=$median", median != null && median >= 8.0)
+        val pose = filter.poseAt(Nanoseconds(9_000_000_000L))!!
+        assertTrue(pose.health.flags.contains(DeadReckoningFilter.FLAG_GNSS_RESEED))
+    }
+
+    @Test
     fun fusedUniqueHopDoesNotReseedUnlessAllowed() {
         val g = Wgs84.gravityMps2(0.0)
         fun afterHop(whileFused: Boolean): DeadReckoningFilter {
@@ -1325,6 +1498,7 @@ class DeadReckoningFilterTest {
     fun liveDefaultsDoNotReseedTwoSecondLateFix() {
         val live = InsConfig(coastMode = CoastMode.YAW_SPEED_HOLD)
         assertEquals(0.0, live.gnssReseedAfterS, 0.0)
+        assertEquals(0.0, live.gnssReseedMinMedianUniqueS, 0.0)
         assertFalse(live.studentForwardSpeed)
         assertFalse(live.coastStopDetect)
         assertFalse(live.coastSpeedDecay)

@@ -10,12 +10,25 @@ CLOCK_DOMAINS = frozenset(
     {"android_elapsed_realtime", "external_monotonic", "dataset_declared"}
 )
 SENSOR_KINDS = frozenset(
-    {"accelerometer", "gyroscope", "magnetometer", "gnss_fix", "gnss_status", "raw_gnss"}
+    {
+        "accelerometer",
+        "gyroscope",
+        "magnetometer",
+        "gravity",
+        "linear_acceleration",
+        "gyroscope_uncalibrated",
+        "gnss_fix",
+        "gnss_status",
+        "raw_gnss",
+    }
 )
 VECTOR_UNITS = {
     "accelerometer": "m/s^2",
     "gyroscope": "rad/s",
     "magnetometer": "uT",
+    "gravity": "m/s^2",
+    "linear_acceleration": "m/s^2",
+    "gyroscope_uncalibrated": "rad/s",
 }
 VECTOR_FRAMES = frozenset({"android_device", "vehicle_flu", "unspecified"})
 NAV_MODES = frozenset(
@@ -193,6 +206,14 @@ def _validate_gnss_fix(payload: Mapping[str, Any]) -> None:
     if acc < 0:
         raise ContractError("horizontal_accuracy_m must be >= 0")
     _nonneg_int(payload["provider_time_ms"], "provider_time_ms")
+    if "speed_accuracy_mps" in payload:
+        speed_acc = _finite_number(payload["speed_accuracy_mps"], "speed_accuracy_mps")
+        if speed_acc < 0:
+            raise ContractError("speed_accuracy_mps must be >= 0")
+    if "bearing_accuracy_rad" in payload:
+        bearing_acc = _finite_number(payload["bearing_accuracy_rad"], "bearing_accuracy_rad")
+        if bearing_acc < 0:
+            raise ContractError("bearing_accuracy_rad must be >= 0")
 
 
 def _validate_gnss_status(payload: Mapping[str, Any]) -> None:

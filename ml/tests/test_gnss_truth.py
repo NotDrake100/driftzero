@@ -11,6 +11,7 @@ from driftzero_ml.gnss_truth import (
     TruthGateConfig,
     assess_truth,
     course_rad,
+    persist_coast_seed,
     score_epochs,
     seed_heading_rad,
     unique_fix_median_spacing_s,
@@ -74,6 +75,34 @@ class HeadingSeedTests(unittest.TestCase):
         heading = seed_heading_rad(history)
         self.assertIsNotNone(heading)
         self.assertTrue(abs((heading or 0.0) - math.pi / 2.0) < 1e-9)
+
+    def test_persist_coast_seed_skips_trailing_zero_speed_unique(self) -> None:
+        moving = _east_then_hold()[:20]
+        start_ns = moving[-1]["timestamp_ns"] + 100_000_000
+        zero = {
+            "timestamp_ns": start_ns,
+            "latitude_deg": 52.001,
+            "longitude_deg": -1.7,
+            "gnss_speed_mps": 0.0,
+            "gps_orientation_deg": 0.0,
+        }
+        with_zero = list(moving) + [zero]
+        persist_history = [row for row in with_zero if row["timestamp_ns"] < start_ns]
+        from_history = persist_coast_seed(persist_history)
+        from_inclusive = persist_coast_seed(with_zero, before_ns=start_ns)
+        skipped = persist_coast_seed(with_zero)
+        self.assertIsNotNone(from_history)
+        self.assertIsNotNone(from_inclusive)
+        self.assertIsNotNone(skipped)
+        assert from_history is not None and skipped is not None and from_inclusive is not None
+        self.assertEqual(from_history.timestamp_ns, persist_history[-1]["timestamp_ns"])
+        self.assertEqual(skipped.timestamp_ns, from_history.timestamp_ns)
+        self.assertEqual(from_inclusive.timestamp_ns, from_history.timestamp_ns)
+        self.assertGreaterEqual(skipped.speed_mps, 0.4)
+        self.assertNotEqual(skipped.timestamp_ns, start_ns)
+        heading = seed_heading_rad(persist_history)
+        self.assertIsNotNone(heading)
+        self.assertTrue(abs((heading or 0.0) - skipped.heading_rad) < 0.15)
 
     def test_unique_fix_median_spacing(self) -> None:
         rows = [

@@ -32,8 +32,12 @@ import kotlin.math.sqrt
  * (including accuracy-ok fixes the position gate rejected). After a unique-fix
  * gap of at least [InsConfig.gnssReseedAfterS] a sanity-ok GNSS re-seeds pose
  * instead of gating, except while already fused unless
- * [InsConfig.gnssReseedWhileFused]. The 15-state ESKF remains so ZUPT, NHC, and
- * [applyRoadHeading] still land. NHC runs only in [VectorFrame.VEHICLE_FLU].
+ * [InsConfig.gnssReseedWhileFused]. When
+ * [InsConfig.gnssReseedMinMedianUniqueS] is set, reseed also requires the
+ * median unique-fix spacing seen so far to be at least that many seconds, so
+ * one long hop on a 1 Hz trip does not reseed. The 15-state ESKF remains so
+ * ZUPT, NHC, and [applyRoadHeading] still land. NHC runs only in
+ * [VectorFrame.VEHICLE_FLU].
  *
  * [MotionModel] is not owned here. [MotionPseudoRuntime] infers on the 10 Hz
  * worker and injects [MotionPseudoMeasurement] through [ingestMotionPseudo]
@@ -127,11 +131,22 @@ class DeadReckoningFilter(
     /** Phone IMU still for the live path. Replay leaves this false. */
     private var imuStill: Boolean = false
     private val gnssTrail: ArrayDeque<TrailFix> = ArrayDeque()
+    private val uniqueSpacingS: ArrayList<Double> = ArrayList()
     private val vib: ArrayDeque<VibSample> = ArrayDeque()
     private val prefixStoppedVars: ArrayList<Double> = ArrayList()
     private val prefixMovingVars: ArrayList<Double> = ArrayList()
     private val prefixStoppedGyros: ArrayList<Double> = ArrayList()
     private val prefixMovingGyros: ArrayList<Double> = ArrayList()
+    private val gnssTrust = GnssTrustEngine(config.reacquireFixes)
+    private var lastGnssQuarantine: Boolean = false
+    private var lastGnssTrustRelease: Boolean = false
+    private var lastAlongTrack: Boolean = false
+    private var lastAlongTrackGated: Boolean = false
+    private var lastRoadHeading: Boolean = false
+    private var lastMapUnconstrained: Boolean = false
+    private var preconditionArmed: Boolean = false
+    private var preconditionSpeedMps: Double? = null
+    private var preconditionNs: Long = -1L
 
     fun setGnssHeld(held: Boolean) {
         synchronized(lock) {
@@ -149,6 +164,44 @@ class DeadReckoningFilter(
     }
 
     fun isGnssHeld(): Boolean = synchronized(lock) { gnssHeld }
+
+    /**
+     * Live blackout mean risk or tunnel / shadow look-ahead arms the
+     * [InsConfig.coastLatchGnssSpeed] snapshot now. The next coast uses this
+     * speed even if the last GNSS report is older than [InsConfig.coastLatchGnssMaxS].
+     * No-ops when the latch is off so replay hashes stay.
+     */
+    fun armCoastPrecondition(timestamp: Nanoseconds, reportedSpeedMps: Double? = null) {
+        synchronized(lock) {
+            if (!config.coastLatchGnssSpeed) {
+                return
+            }
+            val candidate = when {
+                reportedSpeedMps != null && reportedSpeedMps.isFinite() && reportedSpeedMps >= 0.0 ->
+                    reportedSpeedMps
+                lastReportedGnssSpeedMps != null && lastReportedGnssSpeedMps!! >= 0.0 ->
+                    lastReportedGnssSpeedMps
+                else -> hypot(ve, vn)
+            }
+            preconditionArmed = true
+            preconditionNs = timestamp.value
+            preconditionSpeedMps = candidate
+        }
+    }
+
+    fun clearCoastPrecondition() {
+        synchronized(lock) {
+            preconditionArmed = false
+            preconditionSpeedMps = null
+            preconditionNs = -1L
+        }
+    }
+
+    fun coastPreconditionArmed(): Boolean = synchronized(lock) { preconditionArmed }
+
+    fun gnssQuarantined(): Boolean = synchronized(lock) { lastGnssQuarantine || gnssTrust.isQuarantined() }
+
+    fun gnssTrustJustReleased(): Boolean = synchronized(lock) { lastGnssTrustRelease }
 
     /**
      * Live-phone table still. When true, still-ZUPT is not skipped for a
@@ -309,6 +362,7 @@ class DeadReckoningFilter(
         speedHintMps: Double?,
     ): RoadHeadingResult {
         synchronized(lock) {
+            lastRoadHeading = false
             if (!initialized || !numericalOk) {
                 return RoadHeadingResult(accepted = false, reason = RoadHeadingReason.NOT_INITIALIZED)
             }
@@ -356,7 +410,102 @@ class DeadReckoningFilter(
                 vu = 0.0
             }
             lastHeadingRad = newHeading
+            lastRoadHeading = true
+            lastMapUnconstrained = false
             return RoadHeadingResult(accepted = true, reason = RoadHeadingReason.ACCEPTED, chi2 = chi2)
+        }
+    }
+
+    /**
+     * 1-dof along-track position inject. Joseph form. After inject the
+     * cross-track component of the move is removed so the pose stays on the
+     * heading line. Chi-square gate is [InsConfig.alongTrackChi2Gate].
+     * [offsetM] is metres to add along current heading (map minus DR).
+     */
+    fun applyAlongTrack(offsetM: Double, stdM: Double): AlongTrackResult {
+        synchronized(lock) {
+            lastAlongTrack = false
+            lastAlongTrackGated = false
+            if (!initialized || !numericalOk) {
+                return AlongTrackResult(accepted = false, reason = AlongTrackReason.NOT_INITIALIZED)
+            }
+            if (!isCoasting(timeNs)) {
+                return AlongTrackResult(accepted = false, reason = AlongTrackReason.NOT_COASTING)
+            }
+            if (!offsetM.isFinite() || !stdM.isFinite() || stdM <= 0.0) {
+                return AlongTrackResult(accepted = false, reason = AlongTrackReason.INVALID_STD)
+            }
+            if (abs(offsetM) > config.alongTrackMaxAbsM) {
+                lastAlongTrackGated = true
+                return AlongTrackResult(accepted = false, reason = AlongTrackReason.OFFSET_GATE)
+            }
+            val speed = hypot(ve, vn)
+            val heading = headingRad(speed)
+            val uE = sin(heading)
+            val uN = cos(heading)
+            hRow.fill(0.0)
+            hRow[EskfDim.IP] = uE
+            hRow[EskfDim.IP + 1] = uN
+            residual[0] = offsetM
+            rMeas.fill(0.0)
+            rMeas[0] = stdM * stdM
+            val chi2 = innovationChiSquared(p, hRow, residual, rMeas, 1, joseph)
+                ?: return AlongTrackResult(accepted = false, reason = AlongTrackReason.NUMERICAL)
+            if (chi2 > config.alongTrackChi2Gate) {
+                lastAlongTrackGated = true
+                return AlongTrackResult(accepted = false, reason = AlongTrackReason.CHI2_REJECT, chi2 = chi2)
+            }
+            val east0 = eastM
+            val north0 = northM
+            val up0 = upM
+            if (!josephUpdate(p, hRow, residual, rMeas, 1, dx, joseph)) {
+                numericalOk = false
+                return AlongTrackResult(accepted = false, reason = AlongTrackReason.NUMERICAL, chi2 = chi2)
+            }
+            inject()
+            val dE = eastM - east0
+            val dN = northM - north0
+            val along = dE * uE + dN * uN
+            eastM = east0 + along * uE
+            northM = north0 + along * uN
+            upM = up0
+            lastAlongTrack = true
+            lastMapUnconstrained = false
+            return AlongTrackResult(accepted = true, reason = AlongTrackReason.ACCEPTED, chi2 = chi2)
+        }
+    }
+
+    /**
+     * Grow heading and horizontal P when a loaded graph is unmatched or
+     * multi-hypothesis. Does not move lat/lon. Not a GNSS seed.
+     */
+    fun noteMapUnconstrained(
+        posSigmaM: Double = MapCoastConstraint.UNCONSTRAINED_POS_SIGMA_M,
+        headingSigmaRad: Double = MapCoastConstraint.UNCONSTRAINED_HEADING_SIGMA_RAD,
+    ): Boolean {
+        synchronized(lock) {
+            if (!initialized || !numericalOk) {
+                return false
+            }
+            if (!isCoasting(timeNs)) {
+                return false
+            }
+            if (!posSigmaM.isFinite() || posSigmaM < 0.0) {
+                return false
+            }
+            if (!headingSigmaRad.isFinite() || headingSigmaRad < 0.0) {
+                return false
+            }
+            val addP = posSigmaM * posSigmaM
+            p[0, 0] += addP
+            p[1, 1] += addP
+            val i = EskfDim.ITH + 2
+            p[i, i] += headingSigmaRad * headingSigmaRad
+            symmetrize(p)
+            lastMapUnconstrained = true
+            lastRoadHeading = false
+            lastAlongTrack = false
+            return true
         }
     }
 
@@ -388,7 +537,13 @@ class DeadReckoningFilter(
                     ),
                 )
             }
-            SensorKind.MAGNETOMETER, SensorKind.GNSS_STATUS, SensorKind.RAW_GNSS -> Unit
+            SensorKind.MAGNETOMETER,
+            SensorKind.GRAVITY,
+            SensorKind.LINEAR_ACCELERATION,
+            SensorKind.GYROSCOPE_UNCALIBRATED,
+            SensorKind.GNSS_STATUS,
+            SensorKind.RAW_GNSS,
+            -> Unit
         }
     }
 
@@ -433,6 +588,9 @@ class DeadReckoningFilter(
             lastAcceptedGnssSpeedNs = -1L
             lastReportedGnssSpeedMps = null
             lastReportedGnssSpeedNs = -1L
+            preconditionArmed = false
+            preconditionSpeedMps = null
+            preconditionNs = -1L
             consecutiveGnssGates = 0
             gnssGateInflated = false
             resumeSpeedMps = 0.0
@@ -453,11 +611,19 @@ class DeadReckoningFilter(
             lastGnssAdmit = ""
             lastWouldAdmitWithoutReseed = false
             gnssTrail.clear()
+            uniqueSpacingS.clear()
             vib.clear()
             prefixStoppedVars.clear()
             prefixMovingVars.clear()
             prefixStoppedGyros.clear()
             prefixMovingGyros.clear()
+            gnssTrust.reset()
+            lastGnssQuarantine = false
+            lastGnssTrustRelease = false
+            lastAlongTrack = false
+            lastAlongTrackGated = false
+            lastRoadHeading = false
+            lastMapUnconstrained = false
             p.zero()
             if (reason == ResetReason.USER || reason == ResetReason.REMOUNT) {
                 gnssHeld = false
@@ -509,6 +675,7 @@ class DeadReckoningFilter(
                 if (gatedRecently) add(RISK_GATED_FIX)
                 if (gnssGateInflated) add(RISK_GNSS_GATE_INFLATE)
                 if (mode == NavigationMode.REACQUIRING) add(RISK_REACQUIRING)
+                if (lastGnssQuarantine) add(RISK_GNSS_QUARANTINE)
             }
             val imuAgeS = if (lastImuNs < 0L) Double.POSITIVE_INFINITY else {
                 (now.value - lastImuNs).coerceAtLeast(0L) / NS_PER_S
@@ -528,6 +695,11 @@ class DeadReckoningFilter(
                 if (coastStopDisarmed) add(FLAG_COAST_STOP_DISARMED)
                 if (lastGnssReseed) add(FLAG_GNSS_RESEED)
                 if (lastWouldAdmitWithoutReseed) add(FLAG_GNSS_WOULD_ADMIT)
+                if (lastGnssQuarantine) add(FLAG_GNSS_QUARANTINE)
+                if (lastAlongTrack) add(FLAG_ALONG_TRACK)
+                if (lastAlongTrackGated) add(FLAG_ALONG_TRACK_GATED)
+                if (lastRoadHeading) add(FLAG_ROAD_HEADING)
+                if (lastMapUnconstrained) add(FLAG_MAP_UNCONSTRAINED)
             }
             val score = if (coasting) {
                 (1.0 / (1.0 + ageS)).coerceIn(0.0, 1.0)
@@ -586,7 +758,13 @@ class DeadReckoningFilter(
 
     internal fun lastGnssAdmitForTest(): String = synchronized(lock) { lastGnssAdmit }
 
+    internal fun medianUniqueSpacingSForTest(): Double? = synchronized(lock) { medianUniqueSpacingS() }
+
     internal fun lastWouldAdmitWithoutReseedForTest(): Boolean = synchronized(lock) { lastWouldAdmitWithoutReseed }
+
+    internal fun gnssQuarantinedForTest(): Boolean = synchronized(lock) { lastGnssQuarantine || gnssTrust.isQuarantined() }
+
+    internal fun gnssTrustReleasedForTest(): Boolean = synchronized(lock) { lastGnssTrustRelease }
 
     internal fun plantReportedGnssSpeedForTest(speed: Double, tNs: Long) {
         synchronized(lock) {
@@ -637,6 +815,7 @@ class DeadReckoningFilter(
             lastReportedGnssSpeedMps = lastAcceptedGnssSpeedMps
             lastReportedGnssSpeedNs = timestamp.value
             gnssTrail.clear()
+            uniqueSpacingS.clear()
             gnssTrail.addLast(
                 TrailFix(latitudeDeg, longitudeDeg, timestamp.value, hypot(velocityEnu.x, velocityEnu.y), headingRad),
             )
@@ -645,6 +824,13 @@ class DeadReckoningFilter(
             lastDisplacement = false
             lastDisplacementGated = false
             lastAcceptedDisplacementNs = -1L
+            gnssTrust.reset()
+            lastGnssQuarantine = false
+            lastGnssTrustRelease = false
+            lastAlongTrack = false
+            lastAlongTrackGated = false
+            lastRoadHeading = false
+            lastMapUnconstrained = false
             clones.clear()
             setInitialP(posStdM)
             recordClone()
@@ -949,6 +1135,10 @@ class DeadReckoningFilter(
 
     private fun chooseHeldSpeed(): Double {
         if (config.coastLatchGnssSpeed) {
+            val armed = preconditionSpeedMps
+            if (preconditionArmed && armed != null && armed.isFinite() && armed >= 0.0) {
+                return armed
+            }
             val reported = lastReportedGnssSpeedMps
             val stamp = lastReportedGnssSpeedNs
             if (reported != null && reported >= 0.0 && stamp >= 0L) {
@@ -1057,8 +1247,12 @@ class DeadReckoningFilter(
             (fix.timestamp.value - lastAcceptedUniqueNs) / NS_PER_S
         }
         val fused = !isCoasting(fix.timestamp.value)
+        val tripMedianS = medianUniqueSpacingS()
+        val sparseTrip = config.gnssReseedMinMedianUniqueS <= 0.0 ||
+            (tripMedianS != null && tripMedianS >= config.gnssReseedMinMedianUniqueS)
         val wantReseed = config.gnssReseedAfterS > 0.0 &&
             uniqueGapS >= config.gnssReseedAfterS &&
+            sparseTrip &&
             canReseed(fix) &&
             (!fused || config.gnssReseedWhileFused)
         if (wantReseed) {
@@ -1093,6 +1287,27 @@ class DeadReckoningFilter(
             gnssGateInflated = false
         }
         consecutiveGnssGates = 0
+        val dtTrust = if (lastTrustedGnssNs < 0L) 1.0 else max(0.05, gapS)
+        val trust = gnssTrust.evaluate(
+            residualEastM = residual[0],
+            residualNorthM = residual[1],
+            ve = ve,
+            vn = vn,
+            dtS = dtTrust,
+            pHorizM = pHoriz,
+            sigmaM = sigma,
+            enabled = config.gnssQuarantine,
+        )
+        lastGnssTrustRelease = trust.action == GnssTrustAction.APPLY && gnssTrust.justReleased()
+        if (trust.action != GnssTrustAction.APPLY) {
+            lastGnssQuarantine = true
+            lastGnssAdmit = GNSS_QUARANTINE
+            if (coastedSinceFix) {
+                reacquiredFixes = 0
+            }
+            return
+        }
+        lastGnssQuarantine = false
         fillPosH()
         val su = max(sigma * 1.5, 3.0)
         rMeas[0] = sigma * sigma
@@ -1274,12 +1489,34 @@ class DeadReckoningFilter(
         return null
     }
 
+    private fun medianUniqueSpacingS(): Double? {
+        if (uniqueSpacingS.isEmpty()) {
+            return null
+        }
+        val ordered = uniqueSpacingS.sorted()
+        val n = ordered.size
+        return if (n % 2 == 1) {
+            ordered[n / 2]
+        } else {
+            0.5 * (ordered[n / 2 - 1] + ordered[n / 2])
+        }
+    }
+
     private fun rememberFix(fix: CoastFix) {
         val speed = fix.speedMps ?: 0.0
         val heading = fix.headingRad ?: lastHeadingRad
         val next = TrailFix(fix.latitudeDeg, fix.longitudeDeg, fix.timestamp.value, speed, heading)
         val last = gnssTrail.lastOrNull()
         if (last == null || Wgs84.distanceMetres(last.latDeg, last.lonDeg, next.latDeg, next.lonDeg) > 1e-3) {
+            if (last != null) {
+                val dt = (next.tNs - last.tNs) / NS_PER_S
+                if (dt > 0.0) {
+                    uniqueSpacingS.add(dt)
+                    while (uniqueSpacingS.size > UNIQUE_SPACING_CAP) {
+                        uniqueSpacingS.removeAt(0)
+                    }
+                }
+            }
             gnssTrail.addLast(next)
             while (gnssTrail.size > TRAIL_CAP) {
                 gnssTrail.removeFirst()
@@ -1877,14 +2114,21 @@ class DeadReckoningFilter(
         const val FLAG_HEADING_PICK_WEAK: String = "gyro_heading_pick_weak"
         const val FLAG_GNSS_RESEED: String = "gnss_reseed_after_gap"
         const val FLAG_GNSS_WOULD_ADMIT: String = "gnss_gate_would_admit"
+        const val FLAG_GNSS_QUARANTINE: String = "gnss_quarantine"
+        const val FLAG_ALONG_TRACK: String = "along_track"
+        const val FLAG_ALONG_TRACK_GATED: String = "along_track_gated"
+        const val FLAG_ROAD_HEADING: String = "road_heading"
+        const val FLAG_MAP_UNCONSTRAINED: String = "map_unconstrained"
         const val GNSS_RESEED_AFTER_GAP: String = "gnss_reseed_after_gap"
         const val GNSS_GATE_ADMIT: String = "gnss_gate_admit"
         const val GNSS_GATE_REJECT: String = "gnss_gate_reject"
+        const val GNSS_QUARANTINE: String = "gnss_quarantine"
         const val RISK_STALE_GNSS: String = "stale_gnss"
         const val RISK_POOR_ACCURACY: String = "poor_accuracy"
         const val RISK_GATED_FIX: String = "gated_fix"
         const val RISK_GNSS_GATE_INFLATE: String = "gnss_gate_inflate"
         const val RISK_REACQUIRING: String = "reacquiring"
+        const val RISK_GNSS_QUARANTINE: String = "gnss_quarantine"
         const val CONFIG_ID: String =
             "eskf.v2.stale_s=2.output_hz=10.wgs84.somigliana_2_139.nframe_enu.phi_2_139.q_pv.zupt_skip_coast.nhc_off_unspecified.joseph.tlio_dp_chi2_11.345.modes_v2_degraded_30m_reacquire_3.coast_strapdown.gate_inflate_5"
         val CONFIG_HASH: String = sha256Hex(CONFIG_ID)
@@ -1893,6 +2137,7 @@ class DeadReckoningFilter(
         private const val CLONE_CAP: Int = 200
         private const val PREFIX_VAR_CAP: Int = 40
         private const val TRAIL_CAP: Int = 40
+        private const val UNIQUE_SPACING_CAP: Int = 256
     }
 }
 
@@ -1945,6 +2190,22 @@ object RoadHeadingReason {
     const val NOT_INITIALIZED: String = "not_initialized"
     const val INVALID_STD: String = "invalid_std"
     const val CHI2_REJECT: String = "chi2_reject"
+    const val NUMERICAL: String = "numerical"
+}
+
+data class AlongTrackResult(
+    val accepted: Boolean,
+    val reason: String,
+    val chi2: Double? = null,
+)
+
+object AlongTrackReason {
+    const val ACCEPTED: String = "accepted"
+    const val NOT_COASTING: String = "not_coasting"
+    const val NOT_INITIALIZED: String = "not_initialized"
+    const val INVALID_STD: String = "invalid_std"
+    const val CHI2_REJECT: String = "chi2_reject"
+    const val OFFSET_GATE: String = "offset_gate"
     const val NUMERICAL: String = "numerical"
 }
 
@@ -2026,16 +2287,19 @@ data class InsConfig(
     /** Extra heading random walk (rad/s) added to P_yaw while HOLD_COURSE is active. */
     val weakHeadingGrowRadps: Double = 0.05,
     /**
-     * When true, YAW_SPEED_HOLD latches last reported GNSS speed if its timestamp
-     * is within [coastLatchGnssMaxS] of coast start. Otherwise uses filter speed.
      * Reported speed includes accuracy-ok fixes that the position gate rejected.
-     * Default off keeps v3/v4 last-accepted-any-age latch.
+     * [DeadReckoningFilter.armCoastPrecondition] keeps that latch after the
+     * 2 s window when live blackout risk is high. Default off keeps v3/v4
+     * last-accepted-any-age latch.
+     * Live phone IMU requests SENSOR_DELAY_FASTEST. Measured Hz is logged from
+     * timestamp deltas. Do not cite 100 Hz without that log. IO-VNBD screening
+     * is 10 Hz table rate.
      */
     val coastLatchGnssSpeed: Boolean = false,
     val coastLatchGnssMaxS: Double = 2.0,
     /**
-     * Second-attempt stop detector: calibrate |a| variance and gyro from the
-     * pre-mask prefix only. Default off. Live phone IMU is 100 Hz; IO-VNBD is 10 Hz.
+     * Prefix calibration for the stop detector. Default off. Live IMU rate is
+     * measured on device. Do not cite 100 Hz without that log.
      */
     val coastStopRequireStoppedPrefix: Boolean = false,
     val coastStopMovingK: Double = 0.5,
@@ -2056,6 +2320,13 @@ data class InsConfig(
      * still fused. 1 Hz streams stay on the Joseph path.
      */
     val gnssReseedWhileFused: Boolean = false,
+    /**
+     * Re-seed only when the median unique-fix spacing seen so far is at least
+     * this many seconds. 0 disables the trip-cadence gate. Replay passes
+     * `--gnss-reseed-min-median-unique-s` so a 9 s hop on a 1 Hz trip does
+     * not reseed. Live default stays 0.
+     */
+    val gnssReseedMinMedianUniqueS: Double = 0.0,
     /**
      * Bias-like coast position covariance: after T seconds,
      * sqrt(P_h) grows as hypot(sigma_v, v * sigma_heading) * T.
@@ -2082,6 +2353,16 @@ data class InsConfig(
      * of a few seconds stay GNSS or Assisted, not a fake tunnel.
      */
     val staleAfterS: Double = 2.0,
+    /**
+     * Cross-track GNSS quarantine. Default off keeps replay hashes.
+     * Live [PoseStore.LIVE_INS_CONFIG] turns it on. A 180 m sideways
+     * jump at highway speed is held when enabled.
+     */
+    val gnssQuarantine: Boolean = false,
+    /** 1-dof chi-square gate for [DeadReckoningFilter.applyAlongTrack]. */
+    val alongTrackChi2Gate: Double = 6.63,
+    /** Refuse an along-track inject larger than this, metres. */
+    val alongTrackMaxAbsM: Double = 80.0,
 )
 
 /** GNSS sample at the PoseStore / filter boundary. Units: deg, m/s, rad, metres. */
@@ -2093,6 +2374,8 @@ data class CoastFix(
     val headingRad: Double? = null,
     val horizontalAccuracyM: Double,
     val altitudeM: Double? = null,
+    val speedAccuracyMps: Double? = null,
+    val bearingAccuracyRad: Double? = null,
 ) {
     init {
         require(latitudeDeg.isFinite() && longitudeDeg.isFinite())
@@ -2100,6 +2383,8 @@ data class CoastFix(
         speedMps?.let { require(it.isFinite() && it >= 0.0) }
         headingRad?.let { require(it.isFinite()) }
         altitudeM?.let { require(it.isFinite()) }
+        speedAccuracyMps?.let { require(it.isFinite() && it >= 0.0) }
+        bearingAccuracyRad?.let { require(it.isFinite() && it >= 0.0) }
     }
 }
 

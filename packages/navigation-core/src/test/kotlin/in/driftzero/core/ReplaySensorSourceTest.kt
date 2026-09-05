@@ -208,6 +208,17 @@ class ReplaySensorSourceTest {
     }
 
     @Test
+    fun replayCliDefaultCoastModeStaysStrapdown() {
+        val defaults = Replay.parseArgs(
+            arrayOf("--input", "in.jsonl", "--output", "out.jsonl"),
+        )
+        assertEquals(CoastMode.STRAPDOWN, defaults.config.coastMode)
+        assertTrue(!defaults.config.coastLatchGnssSpeed)
+        assertTrue(!defaults.config.coastHonestP)
+        assertTrue(!defaults.config.studentForwardSpeed)
+    }
+
+    @Test
     fun replayCliAcceptsCoastModeAndPersistSpeedPseudo() {
         val parsed = Replay.parseArgs(
             arrayOf(
@@ -226,6 +237,7 @@ class ReplaySensorSourceTest {
         )
         assertEquals(CoastMode.STRAPDOWN, defaults.config.coastMode)
         assertEquals(0.0, defaults.config.gnssReseedAfterS, 0.0)
+        assertEquals(0.0, defaults.config.gnssReseedMinMedianUniqueS, 0.0)
         assertTrue(!defaults.config.studentForwardSpeed)
         assertTrue(!defaults.config.coastSpeedDecay)
         assertTrue(!defaults.persistSpeedPseudo)
@@ -307,6 +319,21 @@ class ReplaySensorSourceTest {
         assertEquals(6.0, v7.config.gnssReseedAfterS, 0.0)
         assertTrue(v7.config.gnssReseedWhileFused)
         assertTrue(v7.config.coastHonestP)
+        val v8 = Replay.parseArgs(
+            arrayOf(
+                "--input",
+                "in.jsonl",
+                "--output",
+                "out.jsonl",
+                "--gnss-reseed-after-s=8",
+                "--gnss-reseed-min-median-unique-s=8",
+                "--coast-honest-p",
+            ),
+        )
+        assertEquals(8.0, v8.config.gnssReseedAfterS, 0.0)
+        assertEquals(8.0, v8.config.gnssReseedMinMedianUniqueS, 0.0)
+        assertTrue(v8.config.coastHonestP)
+        assertTrue(!v8.config.gnssReseedWhileFused)
     }
 
     @Test

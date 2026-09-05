@@ -4,11 +4,20 @@ import `in`.driftzero.app.maps.AreaPack
 import `in`.driftzero.app.pose.LocationGrant
 import `in`.driftzero.app.pose.NavicSnapshot
 import `in`.driftzero.app.pose.PoseStore
+import `in`.driftzero.core.BlackoutAssessment
+import `in`.driftzero.core.BlackoutRisk
 import `in`.driftzero.core.DeadReckoningFilter
+import `in`.driftzero.core.DriftBudget
+import `in`.driftzero.core.DriftBudgetMath
+import `in`.driftzero.core.GnssTrust
+import `in`.driftzero.core.IntegritySnapshot
 import `in`.driftzero.core.MapMatchStatus
+import `in`.driftzero.core.MountPlacement
 import `in`.driftzero.core.MountQuality
 import `in`.driftzero.core.MountSession
 import `in`.driftzero.core.NavigationState
+import `in`.driftzero.core.OptionalScalar
+import `in`.driftzero.core.PhonePlacement
 import `in`.driftzero.core.RoadHeadingDecision
 import `in`.driftzero.core.RoadHeadingSkipReason
 
@@ -21,8 +30,9 @@ object StatusCopy {
     fun sheetLabel(label: String): String = label.trim().replace(Regex("\\s+"), " ")
 
     /**
-     * Road heading aid for the sheet. Null hides the row until PoseStore wires it.
-     * [ON] is an accepted heading prior. [OFF_NEAR_JUNCTION] is gated at a junction.
+     * Road heading aid for the sheet. Null hides the row when there is no
+     * coast decision. [ON] is an accepted heading prior. [OFF_NEAR_JUNCTION]
+     * is gated at a junction.
      */
     enum class RoadAidState {
         ON,
@@ -193,6 +203,42 @@ object StatusCopy {
         return "p95 gap ${p95Ms.toInt()} ms"
     }
 
+    fun driftConfidence(budget: DriftBudget): String = DriftBudgetMath.confidencePercent(budget)
+
+    fun driftRange(budget: DriftBudget): String? = DriftBudgetMath.rangeValue(budget)
+
+    fun driftLamp(budget: DriftBudget): String = DriftBudgetMath.lampLine(budget)
+
+    fun sihRemain(budget: DriftBudget): String = DriftBudgetMath.sihRemainLine(budget)
+
+    fun blackout(assessment: BlackoutAssessment): String? = BlackoutRisk.riskLine(assessment)
+
+    fun tunnelAhead(assessment: BlackoutAssessment): String? = BlackoutRisk.tunnelLine(assessment)
+
+    fun preconditioning(assessment: BlackoutAssessment): String? =
+        if (assessment.preconditioning) BlackoutRisk.PRECONDITION_COPY else null
+
+    fun blackoutRaw(assessment: BlackoutAssessment): String {
+        val risk = when (val r = assessment.risk) {
+            is OptionalScalar.Available -> InstrumentFormat.formatPercent(r.value)
+            is OptionalScalar.Unavailable -> "unavailable"
+        }
+        return "risk $risk, ${assessment.usedFactorCount} factors"
+    }
+
+    fun gnssTrust(snapshot: IntegritySnapshot): String? = when {
+        snapshot.gnssQuarantined -> GnssTrust.GNSS_ANOMALY_COPY
+        snapshot.gnssRestored -> GnssTrust.GNSS_RESTORED_COPY
+        else -> null
+    }
+
+    fun placement(placement: PhonePlacement, remounting: Boolean = false): String {
+        if (remounting || placement == PhonePlacement.HANDHELD) {
+            return MountPlacement.RECALIBRATE_COPY
+        }
+        return MountPlacement.driverLine(placement) ?: "unknown"
+    }
+
     fun of(
         state: NavigationState,
         lastGnssSeenNs: Long?,
@@ -208,8 +254,9 @@ object StatusCopy {
         roadAid: RoadAidState? = null,
         lab: Boolean = false,
         speedText: String? = null,
+        integrity: IntegritySnapshot? = null,
     ): List<Pair<String, String>> {
-        val rows = ArrayList<Pair<String, String>>(14)
+        val rows = ArrayList<Pair<String, String>>(18)
         reasonLine(modeReason(state), mountReason, state.health.flags, lab)?.let { reason ->
             rows += sheetLabel("Reason") to reason
         }
@@ -221,11 +268,30 @@ object StatusCopy {
         }
         rows += sheetLabel("Heading") to heading(state.motion.heading.value, state.uncertainty.heading95Rad)
         rows += sheetLabel("Confidence radius") to radius95(state.uncertainty.horizontal95.value)
+        integrity?.drift?.let { budget ->
+            rows += sheetLabel("Navigation confidence") to driftConfidence(budget)
+            driftRange(budget)?.let { rows += sheetLabel("Safe range") to it }
+            rows += sheetLabel("Integrity lamp") to driftLamp(budget)
+        }
+        integrity?.blackout?.let { risk ->
+            blackout(risk)?.let { rows += sheetLabel("Blackout") to it }
+            tunnelAhead(risk)?.let { rows += sheetLabel("Tunnel") to it }
+            preconditioning(risk)?.let { rows += sheetLabel("Precondition") to it }
+        }
+        integrity?.let { snap ->
+            gnssTrust(snap)?.let { rows += sheetLabel("GNSS trust") to it }
+            rows += sheetLabel("Placement") to placement(
+                snap.placement,
+                remounting = flagsRemount(state, mountReason),
+            )
+        }
         mountIfUseful(mountQuality, mountYawConfidence)?.let { rows += sheetLabel("Mount") to it }
         rows += sheetLabel("Area pack") to areaPack(pack, packBytes)
         if (!lab) {
             return rows
         }
+        integrity?.drift?.let { rows += sheetLabel("SIH remain") to sihRemain(it) }
+        integrity?.blackout?.let { rows += sheetLabel("Blackout raw") to blackoutRaw(it) }
         rows += sheetLabel("Last trusted fix") to lastTrustedAgo(state.gnssHealth.lastTrustedFixAgeS)
         rows += sheetLabel("Map match") to mapMatch(state.mapMatch.status, state.mapMatch.confidence)
         rows += sheetLabel("Sensors") to sensors(state.health.flags)
@@ -235,6 +301,9 @@ object StatusCopy {
         outputRate(p95Ms)?.let { rows += sheetLabel("Output rate") to it }
         return rows
     }
+
+    private fun flagsRemount(state: NavigationState, mountReason: String?): Boolean =
+        !mountReason.isNullOrEmpty() || state.health.flags.contains(PoseStore.FLAG_MOUNT_REMOUNT)
 
     /** Mount row on the default sheet. Pending is first-run noise, not a driver fact. */
     fun mountIfUseful(quality: MountQuality?, yawConfidence: Double? = null): String? {

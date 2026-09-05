@@ -18,6 +18,11 @@ data class TripSummary(
     val stateCount: Int,
     val drCount: Int,
     val holds: List<GnssMaskInterval>,
+    val requestedSensorDelay: String = TripRecorder.REQUESTED_SENSOR_DELAY,
+    val measuredAccelHz: Double? = null,
+    val measuredGyroHz: Double? = null,
+    val accelSampleCount: Int = 0,
+    val gyroSampleCount: Int = 0,
 ) {
     val durationS: Double
         get() = ((endNs - startNs).coerceAtLeast(0L)) / 1_000_000_000.0
@@ -47,6 +52,12 @@ data class TripSummary(
                 "end_ns" to interval.endNs,
             )
         },
+        "requested_sensor_delay" to requestedSensorDelay,
+        "declared_rate_hz" to TripRecorder.DECLARED_RATE_HZ,
+        "measured_accel_hz" to measuredAccelHz,
+        "measured_gyro_hz" to measuredGyroHz,
+        "accel_sample_count" to accelSampleCount.toLong(),
+        "gyro_sample_count" to gyroSampleCount.toLong(),
     )
 }
 
@@ -183,6 +194,12 @@ class TripStore(private val root: File) {
                 stateCount = longField(obj["state_count"])?.toInt() ?: 0,
                 drCount = longField(obj["dr_count"])?.toInt() ?: 0,
                 holds = holds,
+                requestedSensorDelay = obj["requested_sensor_delay"] as? String
+                    ?: TripRecorder.REQUESTED_SENSOR_DELAY,
+                measuredAccelHz = doubleField(obj["measured_accel_hz"]),
+                measuredGyroHz = doubleField(obj["measured_gyro_hz"]),
+                accelSampleCount = longField(obj["accel_sample_count"])?.toInt() ?: 0,
+                gyroSampleCount = longField(obj["gyro_sample_count"])?.toInt() ?: 0,
             )
         }
 

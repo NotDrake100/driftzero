@@ -185,6 +185,8 @@ object ContractMaps {
         fix.speedMps?.let { put("speed_mps", it.value) }
         fix.bearingRad?.let { put("bearing_rad", it.value) }
         fix.isMock?.let { put("is_mock", it) }
+        fix.speedAccuracyMps?.let { put("speed_accuracy_mps", it.value) }
+        fix.bearingAccuracyRad?.let { put("bearing_accuracy_rad", it) }
     }
 
     private fun statusMap(status: GnssStatusPayload): Map<String, Any?> = linkedMapOf(
@@ -209,7 +211,13 @@ object ContractMaps {
     }
 
     private fun parsePayload(kind: SensorKind, obj: Map<String, Any?>): SensorPayload = when (kind) {
-        SensorKind.ACCELEROMETER, SensorKind.GYROSCOPE, SensorKind.MAGNETOMETER ->
+        SensorKind.ACCELEROMETER,
+        SensorKind.GYROSCOPE,
+        SensorKind.MAGNETOMETER,
+        SensorKind.GRAVITY,
+        SensorKind.LINEAR_ACCELERATION,
+        SensorKind.GYROSCOPE_UNCALIBRATED,
+        ->
             VectorPayload(parseVector(obj))
         SensorKind.GNSS_FIX -> FixPayload(parseFix(obj))
         SensorKind.GNSS_STATUS -> StatusPayload(parseStatus(obj))
@@ -245,6 +253,12 @@ object ContractMaps {
             speedMps = obj["speed_mps"]?.let { MetresPerSecond(ContractJson.asDouble(it, "speed_mps")) },
             bearingRad = obj["bearing_rad"]?.let { HeadingRadians(ContractJson.asDouble(it, "bearing_rad")) },
             isMock = obj["is_mock"]?.let { ContractJson.asBoolean(it, "is_mock") },
+            speedAccuracyMps = obj["speed_accuracy_mps"]?.let {
+                MetresPerSecond(ContractJson.asDouble(it, "speed_accuracy_mps"))
+            },
+            bearingAccuracyRad = obj["bearing_accuracy_rad"]?.let {
+                ContractJson.asDouble(it, "bearing_accuracy_rad")
+            },
         )
     }
 

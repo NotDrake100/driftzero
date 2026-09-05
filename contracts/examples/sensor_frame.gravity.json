@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0.0",
+  "source_id": "phone-imu",
+  "sequence": 1,
+  "timestamp_ns": 2000000,
+  "clock_domain": "android_elapsed_realtime",
+  "kind": "gravity",
+  "quality": {
+    "available": true,
+    "accuracy_code": 2,
+    "flags": []
+  },
+  "payload": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 9.81,
+    "unit": "m/s^2",
+    "frame": "android_device"
+  }
+}

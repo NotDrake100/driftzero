@@ -786,8 +786,13 @@ class MountSession {
     private var lastGyroPhoneRadps: Vec3? = null
     private var lpAccelPhoneMps2: Vec3? = null
     private var quality: MountQuality = MountQuality.PENDING
+    private var placement: PhonePlacement = PhonePlacement.UNKNOWN
+    private var vibEnergy: Double = 0.0
+    private var lastGravityPhone: Vec3? = null
 
     fun quality(): MountQuality = synchronized(lock) { quality }
+
+    fun placement(): PhonePlacement = synchronized(lock) { placement }
 
     /** Contract JSON (`mount_profile_1.0.0`), or null when [MountQuality.PENDING]. */
     fun profileJson(): String? = synchronized(lock) { profile?.toJson() }
@@ -833,6 +838,9 @@ class MountSession {
             val accelPhone = Vec3(accelXMps2, accelYMps2, accelZMps2)
             val before = quality
             var remount = false
+            val lp = lowPass(accelPhone)
+            updateVibration(accelPhone, lp)
+            lastGravityPhone = if (phoneStill) accelPhone else lastGravityPhone ?: stillOk?.gravityPhone
             if (stillOk == null) {
                 advanceStill(timestampNs, accelPhone)
             } else if (quality == MountQuality.STATIONARY_ONLY) {
@@ -840,13 +848,17 @@ class MountSession {
             }
             val watching = profile
             if (watching != null && !phoneStill) {
-                when (val update = monitor.update(timestampNs, lowPass(accelPhone))) {
+                when (val update = monitor.update(timestampNs, lp)) {
                     is MisalignmentUpdate.Remount -> {
                         enterPending()
                         remount = true
+                        placement = PhonePlacement.HANDHELD
                     }
                     else -> Unit
                 }
+            }
+            if (!remount) {
+                refreshPlacement(phoneStill)
             }
             emitPhone(
                 timestampNs = timestampNs,
@@ -963,6 +975,8 @@ class MountSession {
             } else {
                 null
             }
+        lastGravityPhone = next.gravityPhone
+        refreshPlacement(phoneStill = next.quality == ProfileQuality.STATIONARY_ONLY)
     }
 
     private fun enterPending() {
@@ -973,6 +987,26 @@ class MountSession {
         monitor.clear()
         lpAccelPhoneMps2 = null
         quality = MountQuality.PENDING
+        placement = PhonePlacement.UNKNOWN
+        vibEnergy = 0.0
+        lastGravityPhone = null
+    }
+
+    private fun updateVibration(sample: Vec3, lp: Vec3) {
+        val d = (sample - lp).norm()
+        vibEnergy = vibEnergy * (1.0 - VIB_ALPHA) + d * VIB_ALPHA
+    }
+
+    private fun refreshPlacement(phoneStill: Boolean) {
+        val gravity = lastGravityPhone ?: stillOk?.gravityPhone ?: profile?.gravityPhone
+        placement = MountPlacement.classify(
+            PlacementObservation(
+                gravityPhone = gravity,
+                vibrationEnergy = vibEnergy,
+                remount = false,
+                still = phoneStill || quality == MountQuality.STATIONARY_ONLY,
+            ),
+        )
     }
 
     private fun lowPass(sample: Vec3): Vec3 {
@@ -1046,6 +1080,7 @@ class MountSession {
     companion object {
         const val REMOUNT_USER_REASON: String = "Phone moved. Hold still 5 s."
         private const val LOW_PASS_ALPHA: Double = 0.1
+        private const val VIB_ALPHA: Double = 0.15
     }
 }
 

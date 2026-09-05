@@ -131,6 +131,13 @@ internal object FirstRunMount {
 
     fun abortBecauseMoving(tooFast: Boolean, running: Boolean): Boolean = tooFast && running
 
+    /**
+     * Skip the Allow step when precise location is already granted.
+     * Denied fallback (Not now) stays on the location step.
+     */
+    fun skipLocationPrompt(fineGranted: Boolean, denied: Boolean): Boolean =
+        fineGranted && !denied
+
     private fun elapsedNs(
         firstSampleNs: Long?,
         lastSampleNs: Long?,

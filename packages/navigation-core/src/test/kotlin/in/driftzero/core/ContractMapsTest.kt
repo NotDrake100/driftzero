@@ -102,6 +102,62 @@ class ContractMapsTest {
     }
 
     @Test
+    fun gravityFrameRoundTripsAndKeepsMps2() {
+        val frame = SensorFrame(
+            sourceId = "phone-imu",
+            sequence = 2L,
+            timestamp = Nanoseconds(3_000_000L),
+            clockDomain = ClockDomain.ANDROID_ELAPSED_REALTIME,
+            kind = SensorKind.GRAVITY,
+            quality = Quality(available = true, accuracyCode = 2),
+            payload = VectorPayload(
+                Vector3Payload(
+                    x = 0.0,
+                    y = 0.0,
+                    z = 9.81,
+                    unit = "m/s^2",
+                    frame = VectorFrame.ANDROID_DEVICE,
+                ),
+            ),
+        )
+        val json = ContractJson.stringify(ContractMaps.sensorFrame(frame))
+        val parsed = ContractMaps.sensorFrameFrom(ContractJson.parseObject(json))
+        assertEquals(SensorKind.GRAVITY, parsed.kind)
+        val vector = (parsed.payload as VectorPayload).vector
+        assertEquals("m/s^2", vector.unit)
+        assertEquals(9.81, vector.z, 0.0)
+    }
+
+    @Test
+    fun gnssFixRoundTripsSpeedAccuracy() {
+        val frame = SensorFrame(
+            sourceId = "phone-gnss",
+            sequence = 5L,
+            timestamp = Nanoseconds(2_000_000_000L),
+            clockDomain = ClockDomain.DATASET_DECLARED,
+            kind = SensorKind.GNSS_FIX,
+            quality = Quality(available = true, accuracyCode = 2),
+            payload = FixPayload(
+                GnssFixPayload(
+                    latitude = LatitudeDeg(12.97),
+                    longitude = LongitudeDeg(77.59),
+                    horizontalAccuracyM = Metres(3.0),
+                    providerTimeMs = 1_700_000_000_000L,
+                    speedMps = MetresPerSecond(10.0),
+                    speedAccuracyMps = MetresPerSecond(0.4),
+                    bearingAccuracyRad = 0.05,
+                ),
+            ),
+        )
+        val parsed = ContractMaps.sensorFrameFrom(
+            ContractJson.parseObject(ContractJson.stringify(ContractMaps.sensorFrame(frame))),
+        )
+        val fix = (parsed.payload as FixPayload).fix
+        assertEquals(0.4, fix.speedAccuracyMps!!.value, 0.0)
+        assertEquals(0.05, fix.bearingAccuracyRad!!, 0.0)
+    }
+
+    @Test
     fun writtenStateSchemaRoundTrip() {
         val state = sampleState()
         val json = ContractJson.stringify(ContractMaps.navigationState(state))

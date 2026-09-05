@@ -45,10 +45,15 @@ data class ReplayExecution(
  * `weak|accepted|<file>` overrides gyro quality flags. `--coast-latch-gnss-speed`
  * latches last reported GNSS speed if it is within 2 s of coast start.
  * `--gnss-reseed-after-s=T` re-seeds pose after a unique-fix gap of at least T seconds,
- * while coasting. `--gnss-reseed-while-fused` also allows that reseed during fused GNSS.
+ * while coasting. `--gnss-reseed-min-median-unique-s=M` also requires the trip's
+ * median unique spacing so far to be at least M seconds. `--gnss-reseed-while-fused`
+ * also allows that reseed during fused GNSS.
  * `--coast-honest-p` grows coast position P from held-speed uncertainty.
  * `--coast-speed-decay` decays held speed toward `coastSpeedDecayTargetMps`.
  * `--student-forward-speed` enables the gated learned forward-speed update. Default off.
+ * Default [InsConfig.coastMode] remains [CoastMode.STRAPDOWN] so v1/v2 hashes stay.
+ * Persist-like skip of a 0 m/s mask-start unique lives in [PersistCoastSeed]
+ * and is not wired into Replay after the seed_premask named-interval abort.
  * `--engine` routes consume through
  * [DeadReckoningEngine] so a later student can be injected. Default remains
  * consume-only. Same input bytes yield the same output bytes.
@@ -213,6 +218,7 @@ object Replay {
         var coastLatchGnssSpeed = false
         var gnssReseedAfterS = 0.0
         var gnssReseedWhileFused = false
+        var gnssReseedMinMedianUniqueS = 0.0
         var coastHonestP = false
         var coastSpeedDecay = false
         var studentForwardSpeed = false
@@ -240,6 +246,7 @@ object Replay {
                 "--coast-latch-gnss-speed" -> coastLatchGnssSpeed = inline?.toBoolean() ?: true
                 "--gnss-reseed-after-s" -> gnssReseedAfterS = readValue(args, index, inline).also { if (inline == null) index++ }.toDouble()
                 "--gnss-reseed-while-fused" -> gnssReseedWhileFused = inline?.toBoolean() ?: true
+                "--gnss-reseed-min-median-unique-s" -> gnssReseedMinMedianUniqueS = readValue(args, index, inline).also { if (inline == null) index++ }.toDouble()
                 "--coast-honest-p" -> coastHonestP = inline?.toBoolean() ?: true
                 "--coast-speed-decay" -> coastSpeedDecay = inline?.toBoolean() ?: true
                 "--student-forward-speed" -> studentForwardSpeed = inline?.toBoolean() ?: true
@@ -273,6 +280,7 @@ object Replay {
                 coastLatchGnssSpeed = coastLatchGnssSpeed,
                 gnssReseedAfterS = gnssReseedAfterS,
                 gnssReseedWhileFused = gnssReseedWhileFused,
+                gnssReseedMinMedianUniqueS = gnssReseedMinMedianUniqueS,
                 coastHonestP = coastHonestP,
                 coastSpeedDecay = coastSpeedDecay,
                 studentForwardSpeed = studentForwardSpeed,
@@ -421,6 +429,7 @@ private fun InsConfig.overrideField(name: String, value: Double): InsConfig {
         "coaststopstoppedmaxmps" -> copy(coastStopStoppedMaxMps = value)
         "gnssreseedafters" -> copy(gnssReseedAfterS = value)
         "gnssreseedwhilefused" -> copy(gnssReseedWhileFused = value != 0.0)
+        "gnssreseedminmedianuniques" -> copy(gnssReseedMinMedianUniqueS = value)
         "gnssreseedheadingmotionm" -> copy(gnssReseedHeadingMotionM = value)
         "gnssreseedslowmps" -> copy(gnssReseedSlowMps = value)
         "gnssreseedslowyawstdrad" -> copy(gnssReseedSlowYawStdRad = value)
@@ -434,6 +443,9 @@ private fun InsConfig.overrideField(name: String, value: Double): InsConfig {
         "coastspeeddecaytaus" -> copy(coastSpeedDecayTauS = value)
         "coastspeeddecaytargetmps" -> copy(coastSpeedDecayTargetMps = value)
         "staleafters" -> copy(staleAfterS = value)
+        "gnssquarantine" -> copy(gnssQuarantine = value != 0.0)
+        "alongtrackchi2gate" -> copy(alongTrackChi2Gate = value)
+        "alongtrackmaxabsm" -> copy(alongTrackMaxAbsM = value)
         else -> throw IllegalArgumentException("unknown InsConfig field: $name")
     }
 }

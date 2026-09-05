@@ -345,11 +345,16 @@ internal class StreetMapSession {
     private var packStore: AreaPackStore? = null
     private var lastPuck: DisplayPuck? = null
     private var lastDrawnZoom: Double = Double.NaN
+    private var lastHaloLat: Double = Double.NaN
+    private var lastHaloLon: Double = Double.NaN
+    private var lastHaloRadius: Double = Double.NaN
+    private var lastHaloHeading: Double = Double.NaN
     private var lastLampTone: LampTone? = null
     private var lastLampDashed: Boolean? = null
     private var lastBearingSent: Float = Float.NaN
     private var lastFixWritten: TravelLatLng? = null
     private var lastFixWriteNs: Long = 0L
+    private var lastPoseLogNs: Long = Long.MIN_VALUE
     private var routePoints: List<TravelLatLng> = emptyList()
     private var destination: TravelLatLng? = null
     private var matchedRoad: List<TravelLatLng>? = null
@@ -680,6 +685,7 @@ internal class StreetMapSession {
      * takes the lamp colour and dashes on coasting modes.
      */
     fun applyDisplayPose(puck: DisplayPuck, lamp: LampDisplay, frameNs: Long) {
+        logPose(puck, lamp, frameNs)
         val map = map ?: run { lastPuck = puck; return }
         val style = style ?: run { lastPuck = puck; return }
         val zoom = map.cameraPosition.zoom
@@ -694,24 +700,43 @@ internal class StreetMapSession {
             }
             return
         }
+        val previousZoom = lastDrawnZoom
         lastPuck = puck
         lastDrawnZoom = zoom
         val centre = TravelLatLng(puck.latitudeDeg, puck.longitudeDeg)
         setGeoJson(StreetMapConfig.PUCK_SOURCE_ID, pointGeoJson(centre))
-        setGeoJson(
-            StreetMapConfig.HALO_SOURCE_ID,
-            polygonGeoJson(MapGeometry.circle(puck.latitudeDeg, puck.longitudeDeg, puck.radiusM)),
+        val haloStale = MapGeometry.haloNeedsRedraw(
+            lastLatDeg = lastHaloLat,
+            lastLonDeg = lastHaloLon,
+            lastRadiusM = lastHaloRadius,
+            lastHeadingRad = lastHaloHeading,
+            lastZoom = previousZoom,
+            nextLatDeg = puck.latitudeDeg,
+            nextLonDeg = puck.longitudeDeg,
+            nextRadiusM = puck.radiusM,
+            nextHeadingRad = puck.headingRad,
+            nextZoom = zoom,
         )
-        if (MapGeometry.coneVisible(puck.speedMps, puck.heading95Rad)) {
-            val lengthM = MapGeometry.CONE_LENGTH_DP * MapGeometry.metresPerDp(puck.latitudeDeg, zoom)
+        if (haloStale) {
+            lastHaloLat = puck.latitudeDeg
+            lastHaloLon = puck.longitudeDeg
+            lastHaloRadius = puck.radiusM
+            lastHaloHeading = puck.headingRad
             setGeoJson(
-                StreetMapConfig.CONE_SOURCE_ID,
-                polygonGeoJson(
-                    MapGeometry.wedge(puck.latitudeDeg, puck.longitudeDeg, puck.headingRad, puck.heading95Rad, lengthM),
-                ),
+                StreetMapConfig.HALO_SOURCE_ID,
+                polygonGeoJson(MapGeometry.circle(puck.latitudeDeg, puck.longitudeDeg, puck.radiusM)),
             )
-        } else {
-            setGeoJson(StreetMapConfig.CONE_SOURCE_ID, EMPTY_FEATURE_COLLECTION)
+            if (MapGeometry.coneVisible(puck.speedMps, puck.heading95Rad)) {
+                val lengthM = MapGeometry.CONE_LENGTH_DP * MapGeometry.metresPerDp(puck.latitudeDeg, zoom)
+                setGeoJson(
+                    StreetMapConfig.CONE_SOURCE_ID,
+                    polygonGeoJson(
+                        MapGeometry.wedge(puck.latitudeDeg, puck.longitudeDeg, puck.headingRad, puck.heading95Rad, lengthM),
+                    ),
+                )
+            } else {
+                setGeoJson(StreetMapConfig.CONE_SOURCE_ID, EMPTY_FEATURE_COLLECTION)
+            }
         }
         val palette = palette
         if (palette != null && (lamp.tone != lastLampTone || lamp.dashed != lastLampDashed)) {
@@ -981,11 +1006,24 @@ internal class StreetMapSession {
             applyNavPadding(map)
         }
     }
+
+    private fun logPose(puck: DisplayPuck, lamp: LampDisplay, frameNs: Long) {
+        if (lastPoseLogNs != Long.MIN_VALUE && frameNs - lastPoseLogNs < 1_000_000_000L) {
+            return
+        }
+        lastPoseLogNs = frameNs
+        Log.i(
+            POSE_TAG,
+            "pose ${puck.latitudeDeg},${puck.longitudeDeg} " +
+                "r95=${puck.radiusM} speed=${puck.speedMps} lamp=${lamp.word.name}",
+        )
+    }
 }
 
 internal const val CAMERA_START_TAG = "CameraStart"
 internal const val STREET_MAP_SESSION_TAG = "StreetMapSession"
 internal const val LAST_KNOWN_TAG = "lastKnown"
+internal const val POSE_TAG = "DriftZeroPose"
 
 internal fun formatPoint(label: String, point: TravelLatLng?): String {
     return if (point == null) {

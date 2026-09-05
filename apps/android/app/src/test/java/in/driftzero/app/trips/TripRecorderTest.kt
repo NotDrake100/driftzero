@@ -92,4 +92,65 @@ class TripRecorderTest {
             root.deleteRecursively()
         }
     }
+
+    @Test
+    fun manifestRecordsMeasuredHzFromTimestampDeltas() {
+        val root = createTempDirectory("trip-rate").toFile()
+        try {
+            val pending = ArrayList<Runnable>()
+            val recorder = TripRecorder(
+                dir = File(root, "trip-rate"),
+                id = "trip-rate",
+                startWallMs = 0L,
+                schedule = { pending += it },
+            )
+            recorder.start()
+            pending.clear()
+            var t = 0L
+            repeat(11) {
+                recorder.offerAccel(Nanoseconds(t), 0.0, 0.0, 9.8)
+                recorder.offerGyro(Nanoseconds(t), 0.0, 0.0, 0.0)
+                t += 10_000_000L
+            }
+            pending.forEach { it.run() }
+            val summary = recorder.stop()
+            assertEquals(TripRecorder.REQUESTED_SENSOR_DELAY, summary.requestedSensorDelay)
+            assertEquals(100.0, summary.measuredAccelHz!!, 1e-6)
+            assertEquals(100.0, summary.measuredGyroHz!!, 1e-6)
+            assertEquals(11, summary.accelSampleCount)
+            val header = File(recorder.dir, TripRecorder.SENSORS).readLines().first()
+            assertTrue(header.contains("SENSOR_DELAY_FASTEST"))
+            assertTrue(header.contains("declared_rate_hz"))
+            val manifest = File(recorder.dir, TripRecorder.MANIFEST).readText()
+            assertTrue(manifest.contains("measured_accel_hz"))
+            assertTrue(manifest.contains("hold_intervals") || manifest.contains("gnss_held") || manifest.contains("measured_accel_hz"))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun gravityFrameIsLoggedAndReplayable() {
+        val root = createTempDirectory("trip-gravity").toFile()
+        try {
+            val pending = ArrayList<Runnable>()
+            val recorder = TripRecorder(
+                dir = File(root, "trip-g"),
+                id = "trip-g",
+                startWallMs = 0L,
+                schedule = { pending += it },
+            )
+            recorder.start()
+            pending.clear()
+            recorder.offerSensor(TripFrames.gravity(0L, Nanoseconds(0L), 0.0, 0.0, 9.81))
+            recorder.offerGyro(Nanoseconds(10_000_000L), 0.0, 0.0, 0.0)
+            pending.forEach { it.run() }
+            val loaded = ReplayJsonl.load(File(recorder.dir, TripRecorder.SENSORS).toPath())
+            assertTrue(loaded is ReplayLoadResult.Ready)
+            val ready = loaded as ReplayLoadResult.Ready
+            assertTrue(ready.source.frames.any { it.kind == SensorKind.GRAVITY })
+        } finally {
+            root.deleteRecursively()
+        }
+    }
 }

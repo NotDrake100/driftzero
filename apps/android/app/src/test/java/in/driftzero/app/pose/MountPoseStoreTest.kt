@@ -2,6 +2,7 @@ package `in`.driftzero.app.pose
 
 import `in`.driftzero.core.CoastFix
 import `in`.driftzero.core.DeadReckoningFilter
+import `in`.driftzero.core.InsConfig
 import `in`.driftzero.core.MountQuality
 import `in`.driftzero.core.MountSession
 import `in`.driftzero.core.Nanoseconds
@@ -48,6 +49,37 @@ class MountPoseStoreTest {
         assertEquals(MountQuality.PENDING, store.mountQuality.value)
         assertEquals(VectorFrame.ANDROID_DEVICE, store.lastAccelEmit.value!!.frame)
         assertEquals(VectorFrame.ANDROID_DEVICE, store.lastGyroEmit.value!!.frame)
+    }
+
+    @Test
+    fun pendingAndroidDeviceDoesNotSetNhcFlag() {
+        var now = 0L
+        val filter = DeadReckoningFilter(
+            InsConfig(nhcMinSpeedMps = 0.5, nhcVelStdMps = 0.05, nhcDropLateralMps2 = 2.0),
+        )
+        val store = PoseStore(filter = filter, clockNs = { now })
+        store.ingestGnss(
+            CoastFix(
+                timestamp = Nanoseconds(0L),
+                latitudeDeg = 0.0,
+                longitudeDeg = 0.0,
+                speedMps = 8.0,
+                headingRad = kotlin.math.PI / 2.0,
+                horizontalAccuracyM = 5.0,
+            ),
+        )
+        now = DT_NS
+        store.ingestGyro(Nanoseconds(now), 0.0, 0.0, 0.0)
+        store.ingestAccel(Nanoseconds(now), 0.0, 0.0, G)
+        now += DT_NS
+        store.ingestGyro(Nanoseconds(now), 0.0, 0.0, 0.0)
+        store.ingestAccel(Nanoseconds(now), 0.0, 0.0, G)
+        store.tick()
+        assertEquals(MountQuality.PENDING, store.mountQuality.value)
+        assertEquals(VectorFrame.ANDROID_DEVICE, store.lastAccelEmit.value!!.frame)
+        val pose = store.state.value
+        assertNotNull(pose)
+        assertFalse(pose!!.health.flags.contains(DeadReckoningFilter.FLAG_NHC))
     }
 
     @Test

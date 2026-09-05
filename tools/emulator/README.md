@@ -43,3 +43,26 @@ tools/emulator/tunnel_demo.sh START_LAT START_LON BEARING_DEG [SERIAL] [SPEED_MP
 ```
 
 SERIAL defaults to `emulator-5554`. SPEED_MPS defaults to 10.
+
+## `score_blackout.py`
+
+Scores an emitted-fix GPX (gaps omitted, timestamps jump) against a fused/DR pose. `path_m` is the chord across the first jump. `ratio = error_m / path_m`. Official gate is `ratio < 0.10`. Every number is an emulator fixture, not IO-VNBD and not SIH screening.
+
+```bash
+python3 tools/emulator/score_blackout.py \
+  --gpx results/emulator/blackout_10pct/emitted.gpx \
+  --pose-log results/emulator/blackout_10pct/logcat.txt \
+  --out results/emulator/blackout_10pct/score.json
+```
+
+The JVM twin is `EmulatorRouteFixture` in `navigation-core` tests. Same polyline, leak-free mask, labeled gravity IMU. Not SwiftShader.
+
+## `grant_runtime.sh`
+
+Waits for a booted emulator, turns location on, grants `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION`, sets fine/coarse/gps/monitor_location appops, writes `first_run_done=true` in `driftzero_settings` (debug `run-as`), then restarts `MainActivity`. Agents should run this instead of tapping Allow or first-run.
+
+```bash
+tools/emulator/grant_runtime.sh [SERIAL]
+```
+
+SERIAL defaults to `emulator-5554`. Exits non-zero if `in.driftzero.app` is not installed. Safe to run again. Same command: `make emulator-grant`.

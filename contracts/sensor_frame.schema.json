@@ -16,7 +16,17 @@
     },
     "kind": {
       "type": "string",
-      "enum": ["accelerometer", "gyroscope", "magnetometer", "gnss_fix", "gnss_status", "raw_gnss"]
+      "enum": [
+        "accelerometer",
+        "gyroscope",
+        "magnetometer",
+        "gravity",
+        "linear_acceleration",
+        "gyroscope_uncalibrated",
+        "gnss_fix",
+        "gnss_status",
+        "raw_gnss"
+      ]
     },
     "quality": {
       "type": "object",

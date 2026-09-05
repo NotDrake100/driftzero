@@ -78,11 +78,11 @@ Map matching is correlated with the navigation estimate and can create feedback 
 
 - never replace filter position with a snapped coordinate;
 - `RoadHeadingAid.decide` may return a heading plus an optional along-track speed hint, gated as below. The matcher remains display-only for lat/lon;
-- inflate map covariance when candidate entropy is high (planned);
-- disable feedback at junctions, parallel roads, or when unmatched;
-- log whether an update came from road geometry.
+- inflate heading and horizontal P through `noteMapUnconstrained` when a loaded graph is unmatched, ambiguous, near a junction, or missing an edge bearing;
+- disable heading and Road DNA heal at junctions, parallel roads, or when unmatched;
+- log `road_heading`, `along_track`, and `map_unconstrained` on filter health flags.
 
-When status is `MATCHED`, posterior is at least `matchedMinPosterior`, the second-best ratio is below `ambiguousSecondRatio`, the hypothesis is not within `junctionRadiusM` (default 25 m) of a node with undirected degree >= 3, and speed is at least 1 m/s, the aid returns edge bearing (ENU rad) and a heading std that shrinks with posterior and floors at 3 deg. The filter owner applies that as `applyRoadHeading(prior)`, a 1-dof Joseph update with a chi-square gate. Lat and lon from the matcher never enter the filter. `displayPose` is overlay only. On `AMBIGUOUS`, `UNMATCHED`, `NO_MAP`, or near a junction, the aid returns null and the filter receives no map information.
+When status is `MATCHED`, posterior is at least `matchedMinPosterior`, the second-best ratio is below `ambiguousSecondRatio`, the hypothesis is not within `junctionRadiusM` (default 25 m) of a node with undirected degree >= 3, and speed is at least 1 m/s, the aid returns edge bearing (ENU rad) and a heading std that shrinks with posterior and floors at 3 deg. The filter owner applies that as `applyRoadHeading(prior)`, a 1-dof Joseph update with a chi-square gate. A unique Road DNA match may also call `applyAlongTrack`. Lat and lon from the matcher never enter the filter. `displayPose` is overlay only. On `AMBIGUOUS`, `UNMATCHED`, or near a junction, the aid returns null, no heal runs, and `noteMapUnconstrained` grows heading and horizontal P. `NO_MAP` leaves the filter unconstrained without that extra inflate.
 
 Evaluate filter-only, visual snap-only, and soft-feedback variants separately when feedback exists.
 
@@ -114,4 +114,8 @@ Use a compact custom matcher on Android for bounded offline operation after a Re
 - Store visual and graph packages under versioned area IDs.
 - Permit sideload for secure/offline government deployment.
 - Never include an entire India PBF or full-country vector archive in the APK.
+
+## 9. Research blackout particle coast
+
+ADR 010. While GNSS is held, a Python particle coast may estimate \((e, s, v)\) on the graph and emit lat/lon from weighted particles. That is not the live ESKF. It is not a lateral snap. Official Replay still attaches no graph. The fixture in `ml/src/driftzero_ml/road_particle.py` is labeled fixture, not SIH and not IO-VNBD. Do not write it into `results/pune_v1/`. Valhalla stays out of the APK.
 

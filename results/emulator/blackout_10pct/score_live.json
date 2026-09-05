@@ -1,0 +1,28 @@
+{
+  "coast": {
+    "lat": 18.520398333333333,
+    "lon": 73.85670000000005,
+    "source": "cli"
+  },
+  "error_m": 3110.2982262157925,
+  "gap_s": 10.0,
+  "gap_start_gpx_index": 11,
+  "gate": 0.1,
+  "label": "emulator fixture",
+  "last_pre_gap": {
+    "lat": 18.51138401,
+    "lon": 73.88472887
+  },
+  "met_0_10": false,
+  "not": [
+    "SIH screening",
+    "IO-VNBD",
+    "phone accuracy"
+  ],
+  "path_m": 49.79169061577093,
+  "ratio": 62.466210481124776,
+  "resume": {
+    "lat": 18.51182914,
+    "lon": 73.88478024
+  }
+}

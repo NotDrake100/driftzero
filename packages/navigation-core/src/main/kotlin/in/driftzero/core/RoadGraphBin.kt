@@ -12,13 +12,21 @@ object RoadGraphBin {
     fun write(graph: RoadGraph, namesByOsmWay: Map<Long, String> = emptyMap()): ByteArray =
         OsmPbfWriter.fromGraph(graph, namesByOsmWay)
 
-    fun load(path: Path, packageId: String = path.fileName.toString()): Pair<RoadGraph, Map<Long, String>> {
+    fun load(
+        path: Path,
+        packageId: String = path.fileName.toString(),
+        bbox: Wgs84Bbox? = null,
+    ): Pair<RoadGraph, Map<Long, String>> {
         val bytes = Files.readAllBytes(path)
-        return load(bytes, packageId)
+        return load(bytes, packageId, bbox)
     }
 
-    fun load(bytes: ByteArray, packageId: String): Pair<RoadGraph, Map<Long, String>> {
-        val graph = OsmGraphLoader.load(bytes, packageId, OsmFormat.PBF)
+    fun load(
+        bytes: ByteArray,
+        packageId: String,
+        bbox: Wgs84Bbox? = null,
+    ): Pair<RoadGraph, Map<Long, String>> {
+        val graph = OsmGraphLoader.load(bytes, packageId, OsmFormat.PBF, bbox)
         val names = OsmPbfWriter.readWayNames(bytes)
         return graph to names
     }

@@ -238,12 +238,18 @@ def run(
     logs_subdir: str,
     windows_from: Path,
     frames_subdir: str = "frames_premask",
+    frames_dir: Path | None = None,
+    truth_dir: Path | None = None,
     rerun: bool = True,
 ) -> dict:
     repo = repo.resolve()
     out_dir = out_dir if out_dir.is_absolute() else repo / out_dir
-    frames_dir = out_dir / frames_subdir
-    truth_dir = out_dir / "truth"
+    frames_dir = frames_dir if frames_dir is None or frames_dir.is_absolute() else repo / frames_dir
+    if frames_dir is None:
+        frames_dir = out_dir / frames_subdir
+    truth_dir = truth_dir if truth_dir is None or truth_dir.is_absolute() else repo / truth_dir
+    if truth_dir is None:
+        truth_dir = out_dir / "truth"
     states_dir = out_dir / states_subdir
     logs_dir = out_dir / logs_subdir
     states_dir.mkdir(parents=True, exist_ok=True)
@@ -469,7 +475,7 @@ def write_readme(repo: Path, out_dir: Path, v5_systems: list[str], winner: str, 
         "",
         f"Official v5 winner: `{winner}`. {note}",
         "",
-        "Stop detector v2 is calibrated on the pre-mask prefix only. It stays off by default. The live phone IMU is 100 Hz. IO-VNBD screening is 10 Hz. Pune drives decide whether to arm it.",
+        "Stop detector v2 is calibrated on the pre-mask prefix only. It stays off by default. Phone IMU is requested at SENSOR_DELAY_GAME. Do not cite 100 Hz without a measured log. IO-VNBD screening is 10 Hz.",
         "",
         "| system | frames | n | drift p50 | endpoint p50 m | 1 Hz drift / m | sparse drift / m | S-Vta2:d50 m | S-S1:mid m |",
         "|---|---|---:|---:|---:|---:|---:|---:|---:|",

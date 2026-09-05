@@ -48,6 +48,75 @@ internal object RoadFixtures {
         return graphOf(packageId, edges)
     }
 
+    /**
+     * Northbound [northM] then a 90 degree turn east for [eastM].
+     * The corner is at [northM] along-track.
+     */
+    fun rightAngleRoad(
+        originLat: Double = ORIGIN_LAT,
+        originLon: Double = ORIGIN_LON,
+        northM: Double = 1270.0,
+        eastM: Double = 200.0,
+        packageId: String = "fixture-right-angle",
+    ): RoadGraph {
+        val origin = Wgs84.offsetMetres(originLat, originLon, 0.0, 0.0)
+        val corner = Wgs84.offsetMetres(originLat, originLon, northM, 0.0)
+        val end = Wgs84.offsetMetres(originLat, originLon, northM, eastM)
+        val points = listOf(
+            GeoPoint(LatitudeDeg(origin.first), LongitudeDeg(origin.second)),
+            GeoPoint(LatitudeDeg(corner.first), LongitudeDeg(corner.second)),
+            GeoPoint(LatitudeDeg(end.first), LongitudeDeg(end.second)),
+        )
+        val (length, headings) = polylineLengthAndHeadings(points)
+        val fwd = GraphEdge(
+            id = "elbow",
+            fromNodeId = 1L,
+            toNodeId = 2L,
+            points = points,
+            lengthM = length,
+            segmentHeadingsRad = headings,
+            highway = "residential",
+            oneway = true,
+        )
+        return graphOf(packageId, listOf(fwd))
+    }
+
+    fun roadThenTunnel(
+        originLat: Double = ORIGIN_LAT,
+        originLon: Double = ORIGIN_LON,
+        approachM: Double = 200.0,
+        tunnelM: Double = 120.0,
+        packageId: String = "fixture-road-tunnel",
+    ): RoadGraph {
+        val approach = edge(
+            id = "approach",
+            fromId = 1L,
+            toId = 2L,
+            originLat = originLat,
+            originLon = originLon,
+            startEast = 0.0,
+            startNorth = 0.0,
+            endEast = 0.0,
+            endNorth = approachM,
+            oneway = true,
+        )
+        val tunnel = edge(
+            id = "bore",
+            fromId = 2L,
+            toId = 3L,
+            originLat = originLat,
+            originLon = originLon,
+            startEast = 0.0,
+            startNorth = approachM,
+            endEast = 0.0,
+            endNorth = approachM + tunnelM,
+            tunnel = true,
+            layer = -1,
+            oneway = true,
+        )
+        return graphOf(packageId, listOf(approach, tunnel))
+    }
+
     fun singleRoad(
         originLat: Double = ORIGIN_LAT,
         originLon: Double = ORIGIN_LON,

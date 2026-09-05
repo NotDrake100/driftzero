@@ -9,20 +9,22 @@ import android.location.LocationManager
 import android.location.LocationRequest
 import android.os.Build
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
-import androidx.core.content.ContextCompat
 import `in`.driftzero.core.CoastFix
 import `in`.driftzero.core.Nanoseconds
 import `in`.driftzero.core.TWO_PI
 import kotlin.math.PI
 
 /**
- * LocationManager adapter. Copies a fix into [PoseStore] only. Stops when
- * Simulate GPS off is armed so the filter can propagate without new GNSS.
- * [GnssStatus] rows are copied into [NavicMonitor]. IRNSS membership is
- * logged. Counts do not enter the filter and are not integrity.
+ * LocationManager adapter. Copies a fix into [PoseStore] only. Stays
+ * running during Hold GNSS so the trip log can store 1 Hz score-only
+ * truth. [PoseStore] does not feed those fixes to the filter.
+ * [GnssStatus] rows are copied into [NavicMonitor] only when GNSS is not
+ * held. IRNSS membership is logged. Counts do not enter the filter and
+ * are not integrity.
  */
 class GnssLocationSource(
     context: Context,
@@ -35,10 +37,13 @@ class GnssLocationSource(
     private var lastPolledElapsedNs: Long? = null
     private var lastPolledLat: Double? = null
     private var lastPolledLon: Double? = null
-    private val mainHandler = Handler(Looper.getMainLooper())
+    private var lastLiveWallNs: Long? = null
+    private var lastGnssLogNs: Long = Long.MIN_VALUE
+    private var locThread: HandlerThread? = null
+    private var locHandler: Handler? = null
     private val statusCallback = object : GnssStatus.Callback() {
         override fun onSatelliteStatusChanged(status: GnssStatus) {
-            if (!running) {
+            if (!running || store.simulateGpsOff.value) {
                 return
             }
             val rows = ArrayList<GnssSatRow>(status.satelliteCount)
@@ -48,6 +53,9 @@ class GnssLocationSource(
                     GnssSatRow(
                         constellation = NavicMonitor.constellationName(status.getConstellationType(i)),
                         usedInFix = status.usedInFix(i),
+                        cn0DbHz = status.getCn0DbHz(i).toDouble().let { cn0 ->
+                            if (cn0 > 0.0 && cn0.isFinite()) cn0 else null
+                        },
                     ),
                 )
                 i += 1
@@ -64,14 +72,15 @@ class GnssLocationSource(
         if (running) {
             return true
         }
+        val thread = HandlerThread("dz-gnss")
+        thread.start()
+        locThread = thread
+        locHandler = Handler(thread.looper)
         if (!hasLocationPermission(appContext)) {
+            quitLocThread()
             return false
         }
         running = true
-        if (!seeded) {
-            seedLastKnown()
-            seeded = true
-        }
         val available = try {
             manager.allProviders
         } catch (_: Exception) {
@@ -95,6 +104,13 @@ class GnssLocationSource(
         } catch (_: SecurityException) {
             // Fixes still flow. Constellation rows are optional.
         }
+        locHandler?.post {
+            if (!running || seeded) {
+                return@post
+            }
+            seedLastKnown()
+            seeded = true
+        }
         return true
     }
 
@@ -107,6 +123,7 @@ class GnssLocationSource(
         lastPolledElapsedNs = null
         lastPolledLat = null
         lastPolledLon = null
+        lastLiveWallNs = null
         try {
             manager.removeUpdates(this)
         } catch (_: Exception) {
@@ -116,6 +133,13 @@ class GnssLocationSource(
         } catch (_: Exception) {
         }
         store.navic.clear()
+        quitLocThread()
+    }
+
+    private fun quitLocThread() {
+        locHandler = null
+        locThread?.quitSafely()
+        locThread = null
     }
 
     companion object {
@@ -124,8 +148,9 @@ class GnssLocationSource(
 
     @SuppressLint("MissingPermission")
     private fun registerStatus() {
+        val handler = locHandler ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            manager.registerGnssStatusCallback(statusCallback, mainHandler)
+            manager.registerGnssStatusCallback(statusCallback, handler)
         } else {
             @Suppress("DEPRECATION")
             manager.registerGnssStatusCallback(statusCallback)
@@ -159,7 +184,7 @@ class GnssLocationSource(
             return
         }
         rememberPolled(loc)
-        Log.i(LOG_TAG, "gnss ${loc.latitude},${loc.longitude}")
+        logGnss(loc)
         store.ingestGnss(loc.toCoastFix())
     }
 
@@ -167,9 +192,23 @@ class GnssLocationSource(
         if (!running) {
             return
         }
+        val now = SystemClock.elapsedRealtimeNanos()
+        if (!shouldIngestLive(lastLiveWallNs, now, lastPolledLat, lastPolledLon, location.latitude, location.longitude)) {
+            return
+        }
+        lastLiveWallNs = now
         rememberPolled(location)
-        Log.i(LOG_TAG, "gnss ${location.latitude},${location.longitude}")
+        logGnss(location)
         store.ingestGnss(location.toCoastFix())
+    }
+
+    private fun logGnss(location: Location) {
+        val now = SystemClock.elapsedRealtimeNanos()
+        if (lastGnssLogNs != Long.MIN_VALUE && now - lastGnssLogNs < 1_000_000_000L) {
+            return
+        }
+        lastGnssLogNs = now
+        Log.i(LOG_TAG, "gnss ${location.latitude},${location.longitude}")
     }
 
     private fun rememberPolled(location: Location) {
@@ -187,7 +226,7 @@ class GnssLocationSource(
             manager.getCurrentLocation(
                 provider,
                 null,
-                ContextCompat.getMainExecutor(appContext),
+                { r -> (locHandler ?: Handler(Looper.getMainLooper())).post(r) },
             ) { loc ->
                 if (loc != null) {
                     ingestLive(loc)
@@ -213,10 +252,11 @@ class GnssLocationSource(
                     .setMinUpdateDistanceMeters(0f)
                     .setQuality(quality)
                     .build()
+                val looper = locHandler?.looper ?: Looper.getMainLooper()
                 manager.requestLocationUpdates(
                     provider,
                     request,
-                    ContextCompat.getMainExecutor(appContext),
+                    { r -> Handler(looper).post(r) },
                     this,
                 )
             } else {
@@ -225,7 +265,7 @@ class GnssLocationSource(
                     1_000L,
                     0f,
                     this,
-                    Looper.getMainLooper(),
+                    locHandler?.looper ?: Looper.getMainLooper(),
                 )
             }
             true
@@ -240,9 +280,12 @@ class GnssLocationSource(
 
     @SuppressLint("MissingPermission")
     private fun seedLastKnown() {
+        if (!running) {
+            return
+        }
         newestLastKnownLocation(appContext)?.let { loc ->
             rememberPolled(loc)
-            Log.i(LOG_TAG, "gnss ${loc.latitude},${loc.longitude}")
+            logGnss(loc)
             store.ingestGnss(loc.toCoastFix())
         }
     }
@@ -260,6 +303,16 @@ internal fun Location.toCoastFix(): CoastFix {
         null
     }
     val accuracy = if (hasAccuracy()) accuracy.toDouble().coerceAtLeast(0.0) else 25.0
+    val speedAcc = if (Build.VERSION.SDK_INT >= 26 && hasSpeedAccuracy()) {
+        optionalNonNegAccuracy(speedAccuracyMetersPerSecond.toDouble())
+    } else {
+        null
+    }
+    val bearingAcc = if (Build.VERSION.SDK_INT >= 26 && hasBearingAccuracy()) {
+        bearingAccuracyDegToRad(bearingAccuracyDegrees.toDouble())
+    } else {
+        null
+    }
     return CoastFix(
         timestamp = Nanoseconds(elapsed),
         latitudeDeg = latitude,
@@ -268,5 +321,15 @@ internal fun Location.toCoastFix(): CoastFix {
         headingRad = heading,
         horizontalAccuracyM = accuracy,
         altitudeM = if (hasAltitude()) altitude else null,
+        speedAccuracyMps = speedAcc,
+        bearingAccuracyRad = bearingAcc,
     )
+}
+
+internal fun optionalNonNegAccuracy(value: Double): Double? =
+    value.takeIf { it.isFinite() && it >= 0.0 }
+
+internal fun bearingAccuracyDegToRad(degrees: Double): Double? {
+    val deg = optionalNonNegAccuracy(degrees) ?: return null
+    return deg * PI / 180.0
 }

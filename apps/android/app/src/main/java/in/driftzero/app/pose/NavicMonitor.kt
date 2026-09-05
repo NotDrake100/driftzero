@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 data class GnssSatRow(
     val constellation: String,
     val usedInFix: Boolean,
+    val cn0DbHz: Double? = null,
 )
 
 /**
@@ -25,6 +26,7 @@ data class NavicSnapshot(
     val visible: Int,
     val used: Int,
     val constellations: Set<String>,
+    val meanUsedCn0DbHz: Double? = null,
 ) {
     val irnssReported: Boolean get() = navicVisible > 0
 
@@ -41,6 +43,7 @@ data class NavicSnapshot(
             visible = 0,
             used = 0,
             constellations = emptySet(),
+            meanUsedCn0DbHz = null,
         )
     }
 }
@@ -105,6 +108,8 @@ class NavicMonitor {
             var navicUsed = 0
             var navicVisible = 0
             var used = 0
+            var cn0Sum = 0.0
+            var cn0N = 0
             val names = LinkedHashSet<String>()
             for (sat in sats) {
                 val name = sat.constellation
@@ -116,6 +121,11 @@ class NavicMonitor {
                     continue
                 }
                 used += 1
+                val cn0 = sat.cn0DbHz
+                if (cn0 != null && cn0.isFinite()) {
+                    cn0Sum += cn0
+                    cn0N += 1
+                }
                 when (name) {
                     GPS -> gpsUsed += 1
                     GALILEO -> galileoUsed += 1
@@ -130,6 +140,7 @@ class NavicMonitor {
                 visible = sats.size,
                 used = used,
                 constellations = names,
+                meanUsedCn0DbHz = if (cn0N == 0) null else cn0Sum / cn0N.toDouble(),
             )
         }
 

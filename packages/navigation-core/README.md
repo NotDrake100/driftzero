@@ -8,7 +8,7 @@ It implements a strapdown INS in the local-tangent n-frame (ENU) and a 15-state 
 
 `SensorSource` produces ordered measurements conforming semantically to `contracts/sensor_frame.schema.json`. Concrete adapters:
 
-- Android phone sensors and GNSS;
+- Android phone sensors and GNSS. Accel and gyro enter the ESKF. Magnetometer, gravity, linear acceleration, and uncalibrated gyro are logged when present and ignored by the filter (ADR 010).
 - deterministic session replay;
 - IO-VNBD importer/replay;
 - file replay of a declared-rate IMU stream. The adapter accepts 10 Hz, 100 Hz, or 200 Hz. Only synthetic 200 Hz tests exist. No live FOG or external IMU run is in `results/`.
@@ -60,7 +60,7 @@ interface NavigationEngine {
 }
 ```
 
-`DeadReckoningFilter` is the live estimator. `DeadReckoningEngine` implements `NavigationEngine` on top of it. `MotionPseudoRuntime` calls `infer` on the 10 Hz emit path and `ingestMotionPseudo` applies ZUPT or a gated forward-speed update. `ingestDisplacementPseudo` applies a gated HACF Δp update when a `DisplacementModel` is present. The Δp χ² gate is 11.345. Do not treat `linear_dp.json` as beating freeze. `HmmRoadMatcher` is Newson-Krumm Viterbi on a directed OSM graph. It writes `mapMatch` and a display pose only. It does not replace the ESKF lat/lon. `OsmGraphLoader` reads OSM XML or PBF for any WGS84 bbox. Do not put TimesFM in this package.
+`DeadReckoningFilter` is the live estimator. `DeadReckoningEngine` implements `NavigationEngine` on top of it. `MotionPseudoRuntime` calls `infer` on the 10 Hz emit path and `ingestMotionPseudo` applies ZUPT or a gated forward-speed update. `ingestDisplacementPseudo` applies a gated HACF Δp update when a `DisplacementModel` is present. The Δp χ² gate is 11.345. Do not treat `linear_dp.json` as beating freeze. `HmmRoadMatcher` is Newson-Krumm Viterbi on a directed OSM graph. It writes `mapMatch` and a display pose only. It does not replace the ESKF lat/lon. When a graph is attached, `MapCoastSession` may apply a MATCHED heading prior and an along-track Road DNA heal while coasting. Unmatched coasts call `noteMapUnconstrained`. Official Replay builds the engine without a graph. `OsmGraphLoader` reads OSM XML or PBF for any WGS84 bbox. Do not put TimesFM in this package.
 
 Use strongly typed wrappers for nanoseconds, metres, radians, metres/second, geographic coordinates, and frames. Avoid bare `Double` across package boundaries where units can be confused.
 

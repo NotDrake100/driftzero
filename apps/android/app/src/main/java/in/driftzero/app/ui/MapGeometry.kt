@@ -18,9 +18,14 @@ object MapGeometry {
     const val CONE_MAX_HALF_ANGLE_RAD = 60.0 * PI / 180.0
     const val CONE_HIDE_SPEED_MPS = 0.5
     const val HEADING_UP_SPEED_MPS = 2.0
+    const val HALO_REDRAW_MOVE_M = 2.0
+    const val HALO_REDRAW_RADIUS_M = 1.5
+    const val HALO_REDRAW_HEADING_RAD = 3.0 * PI / 180.0
+    const val HALO_REDRAW_ZOOM = 0.05
 
     /** Earth circumference over the 512 px tile MapLibre uses at zoom 0. */
     private const val EQUATOR_M_PER_DP_Z0 = 40075016.686 / 512.0
+    private const val TWO_PI = 2.0 * PI
 
     /**
      * Ground metres per density-independent pixel at [zoom]. MapLibre zoom is
@@ -67,6 +72,54 @@ object MapGeometry {
 
     fun coneVisible(speedMps: Double, heading95Rad: Double): Boolean =
         !(speedMps < CONE_HIDE_SPEED_MPS && heading95Rad > CONE_MAX_HALF_ANGLE_RAD)
+
+    /**
+     * Skip rebuilding the 48-vertex halo / cone GeoJSON when the puck has
+     * not moved enough to change the drawn disc.
+     */
+    fun haloNeedsRedraw(
+        lastLatDeg: Double,
+        lastLonDeg: Double,
+        lastRadiusM: Double,
+        lastHeadingRad: Double,
+        lastZoom: Double,
+        nextLatDeg: Double,
+        nextLonDeg: Double,
+        nextRadiusM: Double,
+        nextHeadingRad: Double,
+        nextZoom: Double,
+    ): Boolean {
+        if (
+            !lastLatDeg.isFinite() ||
+            !lastLonDeg.isFinite() ||
+            !lastRadiusM.isFinite() ||
+            !lastHeadingRad.isFinite() ||
+            !lastZoom.isFinite()
+        ) {
+            return true
+        }
+        if (kotlin.math.abs(nextZoom - lastZoom) > HALO_REDRAW_ZOOM) {
+            return true
+        }
+        if (kotlin.math.abs(nextRadiusM - lastRadiusM) > HALO_REDRAW_RADIUS_M) {
+            return true
+        }
+        if (headingDeltaAbsRad(lastHeadingRad, nextHeadingRad) > HALO_REDRAW_HEADING_RAD) {
+            return true
+        }
+        return Wgs84.distanceMetres(lastLatDeg, lastLonDeg, nextLatDeg, nextLonDeg) > HALO_REDRAW_MOVE_M
+    }
+
+    fun headingDeltaAbsRad(fromRad: Double, toRad: Double): Double {
+        var d = (toRad - fromRad) % TWO_PI
+        if (d > PI) {
+            d -= TWO_PI
+        }
+        if (d < -PI) {
+            d += TWO_PI
+        }
+        return kotlin.math.abs(d)
+    }
 
     /** Follow-camera zoom by speed. Only changes when the band changes so it never hunts. */
     fun zoomForSpeed(speedMps: Double, current: Double?): Double {

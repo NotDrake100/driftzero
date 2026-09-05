@@ -21,6 +21,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -39,6 +40,7 @@ import `in`.driftzero.app.settings.SpeedUnit
 import `in`.driftzero.core.LocalRouter
 import `in`.driftzero.core.GuidanceRoute
 import `in`.driftzero.core.GuidanceState
+import `in`.driftzero.core.IntegritySnapshot
 import `in`.driftzero.core.MountQuality
 import `in`.driftzero.core.NavigationMode
 import `in`.driftzero.core.NavigationState
@@ -57,15 +59,19 @@ internal const val HOLD_MAX_SPEED_MPS = 8.0
 @Composable
 internal fun rememberTravelSearchClient(
     localRouter: LocalRouter? = null,
+    routerFor: ((TravelLatLng, TravelLatLng) -> LocalRouter?)? = null,
 ): TravelSearchClient {
     val context = LocalContext.current.applicationContext
-    return remember(context, localRouter) {
+    val routerForNow by rememberUpdatedState(routerFor)
+    val fallbackNow by rememberUpdatedState(localRouter)
+    return remember(context, localRouter, routerFor) {
         TravelSearchClient(
             online = { networkReachable(context) },
-            localRoute = localRouter?.let { router ->
+            localRoute = if (localRouter != null || routerFor != null) {
                 { from, to ->
+                    val router = routerForNow?.invoke(from, to) ?: fallbackNow
                     val started = System.nanoTime()
-                    val built = router.route(
+                    val built = router?.route(
                         from.latitudeDeg,
                         from.longitudeDeg,
                         to.latitudeDeg,
@@ -83,6 +89,8 @@ internal fun rememberTravelSearchClient(
                     )
                     built
                 }
+            } else {
+                null
             },
         )
     }
@@ -97,7 +105,8 @@ internal fun rememberTravelSearchClient(
 fun TravelMapScreen(
     controller: StreetMapController = remember { StreetMapController() },
     localRouter: LocalRouter? = null,
-    search: TravelSearchClient = rememberTravelSearchClient(localRouter),
+    routerFor: ((TravelLatLng, TravelLatLng) -> LocalRouter?)? = null,
+    search: TravelSearchClient = rememberTravelSearchClient(localRouter, routerFor),
     pose: NavigationState? = null,
     gnssHeld: Boolean = false,
     onToggleHold: () -> Unit = {},
@@ -124,6 +133,7 @@ fun TravelMapScreen(
     mountYawConfidence: Double? = null,
     mountReason: String? = null,
     roadAid: StatusCopy.RoadAidState? = null,
+    integrity: IntegritySnapshot? = null,
     onOpenJudge: () -> Unit = {},
     onCloseJudge: () -> Unit = {},
     onOpenTrips: () -> Unit = {},
@@ -549,7 +559,7 @@ fun TravelMapScreen(
     val networkUp = networkReachable(context)
     val sheetRows = remember(
         pose, lastGnssSeenNs, nowNs, studentLoaded, navic, areaPack, packBytes, p95GapMs,
-        mountQuality, mountYawConfidence, mountReason, roadAid, rowRouting, networkUp, localRouter,
+        mountQuality, mountYawConfidence, mountReason, roadAid, integrity, rowRouting, networkUp, localRouter,
         locationGrant, locationReason, labUnlocked, stripSpeed,
     ) {
         if (pose == null) {
@@ -570,6 +580,7 @@ fun TravelMapScreen(
                 roadAid = roadAid,
                 lab = labUnlocked,
                 speedText = stripSpeed,
+                integrity = integrity,
             ).toMutableList()
             StatusCopy.routingStatus(networkUp, localRouter != null)?.let { rows += rowRouting to it }
             rows
@@ -617,6 +628,7 @@ fun TravelMapScreen(
             onOpenAbout = onOpenAbout,
             modifier = Modifier
                 .align(Alignment.TopStart)
+                .zIndex(1f)
                 .onSizeChanged { topChromePx = it.height },
         )
         MapControls(
@@ -674,6 +686,7 @@ fun TravelMapScreen(
                 showLabTools = labUnlocked,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .zIndex(1f)
                     .onSizeChanged { sheetHeightPx = it.height },
             )
         }

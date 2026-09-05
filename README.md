@@ -1,6 +1,6 @@
 # DriftZero
 
-[![ci](https://github.com/NotDrake100/driftzero-sih26168/actions/workflows/ci.yml/badge.svg)](https://github.com/NotDrake100/driftzero-sih26168/actions/workflows/ci.yml)
+[![ci](https://github.com/NotDrake100/driftzero/actions/workflows/ci.yml/badge.svg)](https://github.com/NotDrake100/driftzero/actions/workflows/ci.yml)
 
 Phone-only vehicle navigation that keeps a blue puck moving when GPS drops. The map is the product.
 
@@ -16,7 +16,7 @@ Same figures: [docs/figures/architecture.md](docs/figures/architecture.md), [doc
 
 ### Phone live path
 
-Sensors copy into `PoseStore`. Mount still plus straight can emit `VEHICLE_FLU`. NHC runs only in that frame. Magnetometer is stored and unused. Hold GNSS stops `ingestGnss`. The matcher overlays `displayPose`. It does not write lat/lon into the ESKF. `LocalRouter` is the graph router when a Ready pack has `graph.bin`. TimesFM is not on this path.
+Sensors copy into `PoseStore`. Mount still plus straight can emit `VEHICLE_FLU`. NHC runs only in that frame. Magnetometer is stored and unused. Hold GNSS stops `ingestGnss`. The matcher overlays `displayPose`. It does not write lat/lon into the ESKF. When a Ready `graph.bin` is MATCHED, live coast may apply a heading prior and an along-track Road DNA heal. Unmatched coasts raise uncertainty. `LocalRouter` is the graph router when a Ready pack has `graph.bin`. TimesFM is not on this path.
 
 Eval replay uses `--coast-mode=yaw_speed_hold`. Live `PoseStore` still constructs `DeadReckoningFilter()` with default `InsConfig`, so the APK coast is `STRAPDOWN` until that constructor changes.
 
@@ -48,7 +48,7 @@ flowchart TD
 
 ### GNSS outage
 
-Mode words on `NavigationState.mode`. Halo radius is `uncertainty.horizontal95`. Optional `RoadHeadingAid` is heading-only when MATCHED. `PoseStore` does not call it today. Lat/lon are never snapped.
+Mode words on `NavigationState.mode`. Halo radius is `uncertainty.horizontal95`. Optional `RoadHeadingAid` is heading-only when MATCHED. Live `PoseStore` and a graph-attached `DeadReckoningEngine` apply it while coasting. Along-track Road DNA may heal odometer error. Lat/lon are never snapped.
 
 ```mermaid
 flowchart TD
@@ -56,8 +56,8 @@ flowchart TD
   DEG --> DR["DEAD_RECKONING"]
   DR --> HOLD["YAW_SPEED_HOLD: yaw plus speed hold, halo grows"]
   DR --> MATCH{"HmmRoadMatcher"}
-  MATCH -->|"MATCHED, optional heading prior"| YAW["RoadHeadingAid yaw only"]
-  MATCH -->|"AMBIGUOUS or UNMATCHED"| NOSNAP["no position snap"]
+  MATCH -->|"MATCHED, heading plus along-track heal"| YAW["RoadHeadingAid and Road DNA"]
+  MATCH -->|"AMBIGUOUS or UNMATCHED"| NOSNAP["no snap, raise P"]
   YAW --> NOSNAP
   DR --> RE["REACQUIRING"]
   RE --> FUSED
@@ -233,7 +233,7 @@ Long-press the GPS chip to hold GNSS (`PoseStore.setSimulateGpsOff`). Accel and 
 
 `DeadReckoningFilter` is strapdown INS in ENU (`NFrameMechanization`, Groves local-tangent) plus a 15-state ESKF (`EskfMath` Joseph update: δp, δv, δθ, ba, bg). Healthy GNSS younger than 2 s updates. Otherwise the filter propagates. ZUPT and NHC come from IMU statistics. `NavicMonitor` tallies IRNSS from `GnssStatus` and logs. Those counts do not enter the filter.
 
-`MotionStudentAssets` loads `models/motion_student_v1/linear.json` when packed. Missing weights leave `ZuptAccelMotionModel`. Optional `LearnedImuAssets` / `linear_dp.json` injects a chi-squared gated Δp. `HmmRoadMatcher` (Newson-Krumm) writes `mapMatch` / display pose only. It does not replace ESKF lat/lon.
+`MotionStudentAssets` loads `models/motion_student_v1/linear.json` when packed. Missing weights leave `ZuptAccelMotionModel`. Optional `LearnedImuAssets` / `linear_dp.json` injects a chi-squared gated Δp. `HmmRoadMatcher` (Newson-Krumm) writes `mapMatch` / display pose only. It does not replace ESKF lat/lon. A Ready `graph.bin` also feeds `MapCoastSession` for MATCHED heading and along-track heal.
 
 ```mermaid
 flowchart TD

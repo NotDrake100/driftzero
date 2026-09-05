@@ -17,6 +17,9 @@ enum class SensorKind {
     ACCELEROMETER,
     GYROSCOPE,
     MAGNETOMETER,
+    GRAVITY,
+    LINEAR_ACCELERATION,
+    GYROSCOPE_UNCALIBRATED,
     GNSS_FIX,
     GNSS_STATUS,
     RAW_GNSS,
@@ -75,10 +78,14 @@ data class GnssFixPayload(
     val speedMps: MetresPerSecond? = null,
     val bearingRad: HeadingRadians? = null,
     val isMock: Boolean? = null,
+    val speedAccuracyMps: MetresPerSecond? = null,
+    val bearingAccuracyRad: Double? = null,
 ) {
     init {
         require(providerTimeMs >= 0L) { "provider_time_ms must be non-negative" }
         altitudeM?.let { require(it.isFinite()) }
+        speedAccuracyMps?.let { require(it.value.isFinite() && it.value >= 0.0) }
+        bearingAccuracyRad?.let { require(it.isFinite() && it >= 0.0) }
     }
 }
 
@@ -127,14 +134,14 @@ data class SensorFrame(
         require(sourceId.isNotEmpty() && sourceId.length <= 128)
         require(sequence >= 0L)
         when (kind) {
-            SensorKind.ACCELEROMETER -> {
+            SensorKind.ACCELEROMETER, SensorKind.GRAVITY, SensorKind.LINEAR_ACCELERATION -> {
                 val vector = (payload as? VectorPayload)?.vector
-                    ?: error("accelerometer requires VectorPayload")
+                    ?: error("${kind.contractName()} requires VectorPayload")
                 require(vector.unit == "m/s^2")
             }
-            SensorKind.GYROSCOPE -> {
+            SensorKind.GYROSCOPE, SensorKind.GYROSCOPE_UNCALIBRATED -> {
                 val vector = (payload as? VectorPayload)?.vector
-                    ?: error("gyroscope requires VectorPayload")
+                    ?: error("${kind.contractName()} requires VectorPayload")
                 require(vector.unit == "rad/s")
             }
             SensorKind.MAGNETOMETER -> {

@@ -19,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import `in`.driftzero.app.R
 import `in`.driftzero.core.MountQuality
@@ -64,6 +66,7 @@ internal fun BottomInstrument(
             speedText = speedText,
             radiusText = radiusText,
             recording = recording,
+            handleDescription = handle,
             onClick = onToggle,
             onLongPress = if (showLabTools) onOpenJudge else null,
         )
@@ -116,6 +119,7 @@ private fun CollapsedStatusLine(
     speedText: String?,
     radiusText: String?,
     recording: Boolean,
+    handleDescription: String,
     onClick: () -> Unit,
     onLongPress: (() -> Unit)?,
 ) {
@@ -132,6 +136,7 @@ private fun CollapsedStatusLine(
                 idle = colors.panel,
                 pressed = colors.panelPressed,
             )
+            .semantics { contentDescription = handleDescription }
             .padding(horizontal = 16.dp)
             .horizontalScroll(rememberScrollState()),
         verticalAlignment = Alignment.CenterVertically,

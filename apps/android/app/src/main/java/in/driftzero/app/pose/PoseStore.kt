@@ -1,15 +1,19 @@
 package `in`.driftzero.app.pose
 
 import `in`.driftzero.app.trips.TripRecorder
+import `in`.driftzero.core.BlackoutInputs
+import `in`.driftzero.core.BlackoutRisk
 import `in`.driftzero.core.ClockDomain
 import `in`.driftzero.core.CoastFix
 import `in`.driftzero.core.CoastMode
 import `in`.driftzero.core.DeadReckoningFilter
+import `in`.driftzero.core.DriftBudgetTracker
 import `in`.driftzero.core.FilterSnapshot
 import `in`.driftzero.core.GeoPoint
 import `in`.driftzero.core.GraphEdge
 import `in`.driftzero.core.HmmRoadMatcher
 import `in`.driftzero.core.InsConfig
+import `in`.driftzero.core.IntegritySnapshot
 import `in`.driftzero.core.MapMatchResult
 import `in`.driftzero.core.MapMatchStatus
 import `in`.driftzero.core.MetresPerSecond
@@ -21,14 +25,16 @@ import `in`.driftzero.core.MountSession
 import `in`.driftzero.core.Nanoseconds
 import `in`.driftzero.core.NavigationMode
 import `in`.driftzero.core.NavigationState
+import `in`.driftzero.core.OptionalScalar
 import `in`.driftzero.core.Quality
 import `in`.driftzero.core.ResetReason
+import `in`.driftzero.core.MapCoastSession
 import `in`.driftzero.core.RoadGraph
-import `in`.driftzero.core.RoadHeadingAid
 import `in`.driftzero.core.RoadHeadingDecision
 import `in`.driftzero.core.RoadMatcher
 import `in`.driftzero.core.SensorFrame
 import `in`.driftzero.core.SensorKind
+import `in`.driftzero.core.ShadowMapStore
 import `in`.driftzero.core.Vector3Payload
 import `in`.driftzero.core.VectorFrame
 import `in`.driftzero.core.VectorPayload
@@ -46,7 +52,10 @@ import kotlinx.coroutines.flow.asStateFlow
  * [ZuptAccelMotionModel] uses `linear.json` when packed. A [DisplacementModel]
  * injects Δp when `linear_dp.json` loaded. Δp is χ²-gated and is not a
  * screening claim. The speed student is the live IMU measurement.
- * [navic] is chipset constellation counts. It is not a filter input.
+ * A Ready `graph.bin` enables [MapCoastSession]: MATCHED heading plus
+ * along-track Road DNA. Unmatched or ambiguous coasts inflate P. No
+ * lateral snap. [navic] is chipset constellation counts. It is not a
+ * filter input.
  *
  * Mount: after a still capture, [MountSession] holds gravity (m/s^2) and gyro
  * bias (rad/s) in the phone frame. Yaw is resolved only while GNSS is accepted,
@@ -63,6 +72,8 @@ class PoseStore(
     private var graph: RoadGraph? = null,
     val navic: NavicMonitor = NavicMonitor(),
     private val profiles: MountProfileStore = MountProfileStore.None,
+    private val shadowStore: ShadowMapStore = ShadowMapStore(),
+    private val mapCoast: MapCoastSession = MapCoastSession(),
 ) {
     private val _state = MutableStateFlow<NavigationState?>(null)
     val state: StateFlow<NavigationState?> = _state.asStateFlow()
@@ -118,6 +129,22 @@ class PoseStore(
     private val stillDetector = LiveStillDetector()
     private var lastPushedStill: Boolean = false
     private var magSequence: Long = 0L
+    private var auxSequence: Long = 0L
+    private val driftTracker = DriftBudgetTracker()
+    private val shadow = shadowStore.load()
+    private val _integrity = MutableStateFlow<IntegritySnapshot?>(null)
+    val integrity: StateFlow<IntegritySnapshot?> = _integrity.asStateFlow()
+    private var travelledM: Double = 0.0
+    private var lastTravel: PosePoint? = null
+    private var lastAccuracyM: Double? = null
+    private var lastAccuracyNs: Long? = null
+    private var accuracyTrendMps: Double? = null
+    private var lastGnssRestoredNs: Long? = null
+    private var lastShadowSaveNs: Long = Long.MIN_VALUE
+    private var pendingShadowJson: String? = null
+    private val gate = Any()
+    private val imuLock = Any()
+    private val imuQueue = ArrayDeque<QueuedImu>(IMU_QUEUE_CAP)
 
     init {
         val json = profiles.loadJson()
@@ -126,6 +153,7 @@ class PoseStore(
             _mountQuality.value = mount.quality()
             _mountYawConfidence.value = yawConfidenceFromProfileJson(json)
         }
+        mapCoast.setGraph(graph)
     }
 
     fun lastResetReason(): ResetReason? = lastResetReason
@@ -135,7 +163,55 @@ class PoseStore(
     }
 
     fun ingestGnss(fix: CoastFix) {
+        synchronized(gate) {
+            drainImuLocked()
+            ingestGnssLocked(fix)
+        }
+    }
+
+    /**
+     * Sensor callback path. Copies one sample. [tick] and [ingestGnss] drain
+     * the queue. No filter, disk, or StateFlow work here.
+     */
+    internal fun offerImu(
+        kind: QueuedImuKind,
+        timestamp: Nanoseconds,
+        x: Double,
+        y: Double,
+        z: Double,
+        accuracyCode: Int = 2,
+        biasX: Double? = null,
+        biasY: Double? = null,
+        biasZ: Double? = null,
+    ) {
+        if (!x.isFinite() || !y.isFinite() || !z.isFinite()) {
+            return
+        }
+        synchronized(imuLock) {
+            if (imuQueue.size == IMU_QUEUE_CAP) {
+                imuQueue.removeFirst()
+            }
+            imuQueue.addLast(QueuedImu(kind, timestamp, x, y, z, accuracyCode, biasX, biasY, biasZ))
+        }
+    }
+
+    fun takePendingShadowJson(): String? {
+        synchronized(gate) {
+            val json = pendingShadowJson
+            pendingShadowJson = null
+            return json
+        }
+    }
+
+    fun writeShadowJson(json: String) {
+        shadowStore.writeText(json)
+    }
+
+    fun coastPreconditionArmed(): Boolean = filter.coastPreconditionArmed()
+
+    private fun ingestGnssLocked(fix: CoastFix) {
         if (_simulateGpsOff.value) {
+            recorder?.offerGnss(fix, held = true)
             return
         }
         val now = nowNs()
@@ -182,6 +258,7 @@ class PoseStore(
         lastGnssLatDeg = stamped.latitudeDeg
         lastGnssLonDeg = stamped.longitudeDeg
         lastAcceptedGnssNs = now.value
+        noteAccuracy(measured.horizontalAccuracyM, now.value)
         val accepted = PosePoint(measured.latitudeDeg, measured.longitudeDeg)
         val outageBefore = prevMode != null && BlackoutOverlay.isOutageMode(prevMode)
         if (!outageBefore) {
@@ -294,6 +371,57 @@ class PoseStore(
         filter.consume(frame)
     }
 
+    /**
+     * Gravity, linear acceleration, or uncalibrated gyro. Trip log only.
+     * [DeadReckoningFilter.consume] ignores these kinds. Do not treat them
+     * as accelerometer or gyroscope for the ESKF.
+     */
+    fun ingestLoggedImu(
+        kind: SensorKind,
+        timestamp: Nanoseconds,
+        x: Double,
+        y: Double,
+        z: Double,
+        unit: String,
+        accuracyCode: Int = 2,
+        biasX: Double? = null,
+        biasY: Double? = null,
+        biasZ: Double? = null,
+    ) {
+        if (kind != SensorKind.GRAVITY &&
+            kind != SensorKind.LINEAR_ACCELERATION &&
+            kind != SensorKind.GYROSCOPE_UNCALIBRATED
+        ) {
+            return
+        }
+        if (!x.isFinite() || !y.isFinite() || !z.isFinite()) {
+            return
+        }
+        val frame = SensorFrame(
+            sourceId = MAG_SOURCE_ID,
+            sequence = auxSequence,
+            timestamp = timestamp,
+            clockDomain = ClockDomain.ANDROID_ELAPSED_REALTIME,
+            kind = kind,
+            quality = Quality(available = true, accuracyCode = accuracyCode.coerceIn(-1, 3)),
+            payload = VectorPayload(
+                Vector3Payload(
+                    x,
+                    y,
+                    z,
+                    unit = unit,
+                    frame = VectorFrame.ANDROID_DEVICE,
+                    biasX = biasX,
+                    biasY = biasY,
+                    biasZ = biasZ,
+                ),
+            ),
+        )
+        auxSequence += 1L
+        recorder?.offerSensor(frame)
+        filter.consume(frame)
+    }
+
     fun ingestSensor(frame: SensorFrame) {
         if (frame.kind == SensorKind.MAGNETOMETER) {
             val vector = (frame.payload as? VectorPayload)?.vector
@@ -318,6 +446,21 @@ class PoseStore(
                 val v = (frame.payload as VectorPayload).vector
                 ingestGyro(frame.timestamp, v.x, v.y, v.z)
             }
+            SensorKind.GRAVITY, SensorKind.LINEAR_ACCELERATION, SensorKind.GYROSCOPE_UNCALIBRATED -> {
+                val v = (frame.payload as VectorPayload).vector
+                ingestLoggedImu(
+                    frame.kind,
+                    frame.timestamp,
+                    v.x,
+                    v.y,
+                    v.z,
+                    unit = v.unit,
+                    accuracyCode = frame.quality.accuracyCode,
+                    biasX = v.biasX,
+                    biasY = v.biasY,
+                    biasZ = v.biasZ,
+                )
+            }
             else -> {
                 filter.consume(frame)
                 motion.ingestFrame(frame)
@@ -340,7 +483,7 @@ class PoseStore(
             holdStart = null
         }
         filter.setGnssHeld(off)
-        publish()
+        synchronized(gate) { publish() }
     }
 
     fun holdElapsedS(): Double? {
@@ -364,16 +507,19 @@ class PoseStore(
     }
 
     fun tick() {
-        val now = nowNs()
-        ticks.record(now.value)
-        syncImuStill(now.value)
-        if (!_replayActive.value && lastPushedStill) {
-            filter.ingestMotionPseudo(STILL_ZUPT, now)
-        } else {
-            motion.inferAt(now)?.let { filter.ingestMotionPseudo(it, now) }
+        synchronized(gate) {
+            drainImuLocked()
+            val now = nowNs()
+            ticks.record(now.value)
+            syncImuStill(now.value)
+            if (!_replayActive.value && lastPushedStill) {
+                filter.ingestMotionPseudo(STILL_ZUPT, now)
+            } else {
+                motion.inferAt(now)?.let { filter.ingestMotionPseudo(it, now) }
+            }
+            motion.inferDisplacementAt(now)?.let { filter.ingestDisplacementPseudo(it, now) }
+            publish()
         }
-        motion.inferDisplacementAt(now)?.let { filter.ingestDisplacementPseudo(it, now) }
-        publish()
     }
 
     fun tickAt(timestamp: Nanoseconds) {
@@ -410,6 +556,19 @@ class PoseStore(
         _simulateGpsOff.value = false
         filter.setGnssHeld(false)
         _roadDecision.value = null
+        driftTracker.reset()
+        mapCoast.reset()
+        lastShadowSaveNs = Long.MIN_VALUE
+        pendingShadowJson = null
+        filter.clearCoastPrecondition()
+        synchronized(imuLock) { imuQueue.clear() }
+        _integrity.value = null
+        travelledM = 0.0
+        lastTravel = null
+        lastAccuracyM = null
+        lastAccuracyNs = null
+        accuracyTrendMps = null
+        lastGnssRestoredNs = null
     }
 
     fun endReplay() {
@@ -434,7 +593,8 @@ class PoseStore(
             HmmRoadMatcher()
         }
         matcher?.reset()
-        publish()
+        mapCoast.setGraph(next)
+        synchronized(gate) { publish() }
     }
 
     /** Centreline of the matched edge for the map overlay. Null unless the matcher is decided. */
@@ -462,11 +622,12 @@ class PoseStore(
             null
         }
         if (raw != null && matchResult != null && isCoastingNow()) {
-            applyCoastRoadAid(matchResult, raw)
+            val report = mapCoast.apply(filter, matchResult, raw, now.value)
+            _roadDecision.value = report.action.heading
         } else {
             _roadDecision.value = null
         }
-        val afterAid = if (_roadDecision.value?.prior != null) {
+        val afterAid = if (matchResult != null && isCoastingNow()) {
             filter.poseAt(now) ?: raw
         } else {
             raw
@@ -494,10 +655,13 @@ class PoseStore(
             coastAnchor = nextPoint
             fusedTrailBuf.add(nextPoint)
             modeStripBuf.add(pose.mode)
+            accumulateTravel(nextPoint)
+            noteShadow(pose, nextPoint)
             if (!_replayActive.value) {
                 recorder?.offerState(pose)
             }
         }
+        publishIntegrity(pose, matchResult, now)
     }
 
     fun clockNowNs(): Long = (replayClockNs ?: clockNs()).coerceAtLeast(0L)
@@ -548,15 +712,18 @@ class PoseStore(
             _mountReason.value = null
         }
         if (emit.remount) {
-            lastResetReason = ResetReason.REMOUNT
-            filter.reset(ResetReason.REMOUNT)
-            matcher?.reset()
-            profiles.saveJson(null)
-            _mountReason.value = MountSession.REMOUNT_USER_REASON
-            _mountQuality.value = MountQuality.PENDING
-            _mountYawConfidence.value = null
-            _roadDecision.value = null
-            publish()
+            synchronized(gate) {
+                lastResetReason = ResetReason.REMOUNT
+                filter.reset(ResetReason.REMOUNT)
+                matcher?.reset()
+                profiles.saveJson(null)
+                _mountReason.value = MountSession.REMOUNT_USER_REASON
+                _mountQuality.value = MountQuality.PENDING
+                _mountYawConfidence.value = null
+                _roadDecision.value = null
+                mapCoast.reset()
+                publish()
+            }
         }
     }
 
@@ -587,21 +754,175 @@ class PoseStore(
         }
     }
 
-    /**
-     * Heading-only map aid while coasting. Calls the public 3-arg
-     * [DeadReckoningFilter.applyRoadHeading]. Does not invent a prior overload.
-     */
-    private fun applyCoastRoadAid(match: MapMatchResult, pose: NavigationState) {
-        val heading = pose.motion.heading.value
-        val speed = pose.motion.speed.value
-        if (!heading.isFinite() || !speed.isFinite() || speed < 0.0) {
-            _roadDecision.value = null
+    private fun accumulateTravel(next: PosePoint) {
+        val prev = lastTravel
+        if (prev != null) {
+            val step = Wgs84.distanceMetres(
+                prev.latitudeDeg,
+                prev.longitudeDeg,
+                next.latitudeDeg,
+                next.longitudeDeg,
+            )
+            if (step.isFinite() && step < 200.0) {
+                travelledM += step
+            }
+        }
+        lastTravel = next
+    }
+
+    private fun noteAccuracy(accuracyM: Double, nowNs: Long) {
+        val prev = lastAccuracyM
+        val prevNs = lastAccuracyNs
+        if (prev != null && prevNs != null && nowNs > prevNs) {
+            val dt = (nowNs - prevNs) / NS_PER_S
+            if (dt >= 0.2) {
+                accuracyTrendMps = (accuracyM - prev) / dt
+            }
+        }
+        lastAccuracyM = accuracyM
+        lastAccuracyNs = nowNs
+    }
+
+    private fun noteShadow(pose: NavigationState, point: PosePoint) {
+        if (_replayActive.value) {
             return
         }
-        val decision = RoadHeadingAid.decide(match, heading, speed)
-        _roadDecision.value = decision
-        val prior = decision.prior ?: return
-        filter.applyRoadHeading(prior.edgeBearingRad, prior.stdRad, prior.alongTrackSpeedHintMps)
+        val lost = pose.mode == NavigationMode.DEAD_RECKONING ||
+            pose.mode == NavigationMode.LOW_CONFIDENCE ||
+            pose.gnssHealth.lastTrustedFixAgeS > filter.gnssStaleAfterS()
+        shadow.observe(
+            latitudeDeg = point.latitudeDeg,
+            longitudeDeg = point.longitudeDeg,
+            lost = lost,
+            accuracyM = lastAccuracyM,
+            cn0DbHz = navic.visibility.value.meanUsedCn0DbHz,
+        )
+        val nowNs = clockNowNs()
+        if (lastShadowSaveNs == Long.MIN_VALUE || nowNs - lastShadowSaveNs >= SHADOW_SAVE_MIN_NS) {
+            pendingShadowJson = shadow.toJson()
+            lastShadowSaveNs = nowNs
+        }
+    }
+
+    private fun publishIntegrity(pose: NavigationState?, match: MapMatchResult?, now: Nanoseconds) {
+        if (pose == null) {
+            _integrity.value = null
+            if (!_replayActive.value) {
+                filter.clearCoastPrecondition()
+            }
+            return
+        }
+        val drift = driftTracker.update(
+            timestampNs = now.value,
+            horizontal95M = pose.uncertainty.horizontal95.value,
+            speedMps = pose.motion.speed.value,
+            travelledM = travelledM,
+        )
+        val snap = navic.visibility.value
+        val usedSats = if (snap == NavicSnapshot.NONE) null else snap.used
+        val mapPresent = graph != null && !graph!!.isEmpty()
+        val heading = pose.motion.heading.value
+        val tunnel = BlackoutRisk.tunnelAheadM(
+            graph = graph,
+            edgeId = match?.match?.roadSegmentId,
+            alongM = match?.displayPose?.alongTrackM,
+            headingRad = heading,
+        )
+        val tunnelM = (tunnel as? OptionalScalar.Available)?.value
+        val occ = shadow.occupancyAhead(
+            latitudeDeg = pose.position.latitude.value,
+            longitudeDeg = pose.position.longitude.value,
+            headingRad = heading,
+        )
+        val blackout = BlackoutRisk.evaluate(
+            BlackoutInputs(
+                usedSats = usedSats,
+                meanUsedCn0DbHz = snap.meanUsedCn0DbHz,
+                horizontalAccuracyM = lastAccuracyM,
+                accuracyTrendMps = accuracyTrendMps,
+                tunnelAheadM = tunnelM,
+                shadowOccupancy = occ,
+                mapPresent = mapPresent,
+            ),
+        )
+        if (filter.gnssTrustJustReleased()) {
+            lastGnssRestoredNs = now.value
+        }
+        val restored = lastGnssRestoredNs != null &&
+            (now.value - lastGnssRestoredNs!!) / NS_PER_S < 8.0
+        val next = IntegritySnapshot(
+            drift = drift,
+            blackout = blackout,
+            gnssQuarantined = filter.gnssQuarantined(),
+            gnssRestored = restored && !filter.gnssQuarantined(),
+            placement = mount.placement(),
+            travelledM = travelledM,
+        )
+        if (next != _integrity.value) {
+            _integrity.value = next
+        }
+        if (_replayActive.value) {
+            return
+        }
+        if (blackout.preconditioning) {
+            filter.armCoastPrecondition(now, lastGnssSpeedMps)
+        } else {
+            filter.clearCoastPrecondition()
+        }
+    }
+
+    private fun drainImuLocked() {
+        val batch: List<QueuedImu>
+        synchronized(imuLock) {
+            if (imuQueue.isEmpty()) {
+                return
+            }
+            batch = imuQueue.toList()
+            imuQueue.clear()
+        }
+        for (sample in batch) {
+            when (sample.kind) {
+                QueuedImuKind.ACCEL -> ingestAccel(sample.timestamp, sample.x, sample.y, sample.z)
+                QueuedImuKind.GYRO -> ingestGyro(sample.timestamp, sample.x, sample.y, sample.z)
+                QueuedImuKind.MAG -> ingestMagnetometer(
+                    sample.timestamp,
+                    sample.x,
+                    sample.y,
+                    sample.z,
+                    accuracyCode = sample.accuracyCode,
+                )
+                QueuedImuKind.GRAVITY -> ingestLoggedImu(
+                    SensorKind.GRAVITY,
+                    sample.timestamp,
+                    sample.x,
+                    sample.y,
+                    sample.z,
+                    unit = "m/s^2",
+                    accuracyCode = sample.accuracyCode,
+                )
+                QueuedImuKind.LINEAR -> ingestLoggedImu(
+                    SensorKind.LINEAR_ACCELERATION,
+                    sample.timestamp,
+                    sample.x,
+                    sample.y,
+                    sample.z,
+                    unit = "m/s^2",
+                    accuracyCode = sample.accuracyCode,
+                )
+                QueuedImuKind.GYRO_UNCAL -> ingestLoggedImu(
+                    SensorKind.GYROSCOPE_UNCALIBRATED,
+                    sample.timestamp,
+                    sample.x,
+                    sample.y,
+                    sample.z,
+                    unit = "rad/s",
+                    accuracyCode = sample.accuracyCode,
+                    biasX = sample.biasX,
+                    biasY = sample.biasY,
+                    biasZ = sample.biasZ,
+                )
+            }
+        }
     }
 
     private fun decorateHealth(state: NavigationState): NavigationState {
@@ -630,12 +951,18 @@ class PoseStore(
         const val FLAG_MOUNT_REMOUNT: String = "mount_remount"
         private const val MAG_SOURCE_ID: String = "phone"
         private const val MAG_UNIT: String = "uT"
+        private const val SHADOW_SAVE_MIN_NS: Long = 5_000_000_000L
+        private const val IMU_QUEUE_CAP: Int = 256
         private const val YAW_CONFIDENCE_KEY: String = "\"yaw_confidence\""
 
         /** Live APK coast model. Default [InsConfig] is STRAPDOWN for replay hashes. */
         val LIVE_INS_CONFIG: InsConfig = InsConfig(
             coastMode = CoastMode.YAW_SPEED_HOLD,
             staleAfterS = LIVE_STALE_AFTER_S,
+            coastHonestP = true,
+            studentForwardSpeed = true,
+            coastLatchGnssSpeed = true,
+            gnssQuarantine = true,
         )
 
         fun liveFilter(): DeadReckoningFilter = DeadReckoningFilter(LIVE_INS_CONFIG)
@@ -682,4 +1009,25 @@ class PoseStore(
 data class PosePoint(
     val latitudeDeg: Double,
     val longitudeDeg: Double,
+)
+
+internal enum class QueuedImuKind {
+    ACCEL,
+    GYRO,
+    MAG,
+    GRAVITY,
+    LINEAR,
+    GYRO_UNCAL,
+}
+
+private data class QueuedImu(
+    val kind: QueuedImuKind,
+    val timestamp: Nanoseconds,
+    val x: Double,
+    val y: Double,
+    val z: Double,
+    val accuracyCode: Int,
+    val biasX: Double? = null,
+    val biasY: Double? = null,
+    val biasZ: Double? = null,
 )

@@ -10,6 +10,7 @@ from typing import Sequence
 from driftzero_ml.metrics import EARTH_MEAN_RADIUS_M, haversine_m, path_length_m
 
 MIN_HEADING_MOTION_M = 10.0
+MIN_COAST_SEED_SPEED_MPS = 0.4
 SPEED_UNIT_MPS = "m/s"
 SPEED_UNIT_KMH = "km/h"
 RATIO_BAND = (0.70, 1.30)
@@ -113,6 +114,9 @@ def seed_heading_rad(
     """Heading from the last >= min_motion_m of unique GNSS motion, else GPS course.
 
     Does not use the last two rows when they share a position (that seeds due north).
+    Persist scoring calls this on history with t < blackout start_ns. A 0 m/s unique
+    sitting on the mask start is not in that history. Use persist_coast_seed to skip
+    a trailing 0 m/s unique when the caller passed a wider window.
     """
 
     if min_motion_m <= 0:
@@ -136,6 +140,76 @@ def seed_heading_rad(
             return bearing
     if history:
         return orientation_rad(history[-1])
+    return None
+
+
+@dataclass(frozen=True)
+class PersistCoastSeed:
+    latitude_deg: float
+    longitude_deg: float
+    timestamp_ns: int
+    speed_mps: float
+    heading_rad: float
+
+
+def persist_coast_seed(
+    history: Sequence[dict],
+    *,
+    before_ns: int | None = None,
+    min_speed_mps: float = MIN_COAST_SEED_SPEED_MPS,
+    min_motion_m: float = MIN_HEADING_MOTION_M,
+) -> PersistCoastSeed | None:
+    """Last unique with column speed and a 10 m course, strictly before before_ns.
+
+    Skips a trailing 0 m/s unique. Persist scoring uses t < start_ns so that
+    unique is already absent. Kotlin YAW_SPEED_HOLD uses this pick when the
+    mask-start unique is 0 m/s (S-Vw16b).
+    """
+
+    if min_speed_mps < 0.0:
+        raise ValueError("min_speed_mps must be >= 0")
+    if min_motion_m <= 0.0:
+        raise ValueError("min_motion_m must be positive")
+    fixes = unique_fix_records(history)
+    if before_ns is not None:
+        fixes = [row for row in fixes if int(row["timestamp_ns"]) < before_ns]
+    for end in range(len(fixes) - 1, -1, -1):
+        row = fixes[end]
+        speed = _column_speed_mps(row)
+        if speed is None or speed < min_speed_mps:
+            continue
+        heading = _ten_metre_course_rad(fixes, end, min_motion_m)
+        if heading is None:
+            continue
+        return PersistCoastSeed(
+            latitude_deg=float(row["latitude_deg"]),
+            longitude_deg=float(row["longitude_deg"]),
+            timestamp_ns=int(row["timestamp_ns"]),
+            speed_mps=speed,
+            heading_rad=heading,
+        )
+    return None
+
+
+def _column_speed_mps(row: dict) -> float | None:
+    for key in ("gnss_speed_mps", "speed_mps"):
+        if key in row and row[key] is not None:
+            return float(row[key])
+    return None
+
+
+def _ten_metre_course_rad(fixes: Sequence[dict], end: int, min_motion_m: float) -> float | None:
+    if end < 1:
+        return None
+    acc = 0.0
+    dest = fixes[end]
+    for index in range(end - 1, -1, -1):
+        acc += haversine_m(
+            (float(fixes[index]["latitude_deg"]), float(fixes[index]["longitude_deg"])),
+            (float(fixes[index + 1]["latitude_deg"]), float(fixes[index + 1]["longitude_deg"])),
+        )
+        if acc >= min_motion_m:
+            return course_rad(fixes[index], dest)
     return None
 
 

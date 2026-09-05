@@ -28,11 +28,8 @@ import `in`.driftzero.app.maps.installAreaPackFromUri
 import `in`.driftzero.app.pose.newestLastKnownLocation
 import `in`.driftzero.app.pose.BlackoutOverlay
 import `in`.driftzero.app.ui.LastFixStore
+import `in`.driftzero.core.LocalGraphSession
 import `in`.driftzero.core.LocalRouter
-import `in`.driftzero.core.OsmGraphLoader
-import `in`.driftzero.core.Wgs84Bbox
-import kotlin.math.max
-import kotlin.math.min
 import `in`.driftzero.app.pose.MotionStudentAssets
 import `in`.driftzero.app.pose.rememberPoseStore
 import `in`.driftzero.app.settings.MotionMode
@@ -98,6 +95,7 @@ class MainActivity : ComponentActivity() {
             val mountReason by poses.mountReason.collectAsState()
             val mountYawConfidence by poses.mountYawConfidence.collectAsState()
             val roadDecision by poses.roadDecision.collectAsState()
+            val integrity by poses.integrity.collectAsState()
             val navic by poses.navic.visibility.collectAsState()
             val context = LocalContext.current
             val studentLoaded = remember { MotionStudentAssets.load(context.applicationContext) != null }
@@ -113,7 +111,15 @@ class MainActivity : ComponentActivity() {
             var packBytes by remember { mutableStateOf<Long?>(null) }
             var packStyleJson by remember { mutableStateOf<String?>(null) }
             var localRouter by remember { mutableStateOf<LocalRouter?>(null) }
-            LaunchedEffect(packTick, night) {
+            var graphSession by remember { mutableStateOf<LocalGraphSession?>(null) }
+            var graphDest by remember { mutableStateOf(parseDestLatLon(pendingDest)) }
+            LaunchedEffect(pendingDest) {
+                val parsed = parseDestLatLon(pendingDest)
+                if (parsed != null) {
+                    graphDest = parsed
+                }
+            }
+            LaunchedEffect(packTick, night, graphDest) {
                 val covering = withContext(Dispatchers.IO) {
                     val lastFix = LastFixStore.prefs(context).read()
                     val live = newestLastKnownLocation(context)
@@ -131,31 +137,37 @@ class MainActivity : ComponentActivity() {
                     val live = newestLastKnownLocation(context)
                     val originLat = live?.latitude ?: lastFix?.latitudeDeg
                     val originLon = live?.longitude ?: lastFix?.longitudeDeg
-                    val destParts = pendingDest?.split(",")
-                    val destLat = destParts?.getOrNull(0)?.trim()?.toDoubleOrNull()
-                    val destLon = destParts?.getOrNull(1)?.trim()?.toDoubleOrNull()
-                    val window = routeWindow(originLat, originLon, destLat, destLon)
-                    val router = graphFile?.let { file ->
-                        if (window == null) {
-                            Log.w(LOCAL_ROUTER_TAG, "graph.bin skipped: no origin window")
-                            return@let null
-                        }
+                    val destLat = graphDest?.first
+                    val destLon = graphDest?.second
+                    val maxHeap = Runtime.getRuntime().maxMemory()
+                    val loaded = graphFile?.let { file ->
                         try {
-                            val graph = OsmGraphLoader.load(
-                                file.toPath(),
-                                active?.manifest?.id?.value ?: file.parentFile?.name ?: "pack",
-                                window,
-                            )
-                            if (graph.isEmpty()) {
-                                Log.i(LOCAL_ROUTER_TAG, "graph.bin empty ${file.absolutePath}")
+                            val bytes = file.readBytes()
+                            val packageId = active?.manifest?.id?.value
+                                ?: file.parentFile?.name
+                                ?: "pack"
+                            val session = LocalGraphSession(bytes, packageId, maxHeap)
+                            val router = session.covering(originLat, originLon, destLat, destLon)
+                            val graph = session.graph
+                            val window = session.window
+                            if (router == null || graph == null) {
+                                if (originLat == null && destLat == null) {
+                                    Log.w(LOCAL_ROUTER_TAG, "graph.bin skipped: no origin or dest")
+                                } else {
+                                    Log.i(LOCAL_ROUTER_TAG, "graph.bin empty ${file.absolutePath}")
+                                }
                                 null
                             } else {
+                                val clip = if (window == null) {
+                                    "full"
+                                } else {
+                                    "${window.southLatDeg},${window.westLonDeg}," +
+                                        "${window.northLatDeg},${window.eastLonDeg}"
+                                }
                                 Log.i(
                                     LOCAL_ROUTER_TAG,
                                     "loaded ${file.name} edges=${graph.edges.size} " +
-                                        "nodes=${graph.nodes.size} " +
-                                        "window=${window.southLatDeg},${window.westLonDeg}," +
-                                        "${window.northLatDeg},${window.eastLonDeg}",
+                                        "nodes=${graph.nodes.size} window=$clip",
                                 )
                                 Log.i(
                                     LOCAL_ROUTER_TAG,
@@ -164,12 +176,18 @@ class MainActivity : ComponentActivity() {
                                 )
                                 withContext(Dispatchers.Main.immediate) {
                                     poses.setRoadGraph(graph)
+                                    graphSession = session
                                 }
-                                LocalRouter(graph)
+                                router
                             }
                         } catch (error: Throwable) {
                             Log.w(LOCAL_ROUTER_TAG, "graph.bin load failed: ${error.message}")
                             null
+                        }
+                    }
+                    if (graphFile == null) {
+                        withContext(Dispatchers.Main.immediate) {
+                            graphSession = null
                         }
                     }
                     PackUiSnapshot(
@@ -177,7 +195,7 @@ class MainActivity : ComponentActivity() {
                         queued = queued,
                         active = active,
                         bytes = packs.bytesOnDisk(active),
-                        localRouter = router,
+                        localRouter = loaded,
                     )
                 }
                 installedPacks = snapshot.installed
@@ -256,6 +274,14 @@ class MainActivity : ComponentActivity() {
                     AppScreen.MAP -> TravelMapScreen(
                         controller = map,
                         localRouter = localRouter,
+                        routerFor = { from, to ->
+                            graphSession?.covering(
+                                from.latitudeDeg,
+                                from.longitudeDeg,
+                                to.latitudeDeg,
+                                to.longitudeDeg,
+                            ) ?: localRouter
+                        },
                         pose = pose,
                         gnssHeld = held,
                         onToggleHold = { poses.toggleSimulateGpsOff() },
@@ -296,6 +322,7 @@ class MainActivity : ComponentActivity() {
                         mountYawConfidence = mountYawConfidence,
                         mountReason = mountReason,
                         roadAid = StatusCopy.roadAid(roadDecision),
+                        integrity = integrity,
                         onOpenJudge = { if (settings.labUnlocked) judgeOpen = true },
                         onCloseJudge = { judgeOpen = false },
                         onOpenTrips = { screen = AppScreen.TRIPS },
@@ -428,37 +455,14 @@ class MainActivity : ComponentActivity() {
 
 private const val LOCAL_ROUTER_TAG = "LocalRouter"
 
-/** Inclusive WGS84 window around origin, expanded to dest if present. Not a city. */
-internal fun routeWindow(
-    originLatDeg: Double?,
-    originLonDeg: Double?,
-    destLatDeg: Double?,
-    destLonDeg: Double?,
-    padDeg: Double = 0.03,
-): Wgs84Bbox? {
-    val lat = originLatDeg ?: destLatDeg ?: return null
-    val lon = originLonDeg ?: destLonDeg ?: return null
-    if (!lat.isFinite() || !lon.isFinite() || padDeg <= 0.0) {
+internal fun parseDestLatLon(raw: String?): Pair<Double, Double>? {
+    val parts = raw?.split(",") ?: return null
+    val lat = parts.getOrNull(0)?.trim()?.toDoubleOrNull() ?: return null
+    val lon = parts.getOrNull(1)?.trim()?.toDoubleOrNull() ?: return null
+    if (lat !in -90.0..90.0 || lon !in -180.0..180.0) {
         return null
     }
-    var south = lat - padDeg
-    var north = lat + padDeg
-    var west = lon - padDeg
-    var east = lon + padDeg
-    if (destLatDeg != null && destLonDeg != null && destLatDeg.isFinite() && destLonDeg.isFinite()) {
-        south = min(south, destLatDeg - 0.01)
-        north = max(north, destLatDeg + 0.01)
-        west = min(west, destLonDeg - 0.01)
-        east = max(east, destLonDeg + 0.01)
-    }
-    south = south.coerceIn(-90.0, 90.0)
-    north = north.coerceIn(-90.0, 90.0)
-    west = west.coerceIn(-180.0, 180.0)
-    east = east.coerceIn(-180.0, 180.0)
-    if (south >= north || west >= east) {
-        return null
-    }
-    return Wgs84Bbox(south, west, north, east)
+    return lat to lon
 }
 
 internal fun packImportNote(state: AreaPackState?, id: String?): String = when (state) {

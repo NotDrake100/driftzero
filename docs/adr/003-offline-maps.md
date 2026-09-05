@@ -16,5 +16,5 @@ Use MapLibre Native with local PMTiles for display and build a separate versione
 - The APK stays small by installing corridor/city packages separately. Users queue the visible map bbox or sideload a built directory. No Ready pack is bundled today. Hosted OpenFreeMap is the stand-in.
 - Visual styling can change without changing graph identity.
 - Builds require a reproducible map pipeline and package compatibility checks. `tools/maps/pack_bbox.py` writes the generic manifest; Planetiler and the graph packer fill tiles and topology. Those fill steps are not run in CI.
-- Map feedback must be soft and confidence-aware. Soft filter feedback is planned. The matcher is display-only today.
+- Map feedback must be soft and confidence-aware. The matcher lat/lon overlay stays display-only. When a Ready `graph.bin` is MATCHED, `MapCoastSession` may apply a heading prior and an along-track Road DNA heal. Ambiguous or unmatched coasts inflate uncertainty. No lateral snap. A research particle coast (ADR 010) may use \((e, s)\) as blackout state in Python. It is not live, not IO-VNBD, and not a parallel-road teleport.
 

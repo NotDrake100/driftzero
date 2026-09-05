@@ -46,6 +46,18 @@ internal fun FirstRunScreen(
             step = 1
         }
     }
+    LaunchedEffect(step, denied) {
+        if (step != 0) {
+            return@LaunchedEffect
+        }
+        val granted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (FirstRunMount.skipLocationPrompt(granted, denied)) {
+            step = 1
+        }
+    }
     when (step) {
         0 -> ScreenScaffold(
             title = stringResource(R.string.firstrun_location_title),

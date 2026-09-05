@@ -139,7 +139,7 @@ internal fun InstrumentSheet(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(16.dp)
+                .height(24.dp)
                 .travelClickable(
                     onClick = onToggle,
                     onLongClick = onLongPress,

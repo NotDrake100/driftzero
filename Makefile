@@ -1,4 +1,4 @@
-.PHONY: test lint validate links jvm android
+.PHONY: test lint validate links jvm android emulator-grant
 
 PYTHON ?= python3
 
@@ -23,3 +23,6 @@ jvm:
 
 android:
 	./gradlew :android-app:testDebugUnitTest :android-app:lintDebug :android-app:assembleDebug --no-daemon
+
+emulator-grant:
+	tools/emulator/grant_runtime.sh

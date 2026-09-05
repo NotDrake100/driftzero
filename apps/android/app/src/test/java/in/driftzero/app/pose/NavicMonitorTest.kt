@@ -107,6 +107,22 @@ class NavicMonitorTest {
     }
 
     @Test
+    fun meanUsedCn0IgnoresUnusedAndMissing() {
+        val snapshot = NavicMonitor.tally(
+            listOf(
+                GnssSatRow("GPS", usedInFix = true, cn0DbHz = 30.0),
+                GnssSatRow("GPS", usedInFix = true, cn0DbHz = 40.0),
+                GnssSatRow("IRNSS", usedInFix = false, cn0DbHz = 12.0),
+                GnssSatRow("GALILEO", usedInFix = true, cn0DbHz = null),
+            ),
+        )
+        assertEquals(35.0, snapshot.meanUsedCn0DbHz!!, 1e-12)
+        assertEquals(3, snapshot.used)
+        val none = NavicMonitor.tally(listOf(GnssSatRow("GPS", usedInFix = true)))
+        assertEquals(null, none.meanUsedCn0DbHz)
+    }
+
+    @Test
     fun clearDropsChip() {
         val monitor = NavicMonitor()
         monitor.ingest(listOf(GnssSatRow("IRNSS", usedInFix = true)))

@@ -11,7 +11,7 @@ frames:
   navigation: ENU  # documentation only
   geographic: WGS84  # documentation only
 sensor:
-  preferred_raw_rate_hz: 100  # documentation only. Phone uses SENSOR_DELAY_GAME.
+  preferred_raw_rate_hz: 100  # documentation only. Phone requests SENSOR_DELAY_FASTEST. Logged Hz is measured.
   minimum_raw_rate_hz: 50  # documentation only
   max_interpolation_gap_ms: 40  # documentation only
   missing_gap_ms: 200  # documentation only

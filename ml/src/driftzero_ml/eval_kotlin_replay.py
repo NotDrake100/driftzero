@@ -451,6 +451,7 @@ def run(
     coast_mode: str | None = None,
     force_rebuild: bool = False,
     rebuild_retries: int = 0,
+    development_interval_ids: Sequence[str] | None = None,
 ) -> dict:
     repo = repo.resolve()
     out_dir = out_dir if out_dir.is_absolute() else repo / out_dir
@@ -466,7 +467,17 @@ def run(
         if flag not in replay_extra and "--coast-mode" not in replay_extra:
             replay_extra.append(flag)
 
-    gated = gated_interval_ids(repo / GATED_CSV)
+    if development_interval_ids is None:
+        gated = gated_interval_ids(repo / GATED_CSV)
+    else:
+        from driftzero_ml.io_vnbd.splits import session_group_id
+
+        gated = tuple(development_interval_ids)
+        reserved = {session_group_id(key.split(":")[0]) for key in GATED_INTERVAL_IDS}
+        if not gated or len(gated) != len(set(gated)):
+            raise ValueError("development intervals must be nonempty and unique")
+        if any(session_group_id(key.split(":")[0]) in reserved for key in gated):
+            raise ValueError("development interval overlaps a locked session group")
     root = repo / "data" / "raw" / "io_vnbd"
     tables = {path.stem: path for path in screening_csv_paths(root)}
     needed_trips = sorted({interval_id.split(":", 1)[0] for interval_id in gated})

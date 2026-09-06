@@ -1,0 +1,96 @@
+{
+  "experiment": "accuracy_evaluation_checks_v1",
+  "status": "checks_prepared",
+  "selection_open": false,
+  "locked_confirmation_open": false,
+  "holdout_open": false,
+  "seed": "26168",
+  "locked_interval_count": 35,
+  "locked_ids_match_split": true,
+  "matrix": {
+    "deterministic_baseline": {
+      "role": "comparison",
+      "system": "latch_sparse_reseed",
+      "selectable": false,
+      "reason": "existing selected coast. comparison only"
+    },
+    "model_only": {
+      "role": "pending_c",
+      "selectable": false,
+      "reason": "no eligible C candidate yet"
+    },
+    "map_only": {
+      "role": "rejected_b",
+      "selectable": false,
+      "reason": "Task B failed the relative development gate. Overlay stays off."
+    },
+    "combined": {
+      "role": "blocked",
+      "selectable": false,
+      "reason": "needs an eligible motion or map candidate first"
+    }
+  },
+  "development_gate": {
+    "name": "relative_development_gate_v1",
+    "not_the_absolute_0_10_target": true,
+    "requires_complete_finite_metrics": true,
+    "relative_median_improvement": 0.1,
+    "p95_not_worse": true,
+    "fail10_count_not_worse": true
+  },
+  "b_map_overlay": {
+    "present": false,
+    "status": "rejection",
+    "locked_confirmation": false,
+    "android_defaults": false,
+    "source": "campaign recorded B rejection. Decision file lives on cursor/road-reliability-8d5b"
+  },
+  "diagnostic_only_rejected": true,
+  "train_session_groups": [
+    "S-M",
+    "S-S2",
+    "S-Vfa02",
+    "S-Vta10",
+    "S-Vta16",
+    "S-Vta21",
+    "S-Vta23",
+    "S-Vta26",
+    "S-Vta28",
+    "S-Vta3",
+    "S-Vta7",
+    "S-Vta9",
+    "S-Vtb10",
+    "S-Vtb12",
+    "S-Vw11",
+    "S-Vw13",
+    "S-Vw14",
+    "S-Vw15",
+    "S-Vw2",
+    "S-Vw4",
+    "S-Vw6",
+    "S-Vw7",
+    "S-Vw8",
+    "S-Vw9"
+  ],
+  "fresh_holdout_session_groups": [
+    "S-Vw10",
+    "S-Vta19",
+    "S-Vtb5",
+    "S-Vta30",
+    "S-Vw1",
+    "S-Vtb4",
+    "S-Vtb11",
+    "S-Vta4",
+    "S-Vta14",
+    "S-Vta27"
+  ],
+  "excluded_session_groups": [
+    "S-Vtb3"
+  ],
+  "notes": [
+    "Parity and leakage checks may run now.",
+    "Do not run locked confirmation.",
+    "Do not open the fresh holdout for tuning.",
+    "Do not enable the B posterior-mean overlay."
+  ]
+}

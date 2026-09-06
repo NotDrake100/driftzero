@@ -50,3 +50,9 @@ class AccuracyGateTest(unittest.TestCase):
         substitution = self.report()
         substitution["reference_substitution"] = {"variant": "ref_joint"}
         self.assertFalse(assess(substitution)["passed"])
+        oracle = self.report()
+        oracle["oracle"] = True
+        self.assertFalse(assess(oracle)["passed"])
+        classified = self.report()
+        classified["evidence_class"] = "DIAGNOSTIC_ONLY"
+        self.assertFalse(assess(classified)["passed"])

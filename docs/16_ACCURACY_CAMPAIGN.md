@@ -1,6 +1,6 @@
 # Accuracy campaign index
 
-Date: 2026-09-06. Coordinator checkpoint v2. This is a tracking document, not
+Date: 2026-09-06. Coordinator checkpoint v3. This is a tracking document, not
 an accuracy result. Machine-readable copy:
 [results/cursor_campaign/v1/manifest.json](../results/cursor_campaign/v1/manifest.json).
 Plan: [docs/15_CURSOR_ACCURACY_EXECUTION_PLAN.md](15_CURSOR_ACCURACY_EXECUTION_PLAN.md).
@@ -11,7 +11,7 @@ Coordination ADR: [015](adr/015-accuracy-campaign.md).
 | Status | Value | Evidence |
 |---|---|---|
 | Code merged | No | Main is still `c7a1ab9`. No campaign merge. |
-| Experiment completed | Partial | A diagnostic run completed. B has no new scores. |
+| Experiment completed | Partial | A diagnostic run completed. B scored a development rejection. |
 | Median target passed | No | Reproduced locked median 48.83% |
 | All-interval target passed | No | `accuracy_gate` failed. 6/35 below 10% |
 | Field placements tested | No | No owner drives |
@@ -23,10 +23,10 @@ Do not describe the 48.83% locked median as a fresh independent validation.
 | Task | Agent lifecycle | Branch | Latest commit | PR | Experiment |
 |---|---|---|---|---|---|
 | A diagnostics | IDLE | `cursor/accuracy-diagnostics-9aba` | `8913eb08beb466f706a6b872892eb10905f37c05` | [17](https://github.com/NotDrake100/driftzero/pull/17) | Reproduced locked 35. Matches archive. DIAGNOSTIC_ONLY substitutions scored. Not merged. |
-| B road reliability | RUNNING | `cursor/road-reliability-8d5b` | `147960d1a21e1a891701feacf5612ed2d6f3d9f9` | [19](https://github.com/NotDrake100/driftzero/pull/19) | Adapter and preregistration only. No new interval scores. |
+| B road reliability | IDLE | `cursor/road-reliability-8d5b` | `e161bff` | [19](https://github.com/NotDrake100/driftzero/pull/19) | Five development configs scored. Relative gate failed. Locked confirmation not run. Not merged. |
 | E capture audit | Coordinator | `cursor/phone-validation-d676` | see PR 18 | [18](https://github.com/NotDrake100/driftzero/pull/18) | Logger audit. 0 field drives. Model wiring blocked. |
 | C learned motion | Not started | | | | Blocked. Split is frozen. Do not train until A PR 17 is reviewed for merge. |
-| D evaluation | Not started | | | | Blocked on B/C candidates. |
+| D evaluation | Not started | | | | Blocked. B is a measured rejection. No C candidate. |
 
 First check found A and B as lifecycle RUNNING with no branch, no PR, no diff.
 That is not experiment evidence. Git branches appeared later.
@@ -63,12 +63,32 @@ fresh-holdout groups.
 
 C stays blocked until PR 17 is reviewed for merge of the diagnostic module.
 
-## B status
+## B measured report, rejected not merged
 
-Preregistered five configs. No `comparison.json`. Do not merge as a default.
-ADR 014 rejection stands. The published p95 move 54.02% to 84.61% is
-along-track shortfall on S-Vta8:d1000 and a wrong-road row on S-Vta29:d1000,
-from existing CSVs, not a new run.
+Source: `results/road_reliability_20260906/` on `e161bff`. Decision file
+`FOR_TASK_D.json`: rejection. Do not run locked confirmation. Do not change
+Android defaults. Kotlin was not rerun. Maps hashes match ADR 014 complete
+provenance.
+
+Baseline reused from Actions run `34061769087` (median 39.84%, p95 54.02%,
+1/11 below 0.10).
+
+| Config | Median | p95 | below 0.10 | Gate |
+|---|---:|---:|---:|---|
+| `adr014_reproduce` | 26.90% | 84.61% | 2/11 | fail p95 |
+| `topo_v1` | 24.25% | 68.17% | 2/11 | fail p95 |
+| `confidence_v1` | 39.84% | 54.02% | 1/11 | fail median |
+| `combined_v1` | 39.84% | 54.02% | 1/11 | fail median |
+| `lateral_heal_v1` | 39.84% | 54.02% | 1/11 | fail median |
+
+`topo_v1` cut some tails (S-Vta8:d1000 84.61% to 58.53%, S-Vtb7:mid 20.15%
+to 2.87%) but S-Vta11:mid stayed at 68.17% and S-Vta29:d1000 stayed near
+65.8%. Confidence gating fell back on 3653/4983 epochs and recovered the
+deterministic median. The always-on posterior mean still writes those
+failures into lat/lon.
+
+Adapter for later D: `driftzero_ml.road_adapter` (`CONFIGS`,
+`apply_causal_overlay`, `development_gate`).
 
 ## E status
 
@@ -92,11 +112,12 @@ Route and vehicle identities are unavailable. Driver letter is prefix-only.
 
 1. Review A PR 17 tests before any merge. Keep DIAGNOSTIC_ONLY out of
    `accuracy_gate` candidates.
-2. Wait for B to write scored development tables. Do not merge PR 19 without
-   them.
+2. Do not merge PR 19 as a live map default. A later research merge of the
+   negative result is allowed only if labeled as rejection.
 3. Keep C blocked until that A review. Then train only on the frozen train
-   groups.
-4. Keep D blocked. Keep E model wiring blocked.
+   groups. Learn displacement and turn, not speed MAE alone.
+4. Keep D blocked. B produced no passing candidate. Keep E model wiring
+   blocked.
 
 ## Resume
 

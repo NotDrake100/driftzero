@@ -6,6 +6,7 @@ import argparse
 import csv
 import json
 import os
+import shutil
 import subprocess
 import time
 from collections import Counter
@@ -33,7 +34,7 @@ from driftzero_ml.export_sensorframe import (
 )
 from driftzero_ml.gnss_truth import TruthGateConfig, course_rad, score_epochs
 from driftzero_ml.metrics import BlackoutMetrics, circular_mae_rad
-from driftzero_ml.screening import locked_blackouts
+from driftzero_ml.screening import GATED_INTERVAL_IDS, locked_blackouts
 
 GATED_CSV = Path("results/io_vnbd_screening_v1/metrics_per_interval.csv")
 KOTLIN_DIR = Path("results/io_vnbd_screening_v1/kotlin_replay")
@@ -55,6 +56,8 @@ def _nearest_rank(values: Sequence[float], probability: float) -> float:
 
 
 def gated_interval_ids(path: Path) -> tuple[str, ...]:
+    if not path.is_file():
+        return tuple(sorted(GATED_INTERVAL_IDS))
     ids: list[str] = []
     seen: set[str] = set()
     with path.open() as handle:
@@ -63,10 +66,20 @@ def gated_interval_ids(path: Path) -> tuple[str, ...]:
             if interval_id not in seen:
                 seen.add(interval_id)
                 ids.append(interval_id)
+    if set(ids) != GATED_INTERVAL_IDS:
+        raise ValueError("screening interval set differs from the locked 35 intervals")
     return tuple(ids)
 
 
 def java_home() -> str:
+    configured = os.environ.get("JAVA_HOME")
+    if configured and (Path(configured) / "bin" / "java").is_file():
+        return configured
+    java = shutil.which("java")
+    if java and Path(java).resolve().parent.parent.joinpath("bin", "javac").is_file():
+        return str(Path(java).resolve().parent.parent)
+    if not Path("/usr/libexec/java_home").is_file():
+        raise FileNotFoundError("Install JDK 17 and set JAVA_HOME")
     probe = subprocess.run(
         ["/usr/libexec/java_home", "-v", "17"],
         check=True,
@@ -94,7 +107,7 @@ def ensure_replay_binary(
             subprocess.run(
                 [str(repo / "gradlew"), ":navigation-core:installDist", "--offline"],
                 cwd=repo,
-                check=True,
+                check=False,
                 env=env,
             )
             if script.is_file():
@@ -494,8 +507,6 @@ def run(
                 chosen = interval_path
             elif skip_export:
                 raise FileNotFoundError(f"premask frames missing: {interval_path}")
-            elif trip_frame_path.is_file() and not reexport:
-                chosen = trip_frame_path
             else:
                 header, frames = export_sensor_frames(rows, mask_start_ns=window.start_ns)
                 write_sensorframe_jsonl(interval_path, header, frames)

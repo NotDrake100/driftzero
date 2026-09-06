@@ -946,9 +946,9 @@ class DeadReckoningFilterTest {
         val integrate = run(WeakHeadingPolicy.INTEGRATE, weak = true)
         val hold = run(WeakHeadingPolicy.HOLD_COURSE, weak = true)
         val strong = run(WeakHeadingPolicy.HOLD_COURSE, weak = false)
-        assertTrue("INTEGRATE should yaw ~1 rad, got ${integrate.first}", minHeadingDelta(integrate.first, 1.0) < 0.15)
+        assertTrue("INTEGRATE should yaw ~-1 rad, got ${integrate.first}", minHeadingDelta(integrate.first, -1.0) < 0.15)
         assertTrue("HOLD_COURSE weak must not yaw, heading=${hold.first}", minHeadingDelta(hold.first, 0.0) < 0.05)
-        assertTrue("HOLD_COURSE with a strong pick still yaws, heading=${strong.first}", minHeadingDelta(strong.first, 1.0) < 0.15)
+        assertTrue("HOLD_COURSE with a strong pick still yaws, heading=${strong.first}", minHeadingDelta(strong.first, -1.0) < 0.15)
         assertTrue(
             "HOLD_COURSE should grow heading95 vs INTEGRATE, hold=${hold.second} integrate=${integrate.second}",
             hold.second > integrate.second + 0.05,

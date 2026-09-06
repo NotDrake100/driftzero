@@ -2,13 +2,27 @@
 
 from __future__ import annotations
 
+import tempfile
 import unittest
 from pathlib import Path
 
-from driftzero_ml.eval_kotlin_replay import replay_cli_args, replay_mask_ns, slim_replay_header
+from driftzero_ml.eval_kotlin_replay import (
+    gated_interval_ids,
+    replay_cli_args,
+    replay_mask_ns,
+    slim_replay_header,
+)
 
 
 class ReplayMaskTests(unittest.TestCase):
+    def test_missing_historical_csv_uses_locked_ids_and_changed_set_fails(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "intervals.csv"
+            self.assertEqual(len(gated_interval_ids(path)), 35)
+            path.write_text("interval_id\nS-Vta2:d50\n")
+            with self.assertRaisesRegex(ValueError, "locked 35"):
+                gated_interval_ids(path)
+
     def test_keeps_interval_start_fix(self) -> None:
         start = 2503320000000
         end = 2532321000001

@@ -49,9 +49,9 @@ Sources: [v3](13_ACCURACY_V3_EXPERIMENT.md), [real-map](14_REAL_MAP_EXPERIMENT.m
 
 | Task | Start condition | Branch intent | Status | Blockers |
 |---|---|---|---|---|
-| F coordinator | Throughout | `cursor/accuracy-campaign-d676` | This checkpoint | Review A/B before merge |
-| A diagnostics | Now | `cursor/accuracy-diagnostics` | Launched independently | Needs pinned IO-VNBD and JDK 17 |
-| B road reliability | Now, independent of A | `cursor/road-reliability` | Launched independently | Development only. Cached maps may be absent |
+| F coordinator | Throughout | `cursor/accuracy-campaign-d676` ([PR 16](https://github.com/NotDrake100/driftzero/pull/16)) | This checkpoint | Review A/B before merge |
+| A diagnostics | Now | `cursor/accuracy-diagnostics` ([agent](https://cursor.com/agents/bc-e28135b8-39c4-5369-ba8b-77d3e95d9aba)) | Launched independently | Needs pinned IO-VNBD and JDK 17 |
+| B road reliability | Now, independent of A | `cursor/road-reliability` ([agent](https://cursor.com/agents/bc-39553497-4561-58c6-a6d8-eb2879748d5b)) | Launched independently | Development only. Cached maps may be absent |
 | C learned motion | After A freezes data/splits | `cursor/learned-motion` | Blocked on A | Do not train yet |
 | D evaluation | After A, then B/C candidates | `cursor/accuracy-evaluation` | Blocked on A then B/C | Owns shared runner |
 | E phone validation | Capture audit now. Model wiring after D | `cursor/phone-validation` | Not started | Cloud agents cannot collect drives |

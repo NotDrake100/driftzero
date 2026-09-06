@@ -108,6 +108,8 @@
     "A": {
       "name": "diagnostics",
       "owner": "independent agent",
+      "agent_id": "bc-e28135b8-39c4-5369-ba8b-77d3e95d9aba",
+      "agent_url": "https://cursor.com/agents/bc-e28135b8-39c4-5369-ba8b-77d3e95d9aba",
       "branch_intent": "cursor/accuracy-diagnostics",
       "status": "launched",
       "start_condition": "now",
@@ -126,6 +128,8 @@
     "B": {
       "name": "road-reliability",
       "owner": "independent agent",
+      "agent_id": "bc-39553497-4561-58c6-a6d8-eb2879748d5b",
+      "agent_url": "https://cursor.com/agents/bc-39553497-4561-58c6-a6d8-eb2879748d5b",
       "branch_intent": "cursor/road-reliability",
       "status": "launched",
       "start_condition": "now, independent of A",
@@ -166,6 +170,7 @@
       "name": "coordinator",
       "status": "active",
       "branch": "cursor/accuracy-campaign-d676",
+      "pr": "https://github.com/NotDrake100/driftzero/pull/16",
       "owns": [
         "campaign manifest",
         "ADRs",

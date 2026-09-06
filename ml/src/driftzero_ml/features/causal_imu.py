@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import itertools
+from collections.abc import Sequence
 from dataclasses import dataclass
 from math import isfinite, sqrt
-from typing import Sequence
 
 from driftzero_ml.blackout import GNSS_KEYS
 
@@ -90,7 +91,7 @@ def trim_causal_window(
         raise ValueError("window_ns must be positive")
     start_ns = max(0, end_ns - window_ns)
     kept = [row for row in samples if start_ns <= row.timestamp_ns <= end_ns]
-    for previous, current in zip(kept, kept[1:]):
+    for previous, current in itertools.pairwise(kept):
         if current.timestamp_ns < previous.timestamp_ns:
             raise ValueError("IMU window timestamps must be non-decreasing")
     if len(kept) > MAX_SAMPLES:
@@ -213,7 +214,7 @@ def _std(values: Sequence[float]) -> float:
 def _causal_gravity(samples: Sequence[ImuSample]) -> list[tuple[float, float, float]]:
     gx, gy, gz = samples[0].ax, samples[0].ay, samples[0].az
     out = [(gx, gy, gz)]
-    for previous, current in zip(samples, samples[1:]):
+    for previous, current in itertools.pairwise(samples):
         dt = (current.timestamp_ns - previous.timestamp_ns) / 1_000_000_000.0
         alpha = 0.0 if dt <= 0.0 else dt / (GRAVITY_TAU_S + dt)
         gx = (1.0 - alpha) * gx + alpha * current.ax

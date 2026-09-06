@@ -7,8 +7,8 @@ the largest |mean|. |omega_z| is |gyro · up|.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from math import sqrt
-from typing import Sequence
 
 from driftzero_ml.blackout import GNSS_KEYS
 from driftzero_ml.features.causal_imu import ImuSample, causal_gravity_vectors

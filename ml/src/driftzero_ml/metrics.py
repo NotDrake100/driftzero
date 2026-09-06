@@ -6,10 +6,11 @@ integrity-critical evaluator can run in a minimal environment.
 
 from __future__ import annotations
 
+import itertools
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
 from math import asin, atan2, cos, exp, isfinite, log, pi, radians, sin, sqrt
 from statistics import mean, median
-from typing import Iterable, Sequence
 
 EARTH_MEAN_RADIUS_M = 6_371_008.8
 LatLon = tuple[float, float]
@@ -46,7 +47,7 @@ def path_length_m(points: Sequence[LatLon]) -> float:
         raise ValueError("path must contain at least one point")
     for point in points:
         _validate_point(point)
-    return sum(haversine_m(a, b) for a, b in zip(points, points[1:]))
+    return sum(haversine_m(a, b) for a, b in itertools.pairwise(points))
 
 
 @dataclass(frozen=True)

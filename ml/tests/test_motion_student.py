@@ -1,9 +1,15 @@
 import json
+import math
 import tempfile
 import unittest
 from pathlib import Path
 
-from driftzero_ml.features.causal_imu import GRAVITY_MPS2, ImuSample, records_to_imu_samples, trim_causal_window
+from driftzero_ml.features.causal_imu import (
+    GRAVITY_MPS2,
+    ImuSample,
+    records_to_imu_samples,
+    trim_causal_window,
+)
 from driftzero_ml.student.csv_load import load_imu_csv
 from driftzero_ml.student.gru import TorchUnavailable, require_torch, torch_is_installed
 from driftzero_ml.student.heads import coast_speed_mps, zupt_accel_infer
@@ -42,8 +48,8 @@ class MotionStudentTests(unittest.TestCase):
         )
         speed, stop_logit, log_var = student.infer(first_vector)
         self.assertGreaterEqual(speed, 0.0)
-        self.assertTrue(log_var == log_var)
-        self.assertTrue(stop_logit == stop_logit)
+        self.assertTrue(math.isfinite(log_var))
+        self.assertTrue(math.isfinite(stop_logit))
 
     def test_train_script_compares_freeze_on_synthetic_trips(self) -> None:
         trips = {}

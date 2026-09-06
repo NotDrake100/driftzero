@@ -1,5 +1,4 @@
 import unittest
-
 from math import cos, radians, sin
 
 from driftzero_ml.features.phone_align import (

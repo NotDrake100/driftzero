@@ -5,10 +5,10 @@ from __future__ import annotations
 import argparse
 import json
 from collections import defaultdict
+from collections.abc import Callable, Sequence
 from math import atan2, cos, exp, pi, radians, sin
 from pathlib import Path
 from statistics import mean, median
-from typing import Callable, Sequence
 
 from driftzero_ml.baselines import constant_velocity_baseline, freeze_baseline
 from driftzero_ml.blackout import (
@@ -572,7 +572,7 @@ def write_markdown(path: Path, payload: dict) -> None:
     lines.append("|---|---:|---:|---:|---:|---:|---:|")
     for name in SYSTEMS:
         row = payload["systems"][name]
-        def fmt(key: str) -> str:
+        def fmt(key: str, row=row) -> str:
             if key not in row:
                 return "n/a"
             value = row[key]

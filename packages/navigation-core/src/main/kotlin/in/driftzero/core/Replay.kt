@@ -132,10 +132,10 @@ object Replay {
         persistSpeedPseudo: Boolean = false,
         persistSpeedStdMps: Double = PERSIST_SPEED_PSEUDO_STD_MPS,
         useEngine: Boolean = false,
-        onConsume: ((SensorFrame) -> Unit)? = null,
         roadGraph: RoadGraph? = null,
         roadMatcher: RoadMatcher? = null,
         roadFeedback: Boolean = true,
+        onConsume: ((SensorFrame) -> Unit)? = null,
     ): List<NavigationState> {
         val states = ArrayList<NavigationState>()
         var lastEmitNs = -1L

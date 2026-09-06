@@ -9,11 +9,11 @@ import os
 import subprocess
 import time
 from collections import Counter
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from math import pi
 from pathlib import Path
 from statistics import mean, median
-from typing import Sequence
 
 from driftzero_ml.datasets.io_vnbd import load_smartphone_csv
 from driftzero_ml.eval_iovnbd_blackout import (
@@ -34,7 +34,6 @@ from driftzero_ml.export_sensorframe import (
 from driftzero_ml.gnss_truth import TruthGateConfig, course_rad, score_epochs
 from driftzero_ml.metrics import BlackoutMetrics, circular_mae_rad
 from driftzero_ml.screening import locked_blackouts
-
 
 GATED_CSV = Path("results/io_vnbd_screening_v1/metrics_per_interval.csv")
 KOTLIN_DIR = Path("results/io_vnbd_screening_v1/kotlin_replay")
@@ -139,7 +138,7 @@ def run_replay(
         mask_end,
         extra_args=extra_args,
     )
-    result = subprocess.run(args, cwd=binary.parent, capture_output=True, text=True, env=env)
+    result = subprocess.run(args, cwd=binary.parent, capture_output=True, text=True, env=env, check=False)
     log_path.write_text(result.stdout + ("\n" + result.stderr if result.stderr else ""))
     if result.returncode != 0:
         raise RuntimeError(f"replay failed ({result.returncode}): {result.stderr or result.stdout}")
@@ -584,7 +583,7 @@ def run(
                 gate=SUITE_GATES.get(suite),
             )
             extras = extras_from_states(aligned, truth, window.start_ns, window.end_ns)
-        except Exception as error:
+        except (OSError, ValueError, RuntimeError, KeyError, TypeError, ArithmeticError) as error:
             failures.append({"interval_id": interval_id, "reason": str(error)})
             continue
         modes = mode_histogram(states, window.start_ns, window.end_ns)
@@ -667,7 +666,7 @@ def run(
                 "metrics": metrics.to_dict(),
                 "replay": replay_log,
             }
-        except Exception as error:
+        except (OSError, ValueError, RuntimeError, KeyError, TypeError, ArithmeticError) as error:
             sensitivity = {"interval_id": SENSITIVITY_INTERVAL, "error": str(error)}
         if held_path.is_file():
             held_path.unlink()

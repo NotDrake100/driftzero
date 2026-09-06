@@ -9,8 +9,8 @@ from driftzero_ml.eval_iovnbd_blackout import (
     score_trip,
     write_markdown,
 )
-from driftzero_ml.student.linear import LinearMotionStudent
 from driftzero_ml.features.causal_imu import FEATURE_NAMES
+from driftzero_ml.student.linear import LinearMotionStudent
 
 
 class EvalIovnbdBlackoutTests(unittest.TestCase):

@@ -7,9 +7,9 @@ the freeze time. Stdlib only.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from math import sqrt
-from typing import Callable, Sequence
 
 from driftzero_ml.features.causal_imu import MAX_SPEED_MPS
 from driftzero_ml.features.phone_align import TripAlignment, rotate_vector, vertical_gyro_radps

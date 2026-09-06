@@ -80,7 +80,7 @@ def load_imu_csv(path: Path) -> list[EurocImuRow]:
             raise ValueError(f"{resolved} row has {len(cells)} fields, expected 7")
         rows.append(
             EurocImuRow(
-                timestamp_ns=int(cells[index["timestamp"] if "timestamp" in index else 0]),
+                timestamp_ns=int(cells[index.get("timestamp", 0)]),
                 wx=float(cells[index["w_rs_s_x"]]),
                 wy=float(cells[index["w_rs_s_y"]]),
                 wz=float(cells[index["w_rs_s_z"]]),

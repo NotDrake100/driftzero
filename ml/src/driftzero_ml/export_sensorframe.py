@@ -16,11 +16,12 @@ Timestamp rewinds drop the suffix and are flagged in the export header.
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import math
+from collections.abc import Sequence
 from pathlib import Path
 from statistics import median
-from typing import Sequence
 
 from driftzero_ml.contracts import validate_sensor_frame
 from driftzero_ml.datasets.io_vnbd import SmartphoneRow, TimestampRewind, trim_nondecreasing_rows
@@ -229,7 +230,7 @@ def hold_last_imu_upsample(
 
     if target_hz <= 0.0 or not math.isfinite(target_hz):
         raise ValueError("target_hz must be positive and finite")
-    period_ns = int(round(NS_PER_S / target_hz))
+    period_ns = round(NS_PER_S / target_hz)
     if period_ns <= 0:
         raise ValueError("target_hz is too high")
     imu = [row for row in frames if row["kind"] in ("accelerometer", "gyroscope")]
@@ -321,7 +322,7 @@ def imu_gap_count(frames: Sequence[dict], *, max_integrate_s: float = MAX_INTEGR
         if row["kind"] == "accelerometer"
     ]
     gaps = 0
-    for earlier, later in zip(times, times[1:]):
+    for earlier, later in itertools.pairwise(times):
         if (later - earlier) / NS_PER_S > max_integrate_s:
             gaps += 1
     return gaps
@@ -416,8 +417,10 @@ def _gyro_and_unique_fixes(
     fixes: list[tuple[int, float, float]] = []
     last: tuple[float, float] | None = None
     for row in rows:
-        if row.gyro_yaw is not None and row.gyro_pitch is not None and row.gyro_roll is not None:
-            if all(math.isfinite(axis) for axis in (row.gyro_yaw, row.gyro_pitch, row.gyro_roll)):
+        if (
+            row.gyro_yaw is not None and row.gyro_pitch is not None and row.gyro_roll is not None
+            and all(math.isfinite(axis) for axis in (row.gyro_yaw, row.gyro_pitch, row.gyro_roll))
+        ):
                 gyros.append(
                     (int(row.timestamp_ns), float(row.gyro_yaw), float(row.gyro_pitch), float(row.gyro_roll))
                 )

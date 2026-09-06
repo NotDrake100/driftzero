@@ -7,13 +7,13 @@ import json
 import platform
 import subprocess
 import sys
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Mapping, Sequence
 
 from driftzero_ml.student.residual import (
     CHI2_1DOF_95,
-    CLIP_DELTA_MPS,
     CLEAR_MARGIN_REL,
+    CLIP_DELTA_MPS,
     HORIZONS_S,
     MIN_RIDGE_TRAIN,
     RESIDUAL_FEATURE_NAMES,
@@ -250,10 +250,10 @@ def render_summary(payload: dict, rec: dict) -> str:
     lines = [
         "# Speed residual v1",
         "",
-        "Target is `delta_v = v_gnss(t) - v_last_accepted_gnss(t0)` in m/s. "
+        ("Target is `delta_v = v_gnss(t) - v_last_accepted_gnss(t0)` in m/s. "
         "Features are the causal 12 IMU stats plus hold-interval forward accel mean, "
         "|omega_z|, IMU stop flag, elapsed since t0, and the single allowed scalar "
-        "`v_last_accepted_mps`. Splits are `session_group_id`, never row split.",
+        "`v_last_accepted_mps`. Splits are `session_group_id`, never row split."),
         "",
         "## Run identity",
         "",
@@ -362,15 +362,15 @@ def render_summary(payload: dict, rec: dict) -> str:
             f"- {rec['reject_example']}.",
             f"- {rec['accept_example']}.",
             "",
-            "Persist and decay PICP use training |residual| quantiles as a constant radius "
+            ("Persist and decay PICP use training |residual| quantiles as a constant radius "
             "(68th and 95th). Ridge PICP uses predicted log-variance with z=1 and z=1.96. "
-            "Linear absolute PICP uses packed `linear.json` log-variance.",
+            "Linear absolute PICP uses packed `linear.json` log-variance."),
             "",
             "## Leakage",
             "",
-            "Feature names were asserted leak-free except `v_last_accepted_mps` at t0. "
+            ("Feature names were asserted leak-free except `v_last_accepted_mps` at t0. "
             "Labels use `infer_speed_unit` on unique-fix finite difference versus the speed column "
-            "(header says km/h, values are m/s).",
+            "(header says km/h, values are m/s)."),
             "",
         ]
     )
@@ -425,7 +425,7 @@ def main(argv: list[str] | None = None) -> int:
         root = args.repo / "data" / "raw" / "io_vnbd"
         try:
             trips, skipped = load_residual_trips(root)
-        except Exception as error:
+        except (OSError, ValueError, RuntimeError, KeyError, TypeError, ArithmeticError) as error:
             trips = default_synthetic_trips(
                 seed=int(args.seed) if str(args.seed).isdigit() else 26168
             )

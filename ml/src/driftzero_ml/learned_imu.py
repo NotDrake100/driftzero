@@ -25,10 +25,11 @@ import json
 import math
 import random
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import mean
-from typing import Literal, Sequence
+from typing import Literal
 
 from driftzero_ml.blackout import GNSS_KEYS, assert_no_gnss_leakage
 from driftzero_ml.features.causal_imu import (

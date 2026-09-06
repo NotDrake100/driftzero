@@ -4,7 +4,6 @@ from importlib.util import find_spec
 from pathlib import Path
 
 from driftzero_ml.blackout import BlackoutInterval, assert_no_gnss_leakage, mask_gnss_records
-from driftzero_ml.timesfm_adapter import timesfm_is_installed, validate_context
 from driftzero_ml.timesfm25 import (
     COV_ABS_OMEGA_Z,
     COV_FORWARD_ACCEL,
@@ -15,6 +14,7 @@ from driftzero_ml.timesfm25 import (
     write_teacher_targets,
     xreg_plus_timesfm_inputs,
 )
+from driftzero_ml.timesfm_adapter import timesfm_is_installed, validate_context
 from driftzero_ml.timesfm_experiment import (
     const_accel_forecast,
     fill_numeric,
@@ -173,9 +173,8 @@ class TimesFM25CovariateAndTeacherTests(unittest.TestCase):
 
         eval_row = dict(rows[0])
         eval_row["split"] = "locked_test"
-        with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaisesRegex(ValueError, "train split only"):
-                write_teacher_targets(Path(tmp) / "bad.npz", [eval_row], {})
+        with tempfile.TemporaryDirectory() as tmp, self.assertRaisesRegex(ValueError, "train split only"):
+            write_teacher_targets(Path(tmp) / "bad.npz", [eval_row], {})
 
 
 if __name__ == "__main__":

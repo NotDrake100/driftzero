@@ -9,12 +9,13 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import os
 import shutil
 import subprocess
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from driftzero_ml.eval_kotlin_replay import (
     GATED_CSV,
@@ -120,7 +121,7 @@ def run_replay(
         str(mask_end),
         *extra_args,
     ]
-    result = subprocess.run(cmd, cwd=binary.parent, capture_output=True, text=True, env=env)
+    result = subprocess.run(cmd, cwd=binary.parent, capture_output=True, text=True, env=env, check=False)
     log_path.write_text(result.stdout + ("\n" + result.stderr if result.stderr else ""))
     if result.returncode != 0:
         raise RuntimeError(f"replay failed ({result.returncode}): {result.stderr or result.stdout}")
@@ -296,7 +297,7 @@ def run(
                 gate=SUITE_GATES.get(suite),
             )
             extras = extras_from_states(aligned, truth, start_ns, end_ns)
-        except Exception as error:
+        except (OSError, ValueError, RuntimeError, KeyError, TypeError, ArithmeticError) as error:
             failures.append({"interval_id": interval_id, "reason": str(error)})
             continue
         modes = mode_histogram(states, start_ns, end_ns)
@@ -382,11 +383,11 @@ def promote_winner(out_dir: Path, winner: str, note: str) -> None:
     shutil.copyfile(src_csv, out_dir / "metrics_per_interval_kotlin_eskf_v5.csv")
 
 
-def _fmt(value: float | int | None, digits: int) -> str:
+def _fmt(value: float | None, digits: int) -> str:
     if value is None:
         return "n/a"
     number = float(value)
-    if number != number:
+    if math.isnan(number):
         return "n/a"
     return f"{number:.{digits}f}"
 
@@ -561,18 +562,18 @@ def pick_winner(out_dir: Path, v3_named: dict[str, dict]) -> tuple[str, str]:
     named_ok = pool[0][3]
     if beats and named_ok:
         note = (
-            f"Beats persist on drift p50 and endpoint p50 on frames_premask. "
-            f"Named intervals stay within 5 m of v3_premask. Stop detector left off."
+            "Beats persist on drift p50 and endpoint p50 on frames_premask. "
+            "Named intervals stay within 5 m of v3_premask. Stop detector left off."
         )
     elif named_ok:
         note = (
-            f"Best no-stop ablation on frames_premask that keeps S-Vta2:d50 and S-S1:mid "
-            f"within 5 m of v3_premask. Does not beat persist on both p50s. Stop detector left off."
+            "Best no-stop ablation on frames_premask that keeps S-Vta2:d50 and S-S1:mid "
+            "within 5 m of v3_premask. Does not beat persist on both p50s. Stop detector left off."
         )
     else:
         note = (
-            f"Best no-stop ablation on frames_premask. Named-interval guard missed. "
-            f"Stop detector left off."
+            "Best no-stop ablation on frames_premask. Named-interval guard missed. "
+            "Stop detector left off."
         )
     stop_path = out_dir / "metrics_kotlin_eskf_v5d.json"
     if stop_path.is_file():

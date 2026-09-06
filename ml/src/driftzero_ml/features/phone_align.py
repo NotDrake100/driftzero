@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import itertools
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from math import copysign, pi, sqrt
-from typing import Sequence
 
 from driftzero_ml.gnss_truth import course_rad
 from driftzero_ml.metrics import haversine_m
@@ -167,7 +168,7 @@ def heading_gyro_decision(
     hops: list[tuple[int, int, float, tuple[float, float, float]]] = []
     gyro_times = [row[0] for row in gyros]
     start = 0
-    for earlier, later in zip(fixes, fixes[1:]):
+    for earlier, later in itertools.pairwise(fixes):
         dt = (later[0] - earlier[0]) / 1_000_000_000.0
         if dt < MIN_HEADING_GYRO_DT_S:
             continue
@@ -203,7 +204,7 @@ def heading_gyro_decision(
         )
     dpsi: list[float] = []
     aligned_means: list[tuple[float, float, float]] = []
-    for previous, current in zip(hops, hops[1:]):
+    for previous, current in itertools.pairwise(hops):
         dt = (current[1] - previous[1]) / 1_000_000_000.0
         if dt < MIN_HEADING_GYRO_DT_S:
             continue

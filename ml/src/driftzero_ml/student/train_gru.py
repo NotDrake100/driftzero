@@ -20,7 +20,6 @@ from driftzero_ml.student.gru_runtime import (
     ALIGN_LEN,
     GRU_SCHEMA,
     HEAD_DIM,
-    HEAD_NAMES,
     HIDDEN,
     INPUT_SIZE,
     CausalGruStudent,
@@ -107,7 +106,6 @@ def _targets(window) -> list[float]:
 
 
 def _decode_raw(raw) -> tuple:
-    import torch
     from torch.nn import functional as F
 
     speed = F.softplus(raw[:, 0]).clamp(0.0, 50.0)
@@ -167,13 +165,13 @@ def train_gru(
     train_windows = by_split.get("train") or []
     if len(train_windows) < 32:
         raise ValueError(f"not enough train windows: {len(train_windows)}")
-    train_seq = [_pad(list(list(row) for row in w.sequence)) for w in train_windows]
+    train_seq = [_pad([list(row) for row in w.sequence]) for w in train_windows]
     mean_v, std_v = _scaler(train_seq)
     device = _device()
 
     def pack(windows: list) -> tuple:
         seqs = torch.tensor(
-            [_apply_scaler(_pad(list(list(row) for row in w.sequence)), mean_v, std_v) for w in windows],
+            [_apply_scaler(_pad([list(row) for row in w.sequence]), mean_v, std_v) for w in windows],
             dtype=torch.float32,
             device=device,
         )

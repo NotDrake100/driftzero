@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 import tempfile
 import unittest
@@ -165,7 +166,7 @@ class ExportSensorFrameTests(unittest.TestCase):
         self.assertEqual(len(accel_times), 16)
         jumped = [
             later - earlier
-            for earlier, later in zip(accel_times, accel_times[1:])
+            for earlier, later in itertools.pairwise(accel_times)
             if later - earlier > int(MAX_INTEGRATE_S * 1_000_000_000)
         ]
         self.assertEqual(len(jumped), 1)

@@ -58,7 +58,7 @@ intervals. Every candidate scored all 11. No locked session or sibling was used.
 | Course hold plus latch | 45.31% | 287.85% | 10/11 |
 
 The fixed tie-breaking rule selected **latch_sparse_reseed**. Its development
-median improved 12.07%, p95 improved 77.62%, and failure count did not worsen.
+median improved 12.06%, p95 improved 77.62%, and failure count did not worsen.
 The stop/restart variant was rejected despite one fewer failure because its
 median and tail errors worsened. Selection was saved before locked confirmation.
 

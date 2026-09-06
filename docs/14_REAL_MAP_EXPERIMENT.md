@@ -46,6 +46,24 @@ accuracy claim for the added model.
 [full metrics and acceptance flags](../results/road_research_20260906/acceleration_initial/metrics.json),
 and [selection](../results/road_research_20260906/acceleration_initial/selection.json).
 
+## Complete-map paired confirmation
+
+The follow-up [workflow](https://github.com/NotDrake100/driftzero/actions/runs/34061769087)
+at `0b169c5d045dcb7bdceb03255336b5ac639ef0ec` successfully acquired the missing map.
+Both variants then used maps on **all 11 development intervals**, with no evaluation
+or IMU-gap failures. S-Vta6:mid improved from 4.52% fallback drift to 2.28% road
+drift. Both variants still had **26.90% median, 84.61% p95, and 2/11 below 10%**.
+The acceleration model was accepted on zero intervals. Both selection decisions
+remain false because the tail regresses. No locked confirmation was run.
+
+Complete evidence: [road CSV](../results/road_research_20260906/road_complete/metrics.csv),
+[road metrics](../results/road_research_20260906/road_complete/metrics.json),
+[road decision](../results/road_research_20260906/road_complete/selection.json),
+[acceleration CSV](../results/road_research_20260906/acceleration_complete/metrics.csv),
+[acceleration metrics](../results/road_research_20260906/acceleration_complete/metrics.json),
+[acceleration decision](../results/road_research_20260906/acceleration_complete/selection.json),
+and [complete snapshot provenance](../results/road_research_20260906/map_provenance_complete.json).
+
 ## Provenance and limits
 
 [Map provenance](../results/road_research_20260906/map_provenance.json) records exact
@@ -67,7 +85,8 @@ does not certify arbitrary handheld, pocket, bag or moving-phone performance.
 
 Local validation: 194 tests, two optional dependency skips; Ruff and document
 links pass. Initial source CI passes Python, JVM, Android unit tests, Android lint
-and APK build. The model checkpoint is being checked independently in CI.
+and APK build. The model checkpoint also passes all four standard CI jobs, including Android
+unit tests, lint and APK build. Subsequent commits only archive evidence and docs.
 
 These are position-only research overlays. In the saved traces and initial raw
 reports, velocity, heading, mode, health and auxiliary MAE fields belong to the

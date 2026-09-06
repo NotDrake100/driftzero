@@ -1,0 +1,81 @@
+{
+  "snapshots": [
+    {
+      "query": "[out:json][timeout:90];way(around:16000,52.9,-1.8)[\"highway\"~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$\"];out geom;",
+      "endpoint": "https://overpass-api.de/api/interpreter",
+      "sha256": "d82e118da15677e04d44002c1de4cf956e49a9f66f748718f5f11e4274181087",
+      "fetched_utc": "2026-09-06T21:30:43.719601+00:00",
+      "osm_timestamp": "2026-09-06T21:28:50Z",
+      "attribution": "\u00a9 OpenStreetMap contributors, ODbL 1.0",
+      "licence": "https://www.openstreetmap.org/copyright"
+    },
+    {
+      "query": "[out:json][timeout:90];way(around:16000,53.1,-1.9)[\"highway\"~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$\"];out geom;",
+      "endpoint": "https://overpass-api.de/api/interpreter",
+      "sha256": "99f3c29c18268b74d677643bde5b41018e03b658584d4dcf61418c5fc918c2d4",
+      "fetched_utc": "2026-09-06T21:30:55.705438+00:00",
+      "osm_timestamp": "2026-09-06T21:29:49Z",
+      "attribution": "\u00a9 OpenStreetMap contributors, ODbL 1.0",
+      "licence": "https://www.openstreetmap.org/copyright"
+    },
+    {
+      "query": "[out:json][timeout:90];way(around:16000,53.2,-1.7)[\"highway\"~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$\"];out geom;",
+      "endpoint": "https://overpass-api.de/api/interpreter",
+      "sha256": "6c6394d88fae6929b74d589b8b7b667f82863a497086ae39e67d6cf37c0c9d5b",
+      "fetched_utc": "2026-09-06T21:34:06.917180+00:00",
+      "osm_timestamp": "2026-09-06T21:32:50Z",
+      "attribution": "\u00a9 OpenStreetMap contributors, ODbL 1.0",
+      "licence": "https://www.openstreetmap.org/copyright"
+    },
+    {
+      "query": "[out:json][timeout:90];way(around:16000,52.6,-1.5)[\"highway\"~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$\"];out geom;",
+      "endpoint": "https://overpass-api.de/api/interpreter",
+      "sha256": "c1e9fe271e35ce23a414e8541a6e7150de150c66e29bfe9c2571f998fe1e6281",
+      "fetched_utc": "2026-09-06T21:34:23.080925+00:00",
+      "osm_timestamp": "2026-09-06T21:32:50Z",
+      "attribution": "\u00a9 OpenStreetMap contributors, ODbL 1.0",
+      "licence": "https://www.openstreetmap.org/copyright"
+    },
+    {
+      "query": "[out:json][timeout:90];way(around:16000,52.8,-1.7)[\"highway\"~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$\"];out geom;",
+      "endpoint": "https://overpass-api.de/api/interpreter",
+      "sha256": "c75ef754aad3441fd1ed172fa5795effc06867169ced6eb54bc2649387ff5687",
+      "fetched_utc": "2026-09-06T21:42:29.986314+00:00",
+      "osm_timestamp": "2026-09-06T21:40:58Z",
+      "attribution": "\u00a9 OpenStreetMap contributors, ODbL 1.0",
+      "licence": "https://www.openstreetmap.org/copyright"
+    },
+    {
+      "query": "[out:json][timeout:90];way(around:16000,53.1,-1.8)[\"highway\"~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$\"];out geom;",
+      "endpoint": "https://overpass-api.de/api/interpreter",
+      "sha256": "832df9f6f8067f66eaf17e245ebd3e36ab037f85347de4f25430960fe2423292",
+      "fetched_utc": "2026-09-06T21:31:16.218707+00:00",
+      "osm_timestamp": "2026-09-06T21:29:49Z",
+      "attribution": "\u00a9 OpenStreetMap contributors, ODbL 1.0",
+      "licence": "https://www.openstreetmap.org/copyright"
+    },
+    {
+      "query": "[out:json][timeout:90];way(around:16000,52.0,-0.7)[\"highway\"~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$\"];out geom;",
+      "endpoint": "https://overpass-api.de/api/interpreter",
+      "sha256": "4d10e2b1b15771a3d02e35e2c564703fe507cc93a1ebf3bc6bec396887038ed1",
+      "fetched_utc": "2026-09-06T21:34:44.952586+00:00",
+      "osm_timestamp": "2026-09-06T21:32:50Z",
+      "attribution": "\u00a9 OpenStreetMap contributors, ODbL 1.0",
+      "licence": "https://www.openstreetmap.org/copyright"
+    },
+    {
+      "query": "[out:json][timeout:90];way(around:16000,52.9,-1.7)[\"highway\"~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$\"];out geom;",
+      "endpoint": "https://overpass-api.de/api/interpreter",
+      "sha256": "aab19e10cbf8fee28d4bb30d12471d2cc2559d79f8c0968917edede0010bf83b",
+      "fetched_utc": "2026-09-06T21:33:50.275255+00:00",
+      "osm_timestamp": "2026-09-06T21:31:47Z",
+      "attribution": "\u00a9 OpenStreetMap contributors, ODbL 1.0",
+      "licence": "https://www.openstreetmap.org/copyright"
+    }
+  ],
+  "artifact_id": 9997743556,
+  "workflow_run": 34061769087,
+  "code_commit": "0b169c5d045dcb7bdceb03255336b5ac639ef0ec",
+  "artifact_sha256": "6ca4454a69c52dd065db15d4d746b0be376072ecfb84f84feaccea2e9e7761d1",
+  "artifact_retention_days": 30
+}

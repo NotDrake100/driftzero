@@ -80,12 +80,14 @@ data class GnssFixPayload(
     val isMock: Boolean? = null,
     val speedAccuracyMps: MetresPerSecond? = null,
     val bearingAccuracyRad: Double? = null,
+    val verticalAccuracyM: Metres? = null,
 ) {
     init {
         require(providerTimeMs >= 0L) { "provider_time_ms must be non-negative" }
         altitudeM?.let { require(it.isFinite()) }
         speedAccuracyMps?.let { require(it.value.isFinite() && it.value >= 0.0) }
         bearingAccuracyRad?.let { require(it.isFinite() && it >= 0.0) }
+        verticalAccuracyM?.let { require(it.value.isFinite() && it.value >= 0.0) }
     }
 }
 

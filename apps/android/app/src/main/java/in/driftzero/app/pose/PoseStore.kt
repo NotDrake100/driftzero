@@ -287,11 +287,11 @@ class PoseStore(
      * to [VectorFrame.VEHICLE_FLU] (x forward, y left, z up) only after yaw
      * is ALIGNED / ALIGNED_HIGH. The student keeps the phone-frame sample.
      */
-    fun ingestAccel(timestamp: Nanoseconds, x: Double, y: Double, z: Double) {
+    fun ingestAccel(timestamp: Nanoseconds, x: Double, y: Double, z: Double, accuracyCode: Int = 2) {
         if (!x.isFinite() || !y.isFinite() || !z.isFinite()) {
             return
         }
-        recorder?.offerAccel(timestamp, x, y, z)
+        recorder?.offerAccel(timestamp, x, y, z, accuracyCode)
         motion.ingestAccel(timestamp, x, y, z)
         if (!_replayActive.value) {
             stillDetector.onAccel(timestamp.value, x, y, z)
@@ -320,11 +320,11 @@ class PoseStore(
      * phone-frame gyro bias from the still profile is subtracted, then the
      * vector is rotated into [VectorFrame.VEHICLE_FLU].
      */
-    fun ingestGyro(timestamp: Nanoseconds, x: Double, y: Double, z: Double) {
+    fun ingestGyro(timestamp: Nanoseconds, x: Double, y: Double, z: Double, accuracyCode: Int = 2) {
         if (!x.isFinite() || !y.isFinite() || !z.isFinite()) {
             return
         }
-        recorder?.offerGyro(timestamp, x, y, z)
+        recorder?.offerGyro(timestamp, x, y, z, accuracyCode)
         motion.ingestGyro(timestamp, x, y, z)
         if (!_replayActive.value) {
             stillDetector.onGyro(timestamp.value, x, y, z)
@@ -896,8 +896,20 @@ class PoseStore(
         }
         for (sample in batch) {
             when (sample.kind) {
-                QueuedImuKind.ACCEL -> ingestAccel(sample.timestamp, sample.x, sample.y, sample.z)
-                QueuedImuKind.GYRO -> ingestGyro(sample.timestamp, sample.x, sample.y, sample.z)
+                QueuedImuKind.ACCEL -> ingestAccel(
+                    sample.timestamp,
+                    sample.x,
+                    sample.y,
+                    sample.z,
+                    accuracyCode = sample.accuracyCode,
+                )
+                QueuedImuKind.GYRO -> ingestGyro(
+                    sample.timestamp,
+                    sample.x,
+                    sample.y,
+                    sample.z,
+                    accuracyCode = sample.accuracyCode,
+                )
                 QueuedImuKind.MAG -> ingestMagnetometer(
                     sample.timestamp,
                     sample.x,

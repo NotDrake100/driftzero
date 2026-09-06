@@ -277,6 +277,7 @@ def heading_gyro_radps(
     gyro: tuple[float, float, float],
     pick: HeadingGyroPick,
 ) -> float:
+    """Right-handed up angular rate, opposite clockwise GNSS course rate."""
     component = {"yaw": gyro[0], "pitch": gyro[1], "roll": gyro[2]}[pick.axis]
     return pick.sign * component
 

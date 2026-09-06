@@ -135,7 +135,7 @@ class ExportSensorFrameTests(unittest.TestCase):
         self.assertEqual(header["gravity_calibration"], other_header["gravity_calibration"])
         self.assertEqual(header["gravity_calibration"]["source"], "pre_mask")
         self.assertEqual(header["gravity_calibration"]["sample_count"], 16)
-        self.assertEqual(header["gyro_convention"], "right_handed_up_v2")
+        self.assertEqual(header["gyro_convention"], "right_handed_up_v3")
 
     def test_missing_gyro_and_speed_are_omitted_not_zeroed(self) -> None:
         rows = [
@@ -213,6 +213,25 @@ class ExportSensorFrameTests(unittest.TestCase):
         self.assertNotIn(200_000_000, accel_times)
         self.assertTrue(any("hold_last_imu" in row["quality"]["flags"] for row in held))
 
+    def test_exported_left_and_right_turns_integrate_to_geometric_course(self):
+        for course_rate in (-0.10, 0.10):
+            rows = []
+            speed = 10.0
+            for i in range(200):
+                t = float(i // 10)
+                east = speed * (1.0 - math.cos(course_rate * t)) / course_rate
+                north = speed * math.sin(course_rate * t) / course_rate
+                lat = math.degrees(north / EARTH_MEAN_RADIUS_M)
+                lon = math.degrees(east / EARTH_MEAN_RADIUS_M)
+                rows.append(_row(i * 100_000_000, lat=lat, lon=lon,
+                    gyro=(0.0, course_rate, 0.0), grav=(0.0, 0.0, 9.8)))
+            header, frames = export_sensor_frames(rows, mask_start_ns=10_000_000_000)
+            self.assertEqual(header["heading_gyro"]["axis"], "pitch")
+            masked_rates = [f["payload"]["z"] for f in frames
+                if f["kind"] == "gyroscope" and f["timestamp_ns"] >= 10_000_000_000]
+            # Compass course from the analytical circle advances by rate * duration.
+            self.assertAlmostEqual(-sum(masked_rates) * 0.1, course_rate * 10.0, places=6)
+
     def test_heading_axis_gyro_is_on_z_only(self) -> None:
         from math import cos, radians, sin
 
@@ -246,8 +265,8 @@ class ExportSensorFrameTests(unittest.TestCase):
         self.assertGreater(len(gyro), 20)
         self.assertAlmostEqual(gyro[0]["payload"]["x"], 0.0, places=6)
         self.assertAlmostEqual(gyro[0]["payload"]["y"], 0.0, places=6)
-        # The first course rate is negative. Right-handed +up yaw is positive.
-        self.assertGreater(gyro[0]["payload"]["z"], 0.0)
+        # This synthetic course increases clockwise; right-handed +up rate is negative.
+        self.assertLess(gyro[0]["payload"]["z"], 0.0)
         self.assertIn("gyro_heading_axis_pitch", gyro[0]["quality"]["flags"])
 
     def test_jsonl_round_trip_and_truth(self) -> None:

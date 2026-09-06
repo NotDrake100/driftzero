@@ -1,0 +1,192 @@
+{
+  "campaign": "cursor-accuracy-below-10pct",
+  "version": 1,
+  "date_utc": "2026-09-06",
+  "role": "F-coordinator",
+  "status": "checkpoint",
+  "claim": {
+    "code_merged": false,
+    "experiment_completed": false,
+    "median_target_passed": false,
+    "all_interval_target_passed": false,
+    "field_placements_tested": false,
+    "notes": "Tracking checkpoint only. No new accuracy measurement in v1."
+  },
+  "pins": {
+    "campaign_base_commit": "c7a1ab9ccf1c156c48da1cac7b6e10ef384f66d4",
+    "plan_named_baseline_commit": "5a0893fdb321605784f1f492445ad53f2fae47fc",
+    "selected_coast_commit": "1cd92fb3d5dc60fea57e944a4862991c714d484d",
+    "io_vnbd_commit": "118939602e3422d47b8ab0807b623751c3ac135b",
+    "seed": "26168",
+    "locked_interval_count": 35,
+    "development_interval_count": 11,
+    "model_hash": null,
+    "selected_candidate": null
+  },
+  "measured_on_main": {
+    "locked_selected_coast": {
+      "set": "locked_35",
+      "system": "latch_sparse_reseed",
+      "median_drift": 0.48834485395037297,
+      "p95_drift": 2.682407053981851,
+      "worst_drift": 3.1766947772530147,
+      "intervals_below_0_10": 6,
+      "interval_count": 35,
+      "accuracy_gate_passed": false,
+      "source": [
+        "results/accuracy_v3_20260906/development/locked_gate.json",
+        "docs/13_ACCURACY_V3_EXPERIMENT.md"
+      ]
+    },
+    "development_selected_coast": {
+      "set": "development_11",
+      "median_drift": 0.39842920890925465,
+      "p95_drift": 0.5401756750284612,
+      "source": "results/accuracy_v3_20260906/development/selection.json"
+    },
+    "development_real_map": {
+      "set": "development_11",
+      "median_drift": 0.268956322538104,
+      "p95_drift": 0.8461063500210423,
+      "eligible": false,
+      "locked_confirmation": false,
+      "source": [
+        "results/road_research_20260906/road_complete/metrics.json",
+        "results/road_research_20260906/road_complete/selection.json"
+      ]
+    },
+    "development_prefix_acceleration": {
+      "set": "development_11",
+      "median_drift": 0.268956322538104,
+      "p95_drift": 0.8461063500210423,
+      "accepted_models": 0,
+      "eligible": false
+    }
+  },
+  "exposed_groups": {
+    "locked_session_groups": [
+      "S-S1",
+      "S-S3",
+      "S-Vfa01",
+      "S-Vta1",
+      "S-Vta2",
+      "S-Vta12",
+      "S-Vta15",
+      "S-Vta17",
+      "S-Vta20",
+      "S-Vta22",
+      "S-Vta24",
+      "S-Vta25",
+      "S-Vtb1",
+      "S-Vtb6",
+      "S-Vtb8",
+      "S-Vtb9",
+      "S-Vw5",
+      "S-Vw16",
+      "S-Y1"
+    ],
+    "development_session_groups": [
+      "S-S4",
+      "S-Vta5",
+      "S-Vta6",
+      "S-Vta8",
+      "S-Vta11",
+      "S-Vta13",
+      "S-Vta29",
+      "S-Vtb2",
+      "S-Vtb7",
+      "S-Vw3",
+      "S-Vw12",
+      "S-Vw17"
+    ],
+    "fresh_holdout": "unassigned. A must reserve unused groups. Do not call locked or development groups fresh.",
+    "route_identity": "unavailable in published IO-VNBD stems",
+    "vehicle_identity": "unavailable in published IO-VNBD stems",
+    "driver_identity": "prefix letter only: S-S=A, S-M=B, S-Y=D, S-V=E"
+  },
+  "tasks": {
+    "A": {
+      "name": "diagnostics",
+      "owner": "independent agent",
+      "branch_intent": "cursor/accuracy-diagnostics",
+      "status": "launched",
+      "start_condition": "now",
+      "owns": [
+        "new score-only diagnostic module",
+        "its tests",
+        "results/cursor_diagnostics",
+        "DIAGNOSTIC_ONLY rejection in accuracy_gate if missing"
+      ],
+      "must_not_edit": [
+        "ml/src/driftzero_ml/osm_coast.py",
+        "ml/src/driftzero_ml/eval_kotlin_replay.py"
+      ],
+      "deliverable": "error-source decision and data/split manifest"
+    },
+    "B": {
+      "name": "road-reliability",
+      "owner": "independent agent",
+      "branch_intent": "cursor/road-reliability",
+      "status": "launched",
+      "start_condition": "now, independent of A",
+      "owns": [
+        "ml/src/driftzero_ml/osm_coast.py",
+        "map-specific tests",
+        "proposed causal map adapter"
+      ],
+      "must_not_edit": [
+        "ml/src/driftzero_ml/eval_kotlin_replay.py",
+        "new diagnostic module"
+      ],
+      "deliverable": "audited topology, uncertainty, map-only ablation or rejection"
+    },
+    "C": {
+      "name": "learned-motion",
+      "status": "blocked",
+      "start_condition": "after A freezes usable data and splits",
+      "branch_intent": "cursor/learned-motion"
+    },
+    "D": {
+      "name": "evaluation",
+      "status": "blocked",
+      "start_condition": "after A, then B/C candidates",
+      "branch_intent": "cursor/accuracy-evaluation",
+      "owns": [
+        "eval_osm_coast.py or replacement runner",
+        "shared experimental runner"
+      ]
+    },
+    "E": {
+      "name": "phone-validation",
+      "status": "not_started",
+      "start_condition": "capture audit now; model wiring after D selects",
+      "branch_intent": "cursor/phone-validation"
+    },
+    "F": {
+      "name": "coordinator",
+      "status": "active",
+      "branch": "cursor/accuracy-campaign-d676",
+      "owns": [
+        "campaign manifest",
+        "ADRs",
+        "result index",
+        "reviewed milestone merges"
+      ]
+    }
+  },
+  "blockers": [
+    "Pinned IO-VNBD is not materialized in this coordinator workspace (data/raw/ is empty).",
+    "Replay baseline command requires JDK 17. This workspace reports OpenJDK 21.",
+    "C must not start before A's split freeze.",
+    "D must not start shared runner integration before A, then B/C candidates.",
+    "No field recordings exist for this campaign. Cloud agents cannot manufacture drives.",
+    "GPU is not assumed. Full training, if later justified, needs a resumable job rather than a finished claim."
+  ],
+  "baseline_commands": [
+    "PYTHONPATH=ml/src python -m driftzero_ml.eval_kotlin_replay --out results/cursor_baseline --system latch_sparse_reseed --coast-mode=yaw_speed_hold --reexport --rerun --skip-sensitivity --replay-arg=--weak-heading-policy=hold_course --replay-arg=--gnss-reseed-after-s=3 --replay-arg=--gnss-reseed-min-median-unique-s=2 --replay-arg=--gnss-reseed-while-fused --replay-arg=--coast-latch-gnss-speed",
+    "PYTHONPATH=ml/src python -m driftzero_ml.accuracy_gate results/cursor_baseline/metrics_latch_sparse_reseed.json --out results/cursor_baseline/target_gate.json"
+  ],
+  "last_completed_step": "F v1 campaign manifest, ADR 015, launch A and B independently from main",
+  "next_step": "Review A diagnosis/split freeze and B map adapter or rejection. Do not start C until A freezes splits. Do not start D runner integration until A then B/C candidates exist.",
+  "failures": []
+}

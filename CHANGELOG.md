@@ -4,6 +4,7 @@ Dates follow git history on this repository. Unreleased work is the working tree
 
 ## Unreleased
 
+- Accuracy campaign tracking (ADR 015). Not a 10% target pass.
 - Repository front door, CI, and attribution hygiene for SIH review.
 
 ## 2026-09-02

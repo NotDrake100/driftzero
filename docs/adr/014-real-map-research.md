@@ -38,3 +38,19 @@ Reproduce: `PYTHONPATH=ml/src python -m driftzero_ml.eval_osm_coast --download-m
 Without `--download-maps`, only cached maps are used. This is a research command,
 not a network dependency of the app. Metrics and per-interval CSV are written to
 `results/road_coast`; the workflow archives maps, traces and baseline evidence.
+
+## Acceleration ablation, preregistered before real-map outcomes
+
+A second run enables `--acceleration-model`. Fit a three-coefficient ridge model
+(bias, horizontal x projection, horizontal y projection; L2 0.1) from integrated
+pre-mask acceleration to GNSS speed changes. Require at least 12 usable GNSS hops,
+train on the first 70% (at least eight), and validate on the remaining later hops.
+Accept only a 10% validation RMSE gain over zero acceleration, projection norm
+0.2 to 2, and bias magnitude at most 1 m/s². Do not refit after validation. Clip
+inference to ±3 m/s². Missing or rejected models retain the speed random walk.
+Do not infer arbitrary phone handling support from this stationary-placement fit.
+
+Use the same fixed development intervals and acceptance rule as the road-only
+candidate, additionally rejecting any partial-interval IMU failure. Run both
+ablations with the same map cache. This is a distinct declared model experiment;
+its result must be reported beside the road-only outcome, including regressions.

@@ -171,7 +171,9 @@ class RoadCoast:
             target += step
         return result
 
-    def step(self, dt: float, physical_up_rate: float | None) -> None:
+    def step(self, dt: float, physical_up_rate: float | None, acceleration: float = 0.0) -> None:
+        if not math.isfinite(acceleration) or abs(acceleration) > 3:
+            raise ValueError('invalid acceleration prediction')
         if dt <= 0 or not math.isfinite(dt):
             raise ValueError('invalid timestep')
         if dt > 0.4:
@@ -182,7 +184,7 @@ class RoadCoast:
                 raise ValueError('nonfinite gyro')
             self.heading = wrap_pi(self.heading-physical_up_rate*dt)
         for p in self.particles:
-            p.speed = max(0.0, min(55.0, p.speed+self.rng.gauss(0, 0.35*math.sqrt(dt))))
+            p.speed = max(0.0, min(55.0, p.speed+acceleration*dt+self.rng.gauss(0, 0.35*math.sqrt(dt))))
             p.s += p.speed*dt
             for _ in range(64):
                 edge = self.graph.edges[p.edge]

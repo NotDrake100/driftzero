@@ -6,12 +6,21 @@ on:
     paths: [.github/workflows/road-coast.yml, ml/src/driftzero_ml/osm_coast.py, ml/src/driftzero_ml/eval_osm_coast.py]
 permissions:
   contents: read
+  actions: read
 jobs:
   screening:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      - name: Restore prior map snapshots when available
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: road-coast-evidence
+          run-id: 34061171471
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: results/road_coast
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -40,10 +49,14 @@ jobs:
       - name: Select on development sessions and confirm once on locked suite
         env:
           PYTHONPATH: ml/src
-        run: python -m driftzero_ml.eval_osm_coast --download-maps
+        run: |
+          python -m driftzero_ml.eval_osm_coast --download-maps
+          python -m driftzero_ml.eval_osm_coast --acceleration-model
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: road-coast-evidence
           retention-days: 30
-          path: results/road_coast/
+          path: |
+            results/road_coast/
+            results/road_acceleration/

@@ -42,3 +42,47 @@ class OsmCoastTest(unittest.TestCase):
     def test_no_road_does_not_invent_fix(self):
         with self.assertRaises(ValueError):
             Graph({'elements': []}, (0, 0))
+
+    def test_inference_ignores_hidden_gnss_and_falls_back_at_gap(self):
+        from driftzero_ml.eval_osm_coast import infer
+
+        graph = Graph({'elements': [way([1, 2], [(0, 0), (.02, 0)], oneway='yes')]}, (0, 0))
+        seed = {'latitude_deg': 0, 'longitude_deg': 0, 'speed_mps': 10, 'bearing_rad': math.pi/2}
+        frames = [{'kind': 'gnss_fix', 'timestamp_ns': 0, 'payload': seed}]
+        for stamp in (100_000_000, 200_000_000, 900_000_000):
+            frames.append({'kind': 'gyroscope', 'timestamp_ns': stamp,
+                           'payload': {'z': 0}, 'quality': {'flags': []}})
+        frames.append({'kind': 'gnss_fix', 'timestamp_ns': 200_000_000,
+                       'payload': {'latitude_deg': 45, 'speed_mps': 1000}})
+        baseline = [{'timestamp_ns': stamp, 'position': {'latitude_deg': 1, 'longitude_deg': 2}}
+                    for stamp in (100_000_000, 200_000_000, 900_000_000)]
+        first, info = infer(frames, baseline, 0, 1_000_000_000, graph, .4)
+        frames[-1]['payload'] = {'latitude_deg': -45, 'speed_mps': 0}
+        self.assertEqual(first, infer(frames, baseline, 0, 1_000_000_000, graph, .4)[0])
+        self.assertNotEqual(first[0]['position'], baseline[0]['position'])
+        self.assertEqual(first[-1], baseline[-1])
+        self.assertEqual(info['failure']['timestamp_ns'], 900_000_000)
+
+    def test_offline_cache_rejects_tampering(self):
+        import hashlib
+        import json
+        import tempfile
+        from pathlib import Path
+
+        from driftzero_ml.osm_coast import acquire_map
+
+        seed = {'latitude_deg': 52.4, 'longitude_deg': -1.5}
+        query = map_query(seed)
+        key = hashlib.sha256(query.encode()).hexdigest()
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            with self.assertRaises(FileNotFoundError):
+                acquire_map(seed, directory)
+            raw = b'{"elements": []}'
+            (directory / f'{key}.json').write_bytes(raw)
+            (directory / f'{key}.meta.json').write_text(json.dumps({'query': query,
+                                                                  'sha256': hashlib.sha256(raw).hexdigest()}))
+            self.assertEqual(acquire_map(seed, directory)[0], {'elements': []})
+            (directory / f'{key}.json').write_bytes(b'{}')
+            with self.assertRaises(ValueError):
+                acquire_map(seed, directory)

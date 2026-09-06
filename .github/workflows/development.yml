@@ -1,0 +1,53 @@
+name: Development coast search
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/driftzero-accuracy-v3]
+    paths: [.github/workflows/development.yml, ml/src/driftzero_ml/development_search.py]
+permissions:
+  contents: read
+jobs:
+  screening:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build replay
+        run: ./gradlew :navigation-core:installDist --no-daemon
+      - uses: actions/checkout@v4
+        with:
+          repository: onyekpeu/IO-VNBD
+          ref: 118939602e3422d47b8ab0807b623751c3ac135b
+          path: data/raw/io_vnbd
+          lfs: false
+          persist-credentials: false
+      - name: Materialize pinned smartphone data only
+        working-directory: data/raw/io_vnbd
+        run: git lfs pull --include='**/Categorised IOVNB Dataset/**/S-*.csv'
+      - name: Record provenance
+        run: |
+          mkdir -p results/development_v3
+          git rev-parse HEAD > results/development_v3/code_commit.txt
+          git -C data/raw/io_vnbd rev-parse HEAD > results/development_v3/data_commit.txt
+      - name: Select on development sessions and confirm once on locked suite
+        env:
+          PYTHONPATH: ml/src
+        run: python -m driftzero_ml.development_search
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: development-search-evidence
+          retention-days: 30
+          path: |
+            results/development_v3/*.json
+            results/development_v3/*.txt
+            results/development_v3/*/*.json
+            results/development_v3/*/*.csv

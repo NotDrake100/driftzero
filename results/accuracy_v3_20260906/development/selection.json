@@ -1,0 +1,69 @@
+{
+  "selected": "latch_sparse_reseed",
+  "summaries": {
+    "baseline": {
+      "complete": true,
+      "count": 11,
+      "failed_count": 10,
+      "p50": 0.4530804767535045,
+      "p95": 2.4137823680554007,
+      "worst": 2.4137823680554007
+    },
+    "latch": {
+      "complete": true,
+      "count": 11,
+      "failed_count": 10,
+      "p50": 0.5082163539997337,
+      "p95": 2.8039782335045027,
+      "worst": 2.8039782335045027
+    },
+    "persist_pseudo": {
+      "complete": true,
+      "count": 11,
+      "failed_count": 10,
+      "p50": 0.4530804767535045,
+      "p95": 2.4137823680554007,
+      "worst": 2.4137823680554007
+    },
+    "sparse_reseed": {
+      "complete": true,
+      "count": 11,
+      "failed_count": 10,
+      "p50": 0.39842920890925465,
+      "p95": 0.5401756750284612,
+      "worst": 0.5401756750284612
+    },
+    "latch_sparse_reseed": {
+      "complete": true,
+      "count": 11,
+      "failed_count": 10,
+      "p50": 0.39842920890925465,
+      "p95": 0.5401756750284612,
+      "worst": 0.5401756750284612
+    },
+    "stop_restart": {
+      "complete": true,
+      "count": 11,
+      "failed_count": 9,
+      "p50": 0.4846287529156669,
+      "p95": 3.748458785933806,
+      "worst": 3.748458785933806
+    },
+    "course_hold": {
+      "complete": true,
+      "count": 11,
+      "failed_count": 10,
+      "p50": 0.4530804767535045,
+      "p95": 2.878452346380557,
+      "worst": 2.878452346380557
+    }
+  },
+  "flags": [
+    "--weak-heading-policy=hold_course",
+    "--gnss-reseed-after-s=3",
+    "--gnss-reseed-min-median-unique-s=2",
+    "--gnss-reseed-while-fused",
+    "--coast-latch-gnss-speed"
+  ],
+  "requires_locked_confirmation": true
+}

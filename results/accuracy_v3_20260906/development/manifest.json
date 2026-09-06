@@ -1,0 +1,198 @@
+{
+  "seed": "26168",
+  "trips": [
+    "S-S4",
+    "S-Vta11",
+    "S-Vta13",
+    "S-Vta29",
+    "S-Vta5",
+    "S-Vta6",
+    "S-Vta8",
+    "S-Vtb2",
+    "S-Vtb7",
+    "S-Vw12",
+    "S-Vw17",
+    "S-Vw3"
+  ],
+  "interval_ids": [
+    "S-Vta11:mid",
+    "S-Vta29:mid",
+    "S-Vta29:d1000",
+    "S-Vta6:mid",
+    "S-Vta8:mid",
+    "S-Vta8:d1000",
+    "S-Vtb2:mid",
+    "S-Vtb2:d1000",
+    "S-Vtb7:mid",
+    "S-Vw3:mid",
+    "S-Vw3:d1000"
+  ],
+  "excluded_truth_only": [
+    {
+      "interval_id": "S-S4:mid",
+      "reasons": [
+        "implied_speed 10589.764 m/s > 55.0",
+        "max_hop 599.7 m > 200.0 m"
+      ]
+    },
+    {
+      "interval_id": "S-S4:d50",
+      "reasons": [
+        "unique_fixes 2 < 3",
+        "implied_speed 26835.225 m/s > 55.0",
+        "max_hop 509.9 m > 200.0 m"
+      ]
+    },
+    {
+      "interval_id": "S-S4:d1000",
+      "reasons": [
+        "unique_fixes 2 < 8",
+        "implied_speed 277913.520 m/s > 55.0",
+        "max_hop 5280.4 m > 200.0 m"
+      ]
+    },
+    {
+      "interval_id": "S-Vta11:d50",
+      "reasons": [
+        "unique_fixes 2 < 3"
+      ]
+    },
+    {
+      "interval_id": "S-Vta13:mid",
+      "reasons": [
+        "max_hop 242.0 m > 200.0 m"
+      ]
+    },
+    {
+      "interval_id": "S-Vta13:d50",
+      "reasons": [
+        "unique_fixes 2 < 3"
+      ]
+    },
+    {
+      "interval_id": "S-Vta29:d50",
+      "reasons": [
+        "unique_fixes 2 < 3"
+      ]
+    },
+    {
+      "interval_id": "S-Vta5:mid",
+      "reasons": [
+        "unique_fixes 2 < 3"
+      ]
+    },
+    {
+      "interval_id": "S-Vta5:d50",
+      "reasons": [
+        "unique_fixes 2 < 3"
+      ]
+    },
+    {
+      "interval_id": "S-Vta6:d50",
+      "reasons": [
+        "unique_fixes 2 < 3"
+      ]
+    },
+    {
+      "interval_id": "S-Vta6:d1000",
+      "reasons": [
+        "unique_fixes 7 < 8"
+      ]
+    },
+    {
+      "interval_id": "S-Vta8:d50",
+      "reasons": [
+        "unique_fixes 2 < 3"
+      ]
+    },
+    {
+      "interval_id": "S-Vtb2:d50",
+      "reasons": [
+        "unique_fixes 2 < 3"
+      ]
+    },
+    {
+      "interval_id": "S-Vtb7:d50",
+      "reasons": [
+        "unique_fixes 2 < 3"
+      ]
+    },
+    {
+      "interval_id": "S-Vw12:mid",
+      "reasons": [
+        "max_hop 213.4 m > 200.0 m"
+      ]
+    },
+    {
+      "interval_id": "S-Vw12:d50",
+      "reasons": [
+        "unique_fixes 2 < 3",
+        "max_hop 213.4 m > 200.0 m"
+      ]
+    },
+    {
+      "interval_id": "S-Vw12:d1000",
+      "reasons": [
+        "unique_fixes 6 < 8",
+        "max_hop 241.8 m > 200.0 m"
+      ]
+    },
+    {
+      "interval_id": "S-Vw17:mid",
+      "reasons": [
+        "unique_fixes 2 < 3"
+      ]
+    },
+    {
+      "interval_id": "S-Vw17:d50",
+      "reasons": [
+        "unique_fixes 2 < 3"
+      ]
+    },
+    {
+      "interval_id": "S-Vw3:d50",
+      "reasons": [
+        "unique_fixes 2 < 3"
+      ]
+    }
+  ],
+  "candidates": {
+    "baseline": [
+      "--weak-heading-policy=hold_course"
+    ],
+    "latch": [
+      "--weak-heading-policy=hold_course",
+      "--coast-latch-gnss-speed"
+    ],
+    "persist_pseudo": [
+      "--weak-heading-policy=hold_course",
+      "--persist-speed-pseudo"
+    ],
+    "sparse_reseed": [
+      "--weak-heading-policy=hold_course",
+      "--gnss-reseed-after-s=3",
+      "--gnss-reseed-min-median-unique-s=2",
+      "--gnss-reseed-while-fused"
+    ],
+    "latch_sparse_reseed": [
+      "--weak-heading-policy=hold_course",
+      "--gnss-reseed-after-s=3",
+      "--gnss-reseed-min-median-unique-s=2",
+      "--gnss-reseed-while-fused",
+      "--coast-latch-gnss-speed"
+    ],
+    "stop_restart": [
+      "--weak-heading-policy=hold_course",
+      "--coast-latch-gnss-speed",
+      "--coast-stop-detect",
+      "--coast-restart=accel_burst"
+    ],
+    "course_hold": [
+      "--weak-heading-policy=hold_course",
+      "--heading-pick-quality=weak",
+      "--coast-latch-gnss-speed"
+    ]
+  },
+  "selection": "10% lower median, no worse p95 or failure count",
+  "scope": "development only; no locked group used for selection"
+}

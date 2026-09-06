@@ -191,7 +191,7 @@ def export_sensor_frames(
     header["official_row"] = True
     header["sensitivity"] = False
     header["heading_gyro"] = _heading_gyro_header(heading_decision)
-    header["gyro_convention"] = "right_handed_up_v2"
+    header["gyro_convention"] = "right_handed_up_v3"
     header["gravity_calibration"] = {
         "source": "provided" if alignment is not None else (
             "pre_mask" if mask_start_ns is not None else "full_trip_no_mask"
@@ -450,7 +450,7 @@ def _heading_rate_gyro(
     alignment: TripAlignment | None,
     decision: HeadingGyroDecision,
 ) -> tuple[tuple[float, float, float] | None, list[str]]:
-    """Convert clockwise course rate to right-handed angular velocity on +Z."""
+    """Selected-column helper is already right-handed; vertical fallback is course rate."""
 
     extra: list[str] = []
     if not all(math.isfinite(axis) for axis in raw):
@@ -460,7 +460,7 @@ def _heading_rate_gyro(
         rate = heading_gyro_radps(raw, pick)
         if not math.isfinite(rate):
             return None, extra
-        return (0.0, 0.0, -rate), [f"gyro_heading_axis_{pick.axis}"]
+        return (0.0, 0.0, rate), [f"gyro_heading_axis_{pick.axis}"]
     extra.append(FLAG_HEADING_PICK_WEAK)
     extra.append(f"gyro_heading_pick_{decision.reason}")
     if alignment is None:

@@ -1,0 +1,202 @@
+{
+  "scope": "development only. Locked confirmation was not run.",
+  "interval_ids": [
+    "S-Vta11:mid",
+    "S-Vta29:mid",
+    "S-Vta29:d1000",
+    "S-Vta6:mid",
+    "S-Vta8:mid",
+    "S-Vta8:d1000",
+    "S-Vtb2:mid",
+    "S-Vtb2:d1000",
+    "S-Vtb7:mid",
+    "S-Vw3:mid",
+    "S-Vw3:d1000"
+  ],
+  "configs": {
+    "adr014_reproduce": {
+      "summary": {
+        "interval_count": 11,
+        "drift_ratio_p50": 0.26895632253810403,
+        "drift_ratio_p95": 0.8461063500210421,
+        "below_10_count": 2,
+        "road_covered_intervals": 11
+      },
+      "gate": {
+        "rule": "relative_development_gate_v1",
+        "not_the_absolute_0_10_target": true,
+        "complete": true,
+        "relative_median_ok": true,
+        "p95_ok": false,
+        "fail10_ok": true,
+        "eligible": false,
+        "candidate_p50": 0.26895632253810403,
+        "candidate_p95": 0.8461063500210421,
+        "baseline_p50": 0.39842920890925465,
+        "baseline_p95": 0.5401756750284612,
+        "candidate_fail10": 9,
+        "baseline_fail10": 10,
+        "locked_confirmation": false,
+        "absolute_median_target_passed": false,
+        "all_interval_target_passed": false
+      },
+      "activation": {
+        "road_covered_intervals": 11,
+        "overlay_reasons": {
+          "road": 4983
+        }
+      }
+    },
+    "topo_v1": {
+      "summary": {
+        "interval_count": 11,
+        "drift_ratio_p50": 0.2425205816401905,
+        "drift_ratio_p95": 0.6817482347516653,
+        "below_10_count": 2,
+        "road_covered_intervals": 11
+      },
+      "gate": {
+        "rule": "relative_development_gate_v1",
+        "not_the_absolute_0_10_target": true,
+        "complete": true,
+        "relative_median_ok": true,
+        "p95_ok": false,
+        "fail10_ok": true,
+        "eligible": false,
+        "candidate_p50": 0.2425205816401905,
+        "candidate_p95": 0.6817482347516653,
+        "baseline_p50": 0.39842920890925465,
+        "baseline_p95": 0.5401756750284612,
+        "candidate_fail10": 9,
+        "baseline_fail10": 10,
+        "locked_confirmation": false,
+        "absolute_median_target_passed": false,
+        "all_interval_target_passed": false
+      },
+      "activation": {
+        "road_covered_intervals": 11,
+        "overlay_reasons": {
+          "road": 4983
+        }
+      }
+    },
+    "confidence_v1": {
+      "summary": {
+        "interval_count": 11,
+        "drift_ratio_p50": 0.39842920890925465,
+        "drift_ratio_p95": 0.5401756750284612,
+        "below_10_count": 1,
+        "road_covered_intervals": 11
+      },
+      "gate": {
+        "rule": "relative_development_gate_v1",
+        "not_the_absolute_0_10_target": true,
+        "complete": true,
+        "relative_median_ok": false,
+        "p95_ok": true,
+        "fail10_ok": true,
+        "eligible": false,
+        "candidate_p50": 0.39842920890925465,
+        "candidate_p95": 0.5401756750284612,
+        "baseline_p50": 0.39842920890925465,
+        "baseline_p95": 0.5401756750284612,
+        "candidate_fail10": 10,
+        "baseline_fail10": 10,
+        "locked_confirmation": false,
+        "absolute_median_target_passed": false,
+        "all_interval_target_passed": false
+      },
+      "activation": {
+        "road_covered_intervals": 11,
+        "overlay_reasons": {
+          "ambiguous_split": 3653,
+          "road": 594,
+          "contradictory_geometry": 736
+        }
+      }
+    },
+    "combined_v1": {
+      "summary": {
+        "interval_count": 11,
+        "drift_ratio_p50": 0.39842920890925465,
+        "drift_ratio_p95": 0.5401756750284612,
+        "below_10_count": 1,
+        "road_covered_intervals": 11
+      },
+      "gate": {
+        "rule": "relative_development_gate_v1",
+        "not_the_absolute_0_10_target": true,
+        "complete": true,
+        "relative_median_ok": false,
+        "p95_ok": true,
+        "fail10_ok": true,
+        "eligible": false,
+        "candidate_p50": 0.39842920890925465,
+        "candidate_p95": 0.5401756750284612,
+        "baseline_p50": 0.39842920890925465,
+        "baseline_p95": 0.5401756750284612,
+        "candidate_fail10": 10,
+        "baseline_fail10": 10,
+        "locked_confirmation": false,
+        "absolute_median_target_passed": false,
+        "all_interval_target_passed": false
+      },
+      "activation": {
+        "road_covered_intervals": 11,
+        "overlay_reasons": {
+          "ambiguous_split": 3789,
+          "road": 522,
+          "contradictory_geometry": 672
+        }
+      }
+    },
+    "lateral_heal_v1": {
+      "summary": {
+        "interval_count": 11,
+        "drift_ratio_p50": 0.39842920890925465,
+        "drift_ratio_p95": 0.5401756750284612,
+        "below_10_count": 1,
+        "road_covered_intervals": 11
+      },
+      "gate": {
+        "rule": "relative_development_gate_v1",
+        "not_the_absolute_0_10_target": true,
+        "complete": true,
+        "relative_median_ok": false,
+        "p95_ok": true,
+        "fail10_ok": true,
+        "eligible": false,
+        "candidate_p50": 0.39842920890925465,
+        "candidate_p95": 0.5401756750284612,
+        "baseline_p50": 0.39842920890925465,
+        "baseline_p95": 0.5401756750284612,
+        "candidate_fail10": 10,
+        "baseline_fail10": 10,
+        "locked_confirmation": false,
+        "absolute_median_target_passed": false,
+        "all_interval_target_passed": false
+      },
+      "activation": {
+        "road_covered_intervals": 11,
+        "overlay_reasons": {
+          "ambiguous_split": 3789,
+          "road": 522,
+          "lateral_heal": 522,
+          "contradictory_geometry": 672
+        }
+      }
+    }
+  },
+  "eligible": [],
+  "baseline_source": {
+    "artifact_run": 34061769087,
+    "metrics_sha_note": "Reused artifact latch_sparse_reseed states. Median 0.398429 p95 0.540176.",
+    "fresh_kotlin_replay": false
+  },
+  "decision": {
+    "status": "rejected",
+    "reason": "no preregistered config met the relative development gate",
+    "locked_confirmation": false,
+    "android_defaults": false
+  }
+}

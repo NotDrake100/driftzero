@@ -1,0 +1,23 @@
+{
+  "status": "rejection",
+  "task_b_owns": [
+    "osm_coast.py",
+    "road_adapter.py",
+    "eval_road_reliability.py"
+  ],
+  "do_not_run_locked": true,
+  "comparison": "results/road_reliability_20260906/comparison.json",
+  "reason": "no preregistered config met the relative development gate",
+  "attempted": [
+    "adr014_reproduce",
+    "topo_v1",
+    "confidence_v1",
+    "combined_v1",
+    "lateral_heal_v1"
+  ],
+  "reproduction_of_this_rejection": "Restore maps from Actions run 34061769087 into results/road_coast/maps and the artifact baseline into results/road_reliability_20260906/adr014_reproduce/baseline. PYTHONPATH=ml/src python -m driftzero_ml.eval_road_reliability --reuse-baseline",
+  "android_defaults": false,
+  "absolute_median_target_passed": false,
+  "all_interval_target_passed": false,
+  "locked_confirmation": false
+}

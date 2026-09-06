@@ -189,6 +189,16 @@ def apply_causal_overlay(frames: list[dict], baseline: list[dict], start: int, e
     return out, note
 
 
+def _below_10_count(payload: dict) -> int:
+    summary = payload.get('summary') or {}
+    if summary.get('below_10_count') is not None:
+        return int(summary['below_10_count'])
+    return sum(
+        (row.get('metrics') or {}).get('drift_ratio', 1.0) < 0.10
+        for row in payload.get('per_interval') or []
+    )
+
+
 def development_gate(candidate: dict, baseline: dict, *, interval_count: int) -> dict:
     """Relative development gate recorded before runs. Not the absolute 0.10 target."""
     c, b = candidate['summary'], baseline['summary']
@@ -198,8 +208,8 @@ def development_gate(candidate: dict, baseline: dict, *, interval_count: int) ->
         and c.get('drift_ratio_p95') is not None and b.get('drift_ratio_p95') is not None
         and math.isfinite(c['drift_ratio_p95']) and math.isfinite(b['drift_ratio_p95'])
     )
-    fail_c = interval_count - int(c.get('below_10_count') or 0)
-    fail_b = interval_count - int(b.get('below_10_count') or 0)
+    fail_c = interval_count - _below_10_count(candidate)
+    fail_b = interval_count - _below_10_count(baseline)
     complete = (not candidate.get('failures') and len(candidate.get('per_interval') or []) == interval_count
                 and ratios_ok)
     median_ok = bool(ratios_ok and c['drift_ratio_p50'] <= 0.90 * b['drift_ratio_p50'])

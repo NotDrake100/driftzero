@@ -96,6 +96,14 @@ class RoadAdapterTest(unittest.TestCase):
         self.assertFalse(rejected['p95_ok'])
         self.assertTrue(rejected['not_the_absolute_0_10_target'])
         self.assertFalse(rejected['locked_confirmation'])
+        replay_baseline = {
+            'summary': {'drift_ratio_p50': 0.40, 'drift_ratio_p95': 0.54},
+            'failures': [],
+            'per_interval': [{'metrics': {'drift_ratio': r}} for r in
+                             (0.04, 0.18, 0.21, 0.22, 0.24, 0.40, 0.43, 0.46, 0.51, 0.53, 0.54)],
+        }
+        counted = development_gate(better, replay_baseline, interval_count=11)
+        self.assertEqual(counted['baseline_fail10'], 10)
 
     def test_preregistered_config_names_are_frozen(self):
         self.assertEqual(list(CONFIGS), [

@@ -155,7 +155,7 @@ def _for_task_d(comparison: dict, root: Path) -> dict:
             'status': 'rejection',
             'task_b_owns': ['osm_coast.py', 'road_adapter.py', 'eval_road_reliability.py'],
             'do_not_run_locked': True,
-            'comparison': str(root / 'comparison.json'),
+            'comparison': (root / 'comparison.json').as_posix(),
             'reason': decision['reason'],
             'attempted': list(comparison['configs']),
         }
@@ -173,7 +173,7 @@ def _for_task_d(comparison: dict, root: Path) -> dict:
         'do_not_run_locked_from_task_b': True,
         'android_defaults': False,
         'relative_gate_only': True,
-        'comparison': str(root / 'comparison.json'),
+        'comparison': (root / 'comparison.json').as_posix(),
     }
 
 

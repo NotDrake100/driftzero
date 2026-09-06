@@ -14,10 +14,10 @@ not change ADR 014's recorded rejection or `selection.json` meaning.
 | Claim | Status |
 |---|---|
 | Code merged to main | No |
-| Experiment completed | See `results/road_reliability_20260906/` |
-| Relative development gate passed | Only if `comparison.json` says eligible |
-| Absolute median below 0.10 | Not claimed here |
-| All-interval 0.10 target passed | Not claimed here |
+| Experiment completed | Yes. Development ablations in `results/road_reliability_20260906/` |
+| Relative development gate passed | No. All five preregistered configs rejected |
+| Absolute median below 0.10 | No |
+| All-interval 0.10 target passed | No |
 | Field placements tested | No |
 
 ## Why development p95 worsened (ADR 014 evidence, not a new locked run)
@@ -158,6 +158,43 @@ Rules D can rely on:
 Exact frozen command for an eligible config is written to
 `results/road_reliability_20260906/FOR_TASK_D.json` after the ablation. If no
 config is eligible, that file is a rejection report.
+
+## Measured development ablations (2026-09-06)
+
+Maps and baseline frames were restored from Actions run `34061769087`. Map
+response SHA256 values match
+`results/road_research_20260906/map_provenance_complete.json`. Kotlin replay
+was not rerun. `adr014_reproduce` matched the published ADR 014 drifts
+(median 26.90%, p95 84.61%). Restriction relations are absent in every cached
+extract. Grade-tagged segments exist (hundreds to low thousands per tile).
+
+| Config | Median | p95 | below 0.10 | Eligible |
+|---|---:|---:|---:|---|
+| Deterministic baseline | 39.84% | 54.02% | 1/11 | comparison only |
+| `adr014_reproduce` | 26.90% | 84.61% | 2/11 | No, p95 |
+| `topo_v1` | 24.25% | 68.17% | 2/11 | No, p95 |
+| `confidence_v1` | 39.84% | 54.02% | 1/11 | No, median |
+| `combined_v1` | 39.84% | 54.02% | 1/11 | No, median |
+| `lateral_heal_v1` | 39.84% | 54.02% | 1/11 | No, median |
+
+`topo_v1` lowered the ADR 014 tail (S-Vta8:d1000 84.61% to 58.53%, S-Vtb7:mid
+20.15% to 2.87%) but S-Vta11:mid stayed at 68.17% and S-Vta29:d1000 stayed
+near 65.8% with a 1.97 m collapsed spread on the wrong corridor. That is the
+uncalibrated snap the gate exists to stop.
+
+The 25 m cell mass test treated a single-road along-track cloud as many
+clusters. `confidence_v1` then fell back on 3653 of 4983 epochs
+(`ambiguous_split`) and recovered the deterministic median. That is a failed
+confidence design, not a median pass.
+
+Raw tables: `suite_summary.csv`, `interval_drifts.csv`, per-config
+`metrics.csv` and `activation.csv`. Task D file:
+`results/road_reliability_20260906/FOR_TASK_D.json` (rejection). Do not run
+locked confirmation from this result.
+
+A later versioned matrix could replace 25 m cells with a connected along-track
+cluster and keep deterministic distance when particles under-travel. That
+matrix is not declared here and was not run.
 
 ## Honesty
 

@@ -31,3 +31,22 @@ class AccuracyGateTest(unittest.TestCase):
             else:
                 report["failures"] = ["replay crashed"]
             self.assertFalse(assess(report)["passed"], change)
+
+    def test_diagnostic_only_report_is_rejected_even_if_ratios_pass(self):
+        report = self.report()
+        self.assertTrue(assess(report)["passed"])
+        labeled = dict(report)
+        labeled["diagnostic_only"] = True
+        labeled["label"] = "DIAGNOSTIC_ONLY"
+        result = assess(labeled)
+        self.assertFalse(result["passed"])
+        self.assertIn(
+            "DIAGNOSTIC_ONLY report is not candidate evidence",
+            result["invalid_evidence"],
+        )
+        row_flagged = self.report()
+        row_flagged["per_interval"][0]["diagnostic_only"] = True
+        self.assertFalse(assess(row_flagged)["passed"])
+        substitution = self.report()
+        substitution["reference_substitution"] = {"variant": "ref_joint"}
+        self.assertFalse(assess(substitution)["passed"])

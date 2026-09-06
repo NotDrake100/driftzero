@@ -1,0 +1,170 @@
+{
+  "seed": "26168",
+  "locked_interval_ids": [
+    "S-S1:d1000",
+    "S-S1:mid",
+    "S-S3a:d1000",
+    "S-S3b:d1000",
+    "S-S3b:mid",
+    "S-S3c:mid",
+    "S-Vfa01:mid",
+    "S-Vta12:mid",
+    "S-Vta15:mid",
+    "S-Vta17:d1000",
+    "S-Vta17:mid",
+    "S-Vta1a:d1000",
+    "S-Vta1a:d50",
+    "S-Vta1a:mid",
+    "S-Vta1b:d50",
+    "S-Vta1b:mid",
+    "S-Vta20:mid",
+    "S-Vta22:d1000",
+    "S-Vta22:mid",
+    "S-Vta24:mid",
+    "S-Vta25:mid",
+    "S-Vta2:d1000",
+    "S-Vta2:d50",
+    "S-Vta2:mid",
+    "S-Vtb1:mid",
+    "S-Vtb6:mid",
+    "S-Vtb8:mid",
+    "S-Vtb9:mid",
+    "S-Vw16a:d1000",
+    "S-Vw16a:mid",
+    "S-Vw16b:d1000",
+    "S-Vw16b:mid",
+    "S-Vw5:mid",
+    "S-Y1:d1000",
+    "S-Y1:mid"
+  ],
+  "split_manifest": "split_manifest.json",
+  "archived_locked": {
+    "source": "results/accuracy_v3_20260906/development/locked_selected/metrics_latch_sparse_reseed.json",
+    "csv": "results/accuracy_v3_20260906/development/locked_selected/metrics_per_interval_latch_sparse_reseed.csv",
+    "interval_count": 35,
+    "drift_ratio_p50": 0.48834485395037297,
+    "drift_ratio_p95": 2.682407053981851,
+    "drift_ratio_worst": 3.1766947772530147,
+    "intervals_below_10": 6,
+    "endpoint_p50_m": 110.41919116328249
+  },
+  "archive_comparison": {
+    "archived": {
+      "source": "results/accuracy_v3_20260906/development/locked_selected/metrics_latch_sparse_reseed.json",
+      "csv": "results/accuracy_v3_20260906/development/locked_selected/metrics_per_interval_latch_sparse_reseed.csv",
+      "interval_count": 35,
+      "drift_ratio_p50": 0.48834485395037297,
+      "drift_ratio_p95": 2.682407053981851,
+      "drift_ratio_worst": 3.1766947772530147,
+      "intervals_below_10": 6,
+      "endpoint_p50_m": 110.41919116328249
+    },
+    "measured": {
+      "interval_count": 35,
+      "drift_ratio_p50": 0.48834485395037297,
+      "drift_ratio_p95": 2.6824070539818505,
+      "drift_ratio_worst": 3.1766947772530147,
+      "intervals_below_10": 6
+    },
+    "matches_archive": true,
+    "mismatches": [],
+    "note": "Measured values match the archived locked result.",
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  "audit_trips": 23,
+  "attributed_intervals": 35,
+  "substituted_intervals": 35,
+  "failures": [],
+  "candidate_source": "replay_states",
+  "candidate_source_note": "Substitutions use last-seed speed and heading when replay states are absent. That is not the selected latch_sparse_reseed coast.",
+  "substitution_summary": {
+    "ref_speed": {
+      "count": 35,
+      "unsupported": 1,
+      "drift_p50": 0.34082284110488026,
+      "drift_p95": 1.4064577738546404,
+      "below_10": 12,
+      "label": "DIAGNOSTIC_ONLY"
+    },
+    "ref_heading": {
+      "count": 35,
+      "unsupported": 0,
+      "drift_p50": 0.16286799441490213,
+      "drift_p95": 0.8464177680796656,
+      "below_10": 12,
+      "label": "DIAGNOSTIC_ONLY"
+    },
+    "ref_road": {
+      "count": 35,
+      "unsupported": 0,
+      "drift_p50": 0.16287245385534213,
+      "drift_p95": 1.7856617489484155,
+      "below_10": 12,
+      "label": "DIAGNOSTIC_ONLY"
+    },
+    "ref_speed_heading": {
+      "count": 35,
+      "unsupported": 0,
+      "drift_p50": 2.8895068113500337e-06,
+      "drift_p95": 8.141104420324774e-06,
+      "below_10": 35,
+      "label": "DIAGNOSTIC_ONLY"
+    },
+    "ref_speed_road": {
+      "count": 35,
+      "unsupported": 0,
+      "drift_p50": 4.564954039142319e-08,
+      "drift_p95": 3.0632124541331127e-06,
+      "below_10": 35,
+      "label": "DIAGNOSTIC_ONLY"
+    },
+    "ref_heading_road": {
+      "count": 35,
+      "unsupported": 0,
+      "drift_p50": 0.16287245385534213,
+      "drift_p95": 1.7856617489484155,
+      "below_10": 12,
+      "label": "DIAGNOSTIC_ONLY"
+    },
+    "ref_joint": {
+      "count": 35,
+      "unsupported": 0,
+      "drift_p50": 4.564954039142319e-08,
+      "drift_p95": 3.0632124541331127e-06,
+      "below_10": 35,
+      "label": "DIAGNOSTIC_ONLY"
+    }
+  },
+  "recommendation": {
+    "for_map_task_b": [
+      "Reference polyline following reduced median drift versus the selected coast. Investigate causal map hypotheses on development.",
+      "11 locked intervals have a >=30 deg reference turn. Map work should keep competing hypotheses through those turns."
+    ],
+    "for_learned_motion_task_c": [
+      "Reference heading substitution beat reference speed on this diagnostic. Do not default to a speed-only network.",
+      "Joint substitutions can reach the 10% budget on this diagnostic. That is not achieved accuracy. It only shows the error sources."
+    ],
+    "statuses_remain_failed": [
+      "median_target_passed",
+      "all_interval_target_passed",
+      "field_placements_tested"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  "statuses": {
+    "code_merged": false,
+    "experiment_completed": true,
+    "baseline_reproduced": true,
+    "median_target_passed": false,
+    "all_interval_target_passed": false,
+    "field_placements_tested": false
+  },
+  "label": "DIAGNOSTIC_ONLY",
+  "diagnostic_only": true,
+  "evidence_class": "DIAGNOSTIC_ONLY",
+  "accuracy_gate_rejects_this_class": true
+}

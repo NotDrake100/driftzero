@@ -10,11 +10,34 @@ from statistics import median
 
 from driftzero_ml.screening import GATED_INTERVAL_IDS
 
+DIAGNOSTIC_LABEL = "DIAGNOSTIC_ONLY"
+
+
+def diagnostic_only_reasons(payload: dict) -> list[str]:
+    """Reject oracle or reference-substitution reports as candidate evidence."""
+
+    reasons: list[str] = []
+    if payload.get("diagnostic_only") is True:
+        reasons.append("DIAGNOSTIC_ONLY report is not candidate evidence")
+    for key in ("label", "evidence_class", "scope"):
+        if payload.get(key) == DIAGNOSTIC_LABEL:
+            reasons.append("DIAGNOSTIC_ONLY report is not candidate evidence")
+            break
+    if payload.get("reference_substitution") or payload.get("oracle"):
+        reasons.append("reference-substitution report is not candidate evidence")
+    for row in payload.get("per_interval", []):
+        if not isinstance(row, dict):
+            continue
+        if row.get("diagnostic_only") is True or row.get("label") == DIAGNOSTIC_LABEL:
+            reasons.append("DIAGNOSTIC_ONLY interval row is not candidate evidence")
+            break
+    return reasons
+
 
 def assess(payload: dict) -> dict:
     rows = payload.get("per_interval", [])
     ids = [row["interval_id"] for row in rows]
-    reasons = []
+    reasons = diagnostic_only_reasons(payload)
     if len(ids) != len(set(ids)):
         reasons.append("duplicate intervals")
     if set(ids) != GATED_INTERVAL_IDS:

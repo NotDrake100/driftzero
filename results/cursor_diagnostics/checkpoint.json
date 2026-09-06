@@ -1,0 +1,39 @@
+{
+  "label": "DIAGNOSTIC_ONLY",
+  "diagnostic_only": true,
+  "last_completed_step": "frozen_split_manifest_and_tested_module",
+  "failures": [
+    "selected deterministic baseline not yet reproduced on this machine",
+    "median target not passed",
+    "all-interval target not passed",
+    "field placements not tested"
+  ],
+  "next_step": "reproduce latch_sparse_reseed on the locked 35, then run diagnostics",
+  "seed": "26168",
+  "code_base_at_launch": "c7a1ab9ccf1c156c48da1cac7b6e10ef384f66d4",
+  "data_commit": "118939602e3422d47b8ab0807b623751c3ac135b",
+  "java": "Temurin 17 at /usr/lib/jvm/temurin-17-jdk-amd64",
+  "config": {
+    "system": "latch_sparse_reseed",
+    "coast_mode": "yaw_speed_hold",
+    "replay_args": [
+      "--weak-heading-policy=hold_course",
+      "--gnss-reseed-after-s=3",
+      "--gnss-reseed-min-median-unique-s=2",
+      "--gnss-reseed-while-fused",
+      "--coast-latch-gnss-speed"
+    ]
+  },
+  "archived_locked": {
+    "median": 0.48834485395037297,
+    "p95": 2.682407053981851,
+    "below_10": 6,
+    "source": "results/accuracy_v3_20260906/development/locked_selected/metrics_latch_sparse_reseed.json"
+  },
+  "next_commands": [
+    "export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64",
+    "PYTHONPATH=ml/src python -m driftzero_ml.eval_kotlin_replay --out results/cursor_baseline --system latch_sparse_reseed --coast-mode=yaw_speed_hold --reexport --rerun --skip-sensitivity --replay-arg=--weak-heading-policy=hold_course --replay-arg=--gnss-reseed-after-s=3 --replay-arg=--gnss-reseed-min-median-unique-s=2 --replay-arg=--gnss-reseed-while-fused --replay-arg=--coast-latch-gnss-speed",
+    "PYTHONPATH=ml/src python -m driftzero_ml.accuracy_gate results/cursor_baseline/metrics_latch_sparse_reseed.json --out results/cursor_baseline/target_gate.json",
+    "PYTHONPATH=ml/src python -m driftzero_ml.diagnostics --out results/cursor_diagnostics --states-dir results/cursor_baseline/states --reproduced-metrics results/cursor_baseline/metrics_latch_sparse_reseed.json"
+  ]
+}

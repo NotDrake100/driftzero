@@ -30,6 +30,8 @@ results/*
 !results/emulator/README.md
 !results/pune_v1/
 !results/pune_v1/README.md
+!results/cursor_diagnostics/
+!results/cursor_diagnostics/**
 secrets.properties
 .DS_Store
 .cursor/skills/

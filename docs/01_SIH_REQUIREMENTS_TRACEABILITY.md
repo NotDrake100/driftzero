@@ -64,3 +64,7 @@ alignment; arbitrary handheld accuracy remains unvalidated.
 SIH-13 / SIH-23: physical yaw sign, exact coast arc integration, pre-blackout
 calibration and once-per-epoch map feedback have regression coverage. These are
 correctness results, not a new IO-VNBD score. The 10% drift objective remains open.
+
+SIH-19 / SIH-23: [ADR 014](adr/014-real-map-research.md) adds a real OSM road-particle
+research experiment with fixed development selection, causal fallback, snapshot
+provenance and unchanged truth gates. It does not change live Android estimation.

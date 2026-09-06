@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [codex/driftzero-accuracy]
-    paths: [.github/workflows/accuracy.yml]
+    paths: [.github/workflows/accuracy.yml, ml/src/driftzero_ml/export_sensorframe.py]
 permissions:
   contents: read
 jobs:

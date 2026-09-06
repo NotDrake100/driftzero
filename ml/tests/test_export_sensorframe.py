@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 from driftzero_ml.contracts import validate_sensor_frame
 from driftzero_ml.datasets.io_vnbd import SmartphoneRow
@@ -88,6 +89,14 @@ def _period_rows(count: int, period_ns: int = 100_000_000) -> list[SmartphoneRow
 
 
 class ExportSensorFrameTests(unittest.TestCase):
+    def test_unavailable_gyro_does_not_drop_valid_gnss(self):
+        rows = _period_rows(20)
+        with patch("driftzero_ml.export_sensorframe._heading_rate_gyro", return_value=(None, [])):
+            _, frames = export_sensor_frames(rows, mask_start_ns=1_000_000_000)
+        self.assertFalse(any(row["kind"] == "gyroscope" for row in frames))
+        self.assertEqual(sum(row["kind"] == "gnss_fix" for row in frames), 4)
+
+
     def test_table_rate_imu_unique_fix_gnss_and_alignment(self) -> None:
         rows = _period_rows(16)
         header, frames = export_sensor_frames(rows)

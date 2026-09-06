@@ -154,22 +154,21 @@ def export_sensor_frames(
             gyro_flags.extend(gyro_extra)
             if gap:
                 gyro_flags.append("imu_gap")
-            if gyro is None:
-                continue
-            frames.append(
-                _vector_frame(
-                    trip_id,
-                    sequence,
-                    stamp,
-                    "gyroscope",
-                    GYRO_UNIT,
-                    gyro,
-                    available=True,
-                    accuracy_code=3,
-                    flags=gyro_flags,
+            if gyro is not None:
+                frames.append(
+                    _vector_frame(
+                        trip_id,
+                        sequence,
+                        stamp,
+                        "gyroscope",
+                        GYRO_UNIT,
+                        gyro,
+                        available=True,
+                        accuracy_code=3,
+                        flags=gyro_flags,
+                    )
                 )
-            )
-            sequence += 1
+                sequence += 1
 
         if row.latitude_deg is None or row.longitude_deg is None:
             continue
@@ -421,9 +420,9 @@ def _gyro_and_unique_fixes(
             row.gyro_yaw is not None and row.gyro_pitch is not None and row.gyro_roll is not None
             and all(math.isfinite(axis) for axis in (row.gyro_yaw, row.gyro_pitch, row.gyro_roll))
         ):
-                gyros.append(
-                    (int(row.timestamp_ns), float(row.gyro_yaw), float(row.gyro_pitch), float(row.gyro_roll))
-                )
+            gyros.append(
+                (int(row.timestamp_ns), float(row.gyro_yaw), float(row.gyro_pitch), float(row.gyro_roll))
+            )
         if row.latitude_deg is None or row.longitude_deg is None:
             continue
         pos = (float(row.latitude_deg), float(row.longitude_deg))

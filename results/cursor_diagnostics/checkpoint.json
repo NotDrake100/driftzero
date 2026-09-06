@@ -2,7 +2,7 @@
   "label": "DIAGNOSTIC_ONLY",
   "diagnostic_only": true,
   "last_completed_step": "reproduced_baseline_and_reference_substitutions",
-  "commit_at_measurement": "babf7d80b28c31cc262a51ff94809421b5948b1d",
+  "commit_at_measurement": "f78576b540816674e658d030c664bd300943f535",
   "failures": [
     "accuracy_gate exit 1 on the reproduced locked 35",
     "median target not passed",

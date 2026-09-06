@@ -82,7 +82,7 @@ def run_replay(
         str(mask_end),
         *extra_args,
     ]
-    result = subprocess.run(args, cwd=binary.parent, capture_output=True, text=True, env=env)
+    result = subprocess.run(args, cwd=binary.parent, capture_output=True, text=True, env=env, check=False)
     log_path.write_text(result.stdout + ("\n" + result.stderr if result.stderr else ""))
     if result.returncode != 0:
         raise RuntimeError(f"replay failed ({result.returncode}): {result.stderr or result.stdout}")
@@ -197,7 +197,7 @@ def run(
                 gate=SUITE_GATES.get(suite),
             )
             extras = extras_from_states(aligned, truth, start_ns, end_ns)
-        except Exception as error:
+        except (OSError, ValueError, RuntimeError, KeyError, TypeError, ArithmeticError) as error:
             failures.append({"interval_id": interval_id, "reason": str(error)})
             continue
         modes = mode_histogram(states, start_ns, end_ns)

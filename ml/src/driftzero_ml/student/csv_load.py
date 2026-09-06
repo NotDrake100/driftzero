@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import csv
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
 
 _AX = ("ax", "acc_x", "accel_x", "acceleration_x", "a_x")
 _AY = ("ay", "acc_y", "accel_y", "acceleration_y", "a_y")

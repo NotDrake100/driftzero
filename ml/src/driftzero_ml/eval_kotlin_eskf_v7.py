@@ -20,8 +20,8 @@ from driftzero_ml.eval_kotlin_eskf_v6 import (
     premask_mean_gnss_speed_mps,
     unique_premask_gnss,
 )
-from driftzero_ml.eval_navstate import load_navigation_state_jsonl
 from driftzero_ml.eval_kotlin_replay import GATED_CSV, KOTLIN_DIR
+from driftzero_ml.eval_navstate import load_navigation_state_jsonl
 
 TABLE_NAMED = ("S-Vta2:d50", "S-S1:mid", "S-Vw16b:mid")
 VW16B = "S-Vw16b:mid"

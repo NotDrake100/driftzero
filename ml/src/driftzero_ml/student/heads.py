@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from math import log, sqrt
 
@@ -56,7 +57,7 @@ def zupt_accel_infer(samples: list[ImuSample] | tuple[ImuSample, ...]) -> Motion
 def coast_speed_mps(prior_speed_mps: float, heads: MotionHeads) -> float:
     """CV-stub hook. ESKF should use heads as a gated measurement instead."""
 
-    if prior_speed_mps < 0.0 or prior_speed_mps != prior_speed_mps:
+    if prior_speed_mps < 0.0 or math.isnan(prior_speed_mps):
         raise ValueError("prior_speed_mps must be a non-negative finite speed")
     if heads.idle or heads.stop_probability >= STOP_ZUPT:
         return 0.0

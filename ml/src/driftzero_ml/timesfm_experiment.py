@@ -14,11 +14,11 @@ import subprocess
 import sys
 import time
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from math import exp, sqrt
 from pathlib import Path
 from statistics import mean, median
-from typing import Sequence
 
 from driftzero_ml.blackout import (
     GNSS_KEYS,
@@ -48,30 +48,30 @@ from driftzero_ml.features.causal_imu import (
     trim_causal_window,
 )
 from driftzero_ml.features.phone_align import rotate_vector
+from driftzero_ml.gnss_truth import score_epochs
 from driftzero_ml.io_vnbd import IOVNBDMissing, assign_grouped_trip_splits
 from driftzero_ml.learned_imu import hacf_sequence
-from driftzero_ml.gnss_truth import score_epochs
 from driftzero_ml.metrics import circular_mae_rad, evaluate_blackout
-from driftzero_ml.screening import _coast, _truth_motion, locked_blackouts, score_interval, summarize
+from driftzero_ml.screening import (
+    _coast,
+    _truth_motion,
+    locked_blackouts,
+    score_interval,
+    summarize,
+)
 from driftzero_ml.student.gru_runtime import CausalGruStudent, load_gru_student
 from driftzero_ml.student.linear import LinearMotionStudent, load_linear_student
-from driftzero_ml.timesfm_adapter import timesfm_is_installed, validate_context
 from driftzero_ml.timesfm25 import (
     CHECKPOINT as CHECKPOINT_25,
+)
+from driftzero_ml.timesfm25 import (
     CONTEXT_STEPS as CONTEXT_STEPS_25,
+)
+from driftzero_ml.timesfm25 import (
     COV_ABS_OMEGA_Z,
     COV_FORWARD_ACCEL,
     COV_STOP_FLAG,
     HORIZON_COVARIATE_POLICY,
-    HORIZON_STEPS as HORIZON_STEPS_25,
-    LICENSE_WEIGHTS as LICENSE_WEIGHTS_25,
-    MODEL_MAX_CONTEXT as MODEL_MAX_CONTEXT_25,
-    PACKAGE_VERSION as PACKAGE_VERSION_25,
-    Q68_HI_INDEX as Q68_HI_25,
-    Q68_LO_INDEX as Q68_LO_25,
-    Q80_HI_INDEX as Q80_HI_25,
-    Q80_LO_INDEX as Q80_LO_25,
-    REVISION as REVISION_25,
     TEACHER_STRIDE,
     TimesFM25Forecaster,
     TimesFM25PreflightError,
@@ -79,9 +79,39 @@ from driftzero_ml.timesfm25 import (
     binary_stop_flag,
     pack_causal_speed_covariates,
     preflight_checkpoint,
-    slice_quantiles as slice_quantiles_25,
     write_teacher_targets,
 )
+from driftzero_ml.timesfm25 import (
+    HORIZON_STEPS as HORIZON_STEPS_25,
+)
+from driftzero_ml.timesfm25 import (
+    LICENSE_WEIGHTS as LICENSE_WEIGHTS_25,
+)
+from driftzero_ml.timesfm25 import (
+    MODEL_MAX_CONTEXT as MODEL_MAX_CONTEXT_25,
+)
+from driftzero_ml.timesfm25 import (
+    PACKAGE_VERSION as PACKAGE_VERSION_25,
+)
+from driftzero_ml.timesfm25 import (
+    Q68_HI_INDEX as Q68_HI_25,
+)
+from driftzero_ml.timesfm25 import (
+    Q68_LO_INDEX as Q68_LO_25,
+)
+from driftzero_ml.timesfm25 import (
+    Q80_HI_INDEX as Q80_HI_25,
+)
+from driftzero_ml.timesfm25 import (
+    Q80_LO_INDEX as Q80_LO_25,
+)
+from driftzero_ml.timesfm25 import (
+    REVISION as REVISION_25,
+)
+from driftzero_ml.timesfm25 import (
+    slice_quantiles as slice_quantiles_25,
+)
+from driftzero_ml.timesfm_adapter import timesfm_is_installed, validate_context
 
 RATE_HZ = 10
 DT_S = 0.1
@@ -1008,8 +1038,8 @@ def write_timesfm_summary(path: Path, payload: dict) -> None:
         "",
         "## License",
         "",
-        "3.0 weights are timesfm-non-commercial-license-v1.0. Research desktop use is allowed. "
-        "Shipping 3.0 or using it with end users is not. Distillation from 3.0 is treated as ambiguous.",
+        ("3.0 weights are timesfm-non-commercial-license-v1.0. Research desktop use is allowed. "
+        "Shipping 3.0 or using it with end users is not. Distillation from 3.0 is treated as ambiguous."),
         "",
         "## timesfm_coast vs persist and linear",
         "",
@@ -1100,7 +1130,7 @@ def run(repo: Path, out_dir: Path) -> dict:
                 continue
             try:
                 rolled = roll_timesfm_coast(channels, interval, forecaster)
-            except Exception as error:
+            except (OSError, ValueError, RuntimeError, KeyError, TypeError, ArithmeticError) as error:
                 failures.append(f"{interval.interval_id}: timesfm {error}")
                 continue
             history = _gnss_history(channels.records, interval.start_ns)
@@ -1577,8 +1607,8 @@ def _format_timesfm25_section(payload: dict) -> str:
     lines = [
         "## TimesFM 2.5 zero-shot speed (Apache-2.0)",
         "",
-        "Desktop only. Same 35 locked intervals, seed 26168, same masks, same scoring. "
-        "Does not overwrite the 3.0 artifacts above. TimesFM does not run on the phone.",
+        ("Desktop only. Same 35 locked intervals, seed 26168, same masks, same scoring. "
+        "Does not overwrite the 3.0 artifacts above. TimesFM does not run on the phone."),
         "",
         "### Commands",
         "",
@@ -1604,9 +1634,9 @@ def _format_timesfm25_section(payload: dict) -> str:
         "",
         "### License",
         "",
-        "2.5 weights are Apache-2.0 and redistributable. 3.0 weights are "
+        ("2.5 weights are Apache-2.0 and redistributable. 3.0 weights are "
         "timesfm-non-commercial-license-v1.0, non-commercial, not shippable. "
-        "Neither checkpoint is on the phone.",
+        "Neither checkpoint is on the phone."),
         "",
         "### timesfm_2.5_coast vs persist and linear",
         "",
@@ -1615,12 +1645,12 @@ def _format_timesfm25_section(payload: dict) -> str:
         f"- timesfm_2.5_coast drift p50: {decided:.4f}, endpoint p50 m: {float(coast['endpoint_p50_m']):.2f}, speed mae p50: {float(coast.get('speed_mae_p50', float('nan'))):.3f}",
         f"- {xreg_line}",
         "",
-        "Univariate 2.5 forecasts speed only. Coast yaw is the last causal gyro held, "
+        ("Univariate 2.5 forecasts speed only. Coast yaw is the last causal gyro held, "
         "not a TimesFM yaw head. XReg feeds causal forward accel, |omega_z|, and stop "
         f"flag. Horizon covariates use {HORIZON_COVARIATE_POLICY} (not future IMU). "
         "Official `forecast_with_covariates` was not called because timesfm[xreg] "
         "needs jax, which is not in the train venv. The numpy ridge follows the same "
-        "`xreg + timesfm` order.",
+        "`xreg + timesfm` order."),
         "",
         "### Distillation",
         "",
@@ -1801,7 +1831,7 @@ def run_2p5(repo: Path, out_dir: Path, summary_path: Path) -> dict:
         forecaster = TimesFM25Forecaster(device)
         smoke, _, smoke_s = forecaster.forecast_speed([float(i % 7) for i in range(64)], 10)
         print(f"smoke forecast {smoke[:3]} in {smoke_s:.2f} s", flush=True)
-    except Exception as error:
+    except (OSError, ValueError, RuntimeError, KeyError, TypeError, ArithmeticError) as error:
         if device == "mps":
             print(f"MPS load failed ({error}); retrying CPU", flush=True)
             device = "cpu"
@@ -1858,7 +1888,7 @@ def run_2p5(repo: Path, out_dir: Path, summary_path: Path) -> dict:
                 continue
             try:
                 rolled = roll_timesfm25_coast(channels, interval, forecaster)
-            except Exception as error:
+            except (OSError, ValueError, RuntimeError, KeyError, TypeError, ArithmeticError) as error:
                 failures.append(f"{interval.interval_id}: timesfm25 {error}")
                 continue
             history = _gnss_history(channels.records, interval.start_ns)

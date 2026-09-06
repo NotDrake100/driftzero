@@ -174,6 +174,8 @@ class StatusCopyTest {
 
     @Test
     fun reasonLinePrefersRemountAndSharesLampCopy() {
+        assertEquals("Phone moving. Position confidence reduced.",
+            StatusCopy.reasonLine(null, flags = setOf("phone_handling")))
         assertNull(StatusCopy.reasonLine(null))
         assertNull(StatusCopy.reasonLine(null, mountReason = null, flags = emptySet()))
         assertEquals("GNSS held", StatusCopy.reasonLine(ModeReason.Held))

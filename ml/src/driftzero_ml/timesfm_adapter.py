@@ -8,10 +8,10 @@ card. No Android or navigation-core package may import this module.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from importlib.util import find_spec
 from math import isfinite
-from typing import Callable, Sequence
 
 Matrix = Sequence[Sequence[float]]
 

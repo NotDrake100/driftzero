@@ -6,9 +6,9 @@ Stdlib only. No TimesFM. No torch.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from math import sqrt
-from typing import Callable, Sequence
 
 from driftzero_ml.blackout import GNSS_KEYS
 from driftzero_ml.features.causal_imu import (

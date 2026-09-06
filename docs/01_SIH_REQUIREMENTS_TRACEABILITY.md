@@ -52,3 +52,15 @@ Before polishing the full app, produce:
 - GNSS interference is described as a condition the system observes. The app does not claim certified jamming or spoofing classification.
 - NavIC/IRNSS membership is logged when Android `GnssStatus` reports `CONSTELLATION_IRNSS`. Visibility is not certified integrity. GAGAN is the safety-of-life GPS-augmentation path. See `docs/refs/NAVIC.md`.
 
+
+### 2026-09-06 placement and correctness milestone
+
+SIH-09 / SIH-17: physical mounting is optional for a resting phone. Gravity-axis
+yaw projection and handling uncertainty are wired to live PoseStore. A remount
+preserves the trajectory. See [ADR 011](adr/011-coast-and-phone-continuity.md).
+Passenger-seat, cup-holder and arbitrary resting orientations are supported by
+alignment; arbitrary handheld accuracy remains unvalidated.
+
+SIH-13 / SIH-23: physical yaw sign, exact coast arc integration, pre-blackout
+calibration and once-per-epoch map feedback have regression coverage. These are
+correctness results, not a new IO-VNBD score. The 10% drift objective remains open.

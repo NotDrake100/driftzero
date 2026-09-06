@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 from driftzero_ml.contracts import validate_sensor_frame
 from driftzero_ml.datasets.io_vnbd import SmartphoneRow
@@ -86,6 +89,14 @@ def _period_rows(count: int, period_ns: int = 100_000_000) -> list[SmartphoneRow
 
 
 class ExportSensorFrameTests(unittest.TestCase):
+    def test_unavailable_gyro_does_not_drop_valid_gnss(self):
+        rows = _period_rows(20)
+        with patch("driftzero_ml.export_sensorframe._heading_rate_gyro", return_value=(None, [])):
+            _, frames = export_sensor_frames(rows, mask_start_ns=1_000_000_000)
+        self.assertFalse(any(row["kind"] == "gyroscope" for row in frames))
+        self.assertEqual(sum(row["kind"] == "gnss_fix" for row in frames), 4)
+
+
     def test_table_rate_imu_unique_fix_gnss_and_alignment(self) -> None:
         rows = _period_rows(16)
         header, frames = export_sensor_frames(rows)
@@ -109,6 +120,22 @@ class ExportSensorFrameTests(unittest.TestCase):
         self.assertIn("speed_mps", gnss[0]["payload"])
         self.assertAlmostEqual(gnss[0]["payload"]["speed_mps"], 10.0)
         self.assertEqual({int(row["timestamp_ns"]) for row in gnss}, {0, 500_000_000, 1_000_000_000, 1_500_000_000})
+
+    def test_blackout_and_future_gravity_cannot_change_calibration(self) -> None:
+        rows = _period_rows(32)
+        start = 1_600_000_000
+        changed = [
+            replace(row, gravity_x=9.8, gravity_y=0.0, gravity_z=0.0)
+            if row.timestamp_ns >= start else row
+            for row in rows
+        ]
+        header, original = export_sensor_frames(rows, mask_start_ns=start)
+        other_header, other = export_sensor_frames(changed, mask_start_ns=start)
+        self.assertEqual(original, other)
+        self.assertEqual(header["gravity_calibration"], other_header["gravity_calibration"])
+        self.assertEqual(header["gravity_calibration"]["source"], "pre_mask")
+        self.assertEqual(header["gravity_calibration"]["sample_count"], 16)
+        self.assertEqual(header["gyro_convention"], "right_handed_up_v2")
 
     def test_missing_gyro_and_speed_are_omitted_not_zeroed(self) -> None:
         rows = [
@@ -148,7 +175,7 @@ class ExportSensorFrameTests(unittest.TestCase):
         self.assertEqual(len(accel_times), 16)
         jumped = [
             later - earlier
-            for earlier, later in zip(accel_times, accel_times[1:])
+            for earlier, later in itertools.pairwise(accel_times)
             if later - earlier > int(MAX_INTEGRATE_S * 1_000_000_000)
         ]
         self.assertEqual(len(jumped), 1)
@@ -219,7 +246,8 @@ class ExportSensorFrameTests(unittest.TestCase):
         self.assertGreater(len(gyro), 20)
         self.assertAlmostEqual(gyro[0]["payload"]["x"], 0.0, places=6)
         self.assertAlmostEqual(gyro[0]["payload"]["y"], 0.0, places=6)
-        self.assertLess(gyro[0]["payload"]["z"], 0.0)
+        # The first course rate is negative. Right-handed +up yaw is positive.
+        self.assertGreater(gyro[0]["payload"]["z"], 0.0)
         self.assertIn("gyro_heading_axis_pitch", gyro[0]["quality"]["flags"])
 
     def test_jsonl_round_trip_and_truth(self) -> None:

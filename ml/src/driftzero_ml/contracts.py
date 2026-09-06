@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import math
 import re
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 CLOCK_DOMAINS = frozenset(
     {"android_elapsed_realtime", "external_monotonic", "dataset_declared"}

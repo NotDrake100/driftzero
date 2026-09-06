@@ -8,7 +8,6 @@ import `in`.driftzero.core.CoastFix
 import `in`.driftzero.core.CoastMode
 import `in`.driftzero.core.DeadReckoningFilter
 import `in`.driftzero.core.DriftBudgetTracker
-import `in`.driftzero.core.FilterSnapshot
 import `in`.driftzero.core.GeoPoint
 import `in`.driftzero.core.GraphEdge
 import `in`.driftzero.core.HmmRoadMatcher
@@ -26,6 +25,7 @@ import `in`.driftzero.core.Nanoseconds
 import `in`.driftzero.core.NavigationMode
 import `in`.driftzero.core.NavigationState
 import `in`.driftzero.core.OptionalScalar
+import `in`.driftzero.core.PhoneMotionGuard
 import `in`.driftzero.core.Quality
 import `in`.driftzero.core.ResetReason
 import `in`.driftzero.core.MapCoastSession
@@ -101,6 +101,8 @@ class PoseStore(
     private val _replayActive = MutableStateFlow(false)
     val replayActive: StateFlow<Boolean> = _replayActive.asStateFlow()
     private val mount = MountSession()
+    private val phoneMotion = PhoneMotionGuard()
+    private var placementPending = false
     private val _mountQuality = MutableStateFlow(MountQuality.PENDING)
     val mountQuality: StateFlow<MountQuality> = _mountQuality.asStateFlow()
     private val _mountReason = MutableStateFlow<String?>(null)
@@ -332,6 +334,8 @@ class PoseStore(
             filter.ingestGyro(timestamp, x, y, z, VectorFrame.ANDROID_DEVICE)
             return
         }
+        val phone = phoneMotion.onGyro(timestamp.value, x, y, z)
+        filter.setPhoneMotion(phone.handling || placementPending, phone.yawUpRadps, timestamp)
         val emit = mount.onGyro(timestamp.value, x, y, z)
         applyMountEmit(accel = false, emit = emit)
         filter.ingestGyro(timestamp, emit.x, emit.y, emit.z, emit.frame)
@@ -396,6 +400,9 @@ class PoseStore(
         }
         if (!x.isFinite() || !y.isFinite() || !z.isFinite()) {
             return
+        }
+        if (kind == SensorKind.GRAVITY && unit == "m/s^2" && accuracyCode > 0) {
+            phoneMotion.onGravity(timestamp.value, x, y, z)
         }
         val frame = SensorFrame(
             sourceId = MAG_SOURCE_ID,
@@ -531,6 +538,8 @@ class PoseStore(
         _replayActive.value = true
         replayClockNs = null
         attachRecorder(null)
+        phoneMotion.reset()
+        placementPending = false
         filter.reset(ResetReason.USER)
         lastResetReason = ResetReason.USER
         matcher?.reset()
@@ -617,7 +626,7 @@ class PoseStore(
             activeGraph != null &&
             !activeGraph.isEmpty()
         ) {
-            activeMatcher.update(FilterSnapshot(raw), activeGraph)
+            mapCoast.match(raw, activeMatcher, activeGraph)
         } else {
             null
         }
@@ -708,13 +717,18 @@ class PoseStore(
             profiles.saveJson(saved)
             _mountYawConfidence.value = yawConfidenceFromProfileJson(saved)
         }
+        if (emit.quality == MountQuality.ALIGNED || emit.quality == MountQuality.ALIGNED_HIGH) {
+            placementPending = false
+        }
         if (emit.quality != MountQuality.PENDING) {
             _mountReason.value = null
         }
         if (emit.remount) {
             synchronized(gate) {
                 lastResetReason = ResetReason.REMOUNT
-                filter.reset(ResetReason.REMOUNT)
+                placementPending = true
+                phoneMotion.disturb(clockNowNs())
+                filter.setPhoneMotion(true, null, Nanoseconds(clockNowNs()))
                 matcher?.reset()
                 profiles.saveJson(null)
                 _mountReason.value = MountSession.REMOUNT_USER_REASON

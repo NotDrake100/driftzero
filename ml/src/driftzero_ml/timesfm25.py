@@ -13,8 +13,8 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Callable, Sequence
 
 from driftzero_ml.blackout import GNSS_KEYS
 from driftzero_ml.features.causal_imu import STOP_ZUPT

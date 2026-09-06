@@ -9,9 +9,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-from math import hypot
 from pathlib import Path
-from statistics import median
 
 
 def _load_persist(path: Path) -> dict[str, dict[str, float]]:

@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import itertools
 import json
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from statistics import median
 
-from driftzero_ml.datasets.errors import DatasetLfsMissing, DatasetMissing
 from driftzero_ml.datasets.io_vnbd import (
     _MS_TO_NS,
     load_smartphone_csv,
@@ -19,7 +19,7 @@ from driftzero_ml.datasets.io_vnbd import (
 from driftzero_ml.datasets.lfs import is_lfs_pointer
 from driftzero_ml.io_vnbd import assign_trip_splits, require_local_root
 from driftzero_ml.io_vnbd.locate import PREFERRED_RELATIVE
-from driftzero_ml.metrics import EARTH_MEAN_RADIUS_M, haversine_m, path_length_m
+from driftzero_ml.metrics import EARTH_MEAN_RADIUS_M, path_length_m
 
 SCREENING_DIR = "Categorised IOVNB Dataset"
 SEED = "26168"
@@ -107,7 +107,7 @@ def inspect_trip(path: Path, root: Path, yaml_splits: dict[str, str], seed: str)
         last = row.timestamp_ns
     dts_ms: list[float] = []
     gaps = 0
-    for prev, cur in zip(kept, kept[1:]):
+    for prev, cur in itertools.pairwise(kept):
         dt_ms = (cur.timestamp_ns - prev.timestamp_ns) / 1_000_000.0
         dts_ms.append(dt_ms)
         if dt_ms > 250.0:
@@ -217,7 +217,7 @@ def write_inventory_markdown(
         "## Local tree",
         "",
         f"- Root: `{root}`",
-        f"- Official clone top-level entries: 8 files/dirs plus `.git` (10 items).",
+        "- Official clone top-level entries: 8 files/dirs plus `.git` (10 items).",
         f"- Smartphone `S-*.csv`: {counts['s_csv']} paths, {counts['s_real']} real payloads, {counts['s_lfs_pointer']} LFS pointers, {counts['s_bytes']} bytes.",
         f"- Vehicle `V-*.csv`: {counts['v_csv']} paths, {counts['v_real']} real payloads, {counts['v_lfs_pointer']} LFS pointers. ECU wheel-speed is not on disk.",
         f"- Preferred tree: `{PREFERRED_RELATIVE}/{SCREENING_DIR}`.",

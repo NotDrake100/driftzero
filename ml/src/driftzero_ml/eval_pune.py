@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import argparse
 import csv
+import itertools
 import json
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 from driftzero_ml.contracts import validate_navigation_state
 from driftzero_ml.metrics import BlackoutMetrics, evaluate_blackout, haversine_m, path_length_m
@@ -64,7 +65,7 @@ def measured_rate_hz(timestamps_ns: Sequence[int]) -> dict[str, float | int | No
     """Median and mean Hz from consecutive positive timestamp deltas."""
 
     stamps = [int(t) for t in timestamps_ns]
-    dts = [b - a for a, b in zip(stamps, stamps[1:]) if b > a]
+    dts = [b - a for a, b in itertools.pairwise(stamps) if b > a]
     if not dts:
         return {
             "sample_count": len(stamps),

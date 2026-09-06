@@ -8,6 +8,12 @@ from collections import defaultdict
 from pathlib import Path
 from statistics import mean
 
+from driftzero_ml.datasets.errors import DatasetLfsMissing, DatasetMissing
+from driftzero_ml.datasets.io_vnbd import (
+    load_smartphone_csv,
+    screening_smartphone_tables,
+    to_imu_records,
+)
 from driftzero_ml.features.causal_imu import (
     FEATURE_NAMES,
     MAX_SAMPLES,
@@ -17,13 +23,8 @@ from driftzero_ml.features.causal_imu import (
     records_to_imu_samples,
     trim_causal_window,
 )
-from driftzero_ml.datasets.errors import DatasetLfsMissing, DatasetMissing
-from driftzero_ml.datasets.io_vnbd import (
-    load_smartphone_csv,
-    screening_smartphone_tables,
-    to_imu_records,
-)
 from driftzero_ml.io_vnbd import IOVNBDMissing, assign_grouped_trip_splits
+from driftzero_ml.learned_imu import train_torch_student
 from driftzero_ml.student.csv_load import load_imu_csv
 from driftzero_ml.student.gru import torch_is_installed
 from driftzero_ml.student.heads import zupt_accel_infer
@@ -34,7 +35,6 @@ from driftzero_ml.student.linear import (
     zero_speed_baseline,
 )
 from driftzero_ml.student.synthetic import synthetic_trip
-from driftzero_ml.learned_imu import train_torch_student
 
 KINDS = ("idle", "cruise", "stop", "bump")
 

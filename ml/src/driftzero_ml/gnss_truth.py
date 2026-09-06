@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import itertools
+from collections.abc import Sequence
 from dataclasses import dataclass
 from math import atan2, cos, pi, radians
 from statistics import median
-from typing import Sequence
 
 from driftzero_ml.metrics import EARTH_MEAN_RADIUS_M, haversine_m, path_length_m
 
@@ -77,7 +78,7 @@ def unique_fix_median_spacing_s(records: Sequence[dict] | Sequence[int]) -> floa
     else:
         stamps = [int(item) for item in records]
     dts: list[float] = []
-    for earlier, later in zip(stamps, stamps[1:]):
+    for earlier, later in itertools.pairwise(stamps):
         dt = (later - earlier) / 1_000_000_000.0
         if dt > 0.0:
             dts.append(dt)
@@ -231,7 +232,7 @@ def infer_speed_unit(
 
     fixes = unique_fix_records(records)
     ratios: list[float] = []
-    for earlier, later in zip(fixes, fixes[1:]):
+    for earlier, later in itertools.pairwise(fixes):
         if column_key not in later or later[column_key] is None:
             continue
         column = float(later[column_key])
@@ -289,7 +290,7 @@ def assess_truth(
             unique.append(point)
     path = path_length_m(truth)
     hops = [
-        haversine_m(a, b) for a, b in zip(unique, unique[1:])
+        haversine_m(a, b) for a, b in itertools.pairwise(unique)
     ]
     max_hop = max(hops) if hops else 0.0
     implied = path / duration_s if duration_s > 0 else None

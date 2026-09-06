@@ -14,6 +14,62 @@ import kotlin.math.abs
  */
 class DeadReckoningEngineTest {
     @Test
+    fun replayEnginePersistAndMapHaveOneMatcherUpdatePerEpoch() {
+        val matcher = FixedMatcher(matchedRoad(headingRad = 0.0))
+        val graph = RoadFixtures.singleRoad()
+        val frames = buildList {
+            add(SensorFrame(
+                sourceId = "fixture", sequence = 0L, timestamp = Nanoseconds(0L),
+                clockDomain = ClockDomain.DATASET_DECLARED, kind = SensorKind.GNSS_FIX,
+                quality = Quality(available = true, accuracyCode = 3),
+                payload = FixPayload(GnssFixPayload(
+                    latitude = LatitudeDeg(RoadFixtures.ORIGIN_LAT),
+                    longitude = LongitudeDeg(RoadFixtures.ORIGIN_LON),
+                    providerTimeMs = 0L,
+                    horizontalAccuracyM = Metres(5.0), speedMps = MetresPerSecond(12.0),
+                    bearingRad = HeadingRadians(0.0),
+                )),
+            ))
+            for (i in 1L..10L) {
+                add(accel(i * 100_000_000L))
+                add(accel(i * 100_000_000L))
+            }
+        }
+        val states = Replay.runFilter(
+            frames, coastingFilter(0.0), mask = GnssMaskInterval(1L, 2_000_000_000L),
+            persistSpeedPseudo = true, useEngine = true, roadGraph = graph, roadMatcher = matcher,
+        )
+        assertEquals(states.size, matcher.updates)
+        assertEquals(states.size, states.map { it.timestamp.value }.distinct().size)
+        assertTrue(states.all { it.mapMatch.status == MapMatchStatus.MATCHED })
+        assertTrue(states.drop(1).all { DeadReckoningFilter.FLAG_ROAD_HEADING in it.health.flags })
+    }
+
+    @Test
+    fun mapFeedbackSessionDoesNotApplySameEpochTwice() {
+        val filter = coastingFilter(0.2)
+        val graph = RoadFixtures.singleRoad()
+        val matcher = FixedMatcher(matchedRoad(0.0))
+        val session = MapCoastSession().also { it.setGraph(graph) }
+        val pose = filter.poseAt(Nanoseconds(100_000_000L))!!
+        val match = session.match(pose, matcher, graph)!!
+        val first = session.apply(filter, match, pose, pose.timestamp.value)
+        val variance = filter.horizontalVariance()
+        val heading = filter.poseAt(pose.timestamp)!!.motion.heading.value
+        session.match(pose, matcher, graph)
+        val second = session.apply(filter, match, pose, pose.timestamp.value)
+        assertEquals(1, matcher.updates)
+        assertTrue(first.headingAccepted)
+        assertFalse(second.headingAccepted)
+        assertFalse(second.healAccepted)
+        assertEquals(variance, filter.horizontalVariance(), 0.0)
+        assertEquals(heading, filter.poseAt(pose.timestamp)!!.motion.heading.value, 0.0)
+        session.reset()
+        session.match(pose, matcher, graph)
+        assertEquals(2, matcher.updates)
+    }
+
+    @Test
     fun engineWithoutGraphDoesNotSetRoadHeading() {
         val filter = coastingFilter(headingRad = 30.0 * PI / 180.0)
         val engine = DeadReckoningEngine(filter)
@@ -122,7 +178,11 @@ class DeadReckoningEngineTest {
     private class FixedMatcher(
         private val result: MapMatchResult,
     ) : RoadMatcher {
-        override fun update(state: FilterSnapshot, graph: RoadGraph): MapMatchResult = result
+        var updates = 0
+        override fun update(state: FilterSnapshot, graph: RoadGraph): MapMatchResult {
+            updates++
+            return result
+        }
 
         override fun reset() = Unit
     }

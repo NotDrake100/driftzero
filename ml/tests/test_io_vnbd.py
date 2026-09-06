@@ -2,7 +2,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from driftzero_ml.baselines import constant_velocity_baseline, freeze_baseline, persist_course_baseline
+from driftzero_ml.baselines import (
+    constant_velocity_baseline,
+    freeze_baseline,
+    persist_course_baseline,
+)
 from driftzero_ml.io_vnbd import (
     IOVNBDMissing,
     assign_grouped_trip_splits,

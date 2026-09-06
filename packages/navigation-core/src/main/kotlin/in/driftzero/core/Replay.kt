@@ -57,6 +57,8 @@ data class ReplayExecution(
  * `--engine` routes consume through
  * [DeadReckoningEngine] so a later student can be injected. Default remains
  * consume-only. Same input bytes yield the same output bytes.
+ * `--road-graph=extract.osm|extract.pbf|graph.bin` uses the shared map path.
+ * `--road-feedback=false` retains only its display overlay for ablations.
  * No wall clock and no randomness are used in the loop.
  *
  * IO-VNBD frames are produced by `ml/` as aligned, unit-checked SensorFrame
@@ -112,6 +114,11 @@ object Replay {
             mask = args.mask,
             persistSpeedPseudo = args.persistSpeedPseudo,
             useEngine = args.useEngine,
+            roadGraph = args.roadGraph?.let { path ->
+                if (path.fileName.toString().endsWith(".bin")) RoadGraphBin.load(path).first
+                else OsmGraphLoader.load(path)
+            },
+            roadFeedback = args.roadFeedback,
             onConsume = { consumed.add(it) },
         )
         val run = summaryOf(states, consumed.size, countMasked(ready.source.frames, args.mask))
@@ -125,12 +132,26 @@ object Replay {
         persistSpeedPseudo: Boolean = false,
         persistSpeedStdMps: Double = PERSIST_SPEED_PSEUDO_STD_MPS,
         useEngine: Boolean = false,
+        roadGraph: RoadGraph? = null,
+        roadMatcher: RoadMatcher? = null,
+        roadFeedback: Boolean = true,
         onConsume: ((SensorFrame) -> Unit)? = null,
     ): List<NavigationState> {
         val states = ArrayList<NavigationState>()
         var lastEmitNs = -1L
         var lastGnssSpeedMps: Double? = null
-        val engine = if (useEngine) DeadReckoningEngine(filter) else null
+        val matcher = roadMatcher ?: roadGraph?.let { HmmRoadMatcher() }
+        val mapCoast = MapCoastSession().also { it.setGraph(roadGraph) }
+        val engine = if (useEngine) DeadReckoningEngine(
+            filter = filter, matcher = matcher, graph = roadGraph,
+            mapCoast = mapCoast, mapFeedback = roadFeedback,
+        ) else null
+        fun injectPersist(timestamp: Nanoseconds) {
+            val speed = lastGnssSpeedMps
+            if (persistSpeedPseudo && filter.isGnssHeld() && speed != null) {
+                filter.ingestMotionPseudo(persistSpeedMeasurement(speed, persistSpeedStdMps), timestamp)
+            }
+        }
         for (frame in frames) {
             if (mask != null) {
                 filter.setGnssHeld(mask.contains(frame.timestamp.value))
@@ -146,21 +167,8 @@ object Replay {
             }
             onConsume?.invoke(frame)
             if (engine != null) {
-                val pose = engine.ingestForReplay(frame) ?: continue
-                if (persistSpeedPseudo && filter.isGnssHeld()) {
-                    val speed = lastGnssSpeedMps
-                    if (speed != null) {
-                        filter.ingestMotionPseudo(
-                            persistSpeedMeasurement(speed, persistSpeedStdMps),
-                            frame.timestamp,
-                        )
-                    }
-                }
-                states.add(if (persistSpeedPseudo && filter.isGnssHeld()) {
-                    filter.poseAt(frame.timestamp) ?: pose
-                } else {
-                    pose
-                })
+                val pose = engine.ingestForReplay(frame, ::injectPersist) ?: continue
+                states.add(pose)
                 continue
             }
             filter.consume(frame)
@@ -168,18 +176,16 @@ object Replay {
             if (lastEmitNs >= 0L && timestampNs - lastEmitNs < PERIOD_NS) {
                 continue
             }
-            if (persistSpeedPseudo && filter.isGnssHeld()) {
-                val speed = lastGnssSpeedMps
-                if (speed != null) {
-                    filter.ingestMotionPseudo(
-                        persistSpeedMeasurement(speed, persistSpeedStdMps),
-                        frame.timestamp,
-                    )
-                }
-            }
+            injectPersist(frame.timestamp)
             val pose = filter.poseAt(frame.timestamp) ?: continue
             lastEmitNs = timestampNs
-            states.add(pose)
+            val match = mapCoast.match(pose, matcher, roadGraph)
+            val coasting = filter.isGnssHeld() || pose.gnssHealth.lastTrustedFixAgeS > filter.gnssStaleAfterS()
+            if (match != null && roadFeedback && coasting) {
+                mapCoast.apply(filter, match, pose, timestampNs)
+            }
+            val after = filter.poseAt(frame.timestamp) ?: pose
+            states.add(if (match != null) after.withMapMatch(match) else after)
         }
         return states
     }
@@ -222,12 +228,16 @@ object Replay {
         var coastHonestP = false
         var coastSpeedDecay = false
         var studentForwardSpeed = false
+        var roadGraph: Path? = null
+        var roadFeedback = true
         var index = 0
         while (index < args.size) {
             val token = args[index]
             val (key, inline) = splitFlag(token)
             when (key) {
                 "--input" -> input = Path.of(readValue(args, index, inline).also { if (inline == null) index++ })
+                "--road-graph" -> roadGraph = Path.of(readValue(args, index, inline).also { if (inline == null) index++ })
+                "--road-feedback" -> roadFeedback = readValue(args, index, inline).also { if (inline == null) index++ }.toBooleanStrict()
                 "--output" -> output = Path.of(readValue(args, index, inline).also { if (inline == null) index++ })
                 "--mask-start-ns" -> maskStart = readValue(args, index, inline).also { if (inline == null) index++ }.toLong()
                 "--mask-end-ns" -> maskEnd = readValue(args, index, inline).also { if (inline == null) index++ }.toLong()
@@ -288,6 +298,8 @@ object Replay {
             persistSpeedPseudo = persistSpeedPseudo,
             useEngine = useEngine,
             headingPickWeak = headingPickWeak,
+            roadGraph = roadGraph,
+            roadFeedback = roadFeedback,
         )
     }
 
@@ -357,6 +369,8 @@ data class ReplayCliArgs(
     val persistSpeedPseudo: Boolean = false,
     val useEngine: Boolean = false,
     val headingPickWeak: Boolean? = null,
+    val roadGraph: Path? = null,
+    val roadFeedback: Boolean = true,
 )
 
 internal class ReplayFailedException(message: String) : Exception(message)

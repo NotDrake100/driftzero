@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Iterable, Mapping
 
 
 @dataclass(frozen=True)
@@ -55,7 +55,7 @@ def assign_trip_splits(
 
     assignments: list[SplitAssignment] = []
     for trip_id in unique:
-        material = f"{seed}:{trip_id}".encode("utf-8")
+        material = f"{seed}:{trip_id}".encode()
         unit = int.from_bytes(hashlib.sha256(material).digest()[:8], "big") / 2**64
         split = ordered_names[-1]
         for name, ceiling in thresholds:

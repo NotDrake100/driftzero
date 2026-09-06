@@ -39,7 +39,7 @@
     <string name="reason_gated_fix">Fix disagreed with estimate</string>
     <string name="reason_reacquiring">Fix back, confirming</string>
     <string name="reason_imu_gap">No IMU data</string>
-    <string name="reason_remount">Phone moved. Hold still 5 s.</string>
+    <string name="reason_remount">Phone moved. Keep it resting while alignment recovers.</string>
     <string name="sensors_mag_unused">Mag captured, unused</string>
 
     <string name="action_close">Close</string>
@@ -157,7 +157,7 @@
     <string name="about_screening_body">Held-out persist drift p50 is 0.5168 on 35 intervals. Official gate 0.10 is not met on IO-VNBD. kotlin_eskf_v5 leak-free: drift p50 0.611, endpoint p50 187.5 m, 1 Hz 0.257. Do not cite leaky-frame 0.541 as the headline.</string>
     <string name="about_notices">Third-party notices</string>
     <string name="about_notices_body">DriftZero is a research prototype. It is not certified for autonomous control or safety-of-life navigation. IBM Plex fonts are SIL OFL 1.1. MapLibre is BSD 2-Clause. Street tiles are OpenFreeMap from OpenStreetMap (ODbL). Photon, Nominatim, and OSRM are hosted services. See NOTICE.md in the source tree.</string>
-    <string name="row_mount">Mount</string>
+    <string name="row_mount">Phone placement</string>
     <string name="row_road_heading">Road heading</string>
     <string name="row_integrity">Integrity</string>
     <string name="row_safe_range">Safe range</string>
@@ -169,5 +169,5 @@
     <string name="row_placement">Placement</string>
     <string name="row_sih_remain">SIH remain</string>
     <string name="row_blackout_raw">Blackout raw</string>
-    <string name="firstrun_mount_still">A passenger seat or cup holder is valid. Keep the vehicle still for 5 s. A short straight drive completes alignment.</string>
+    <string name="firstrun_mount_still">No mount required. Rest the phone on the passenger seat, in a cup holder, or on a stable surface. Keep the vehicle still for 5 s. A short straight drive completes alignment.</string>
 </resources>

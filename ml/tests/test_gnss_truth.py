@@ -127,7 +127,6 @@ class StaleTruthTests(unittest.TestCase):
         records = []
         for index in range(80):
             stamp = index * 100_000_000
-            moved = index % 10 == 0
             lat = 52.0 + (index // 10) * 0.00008
             records.append(
                 {

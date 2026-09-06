@@ -16,11 +16,12 @@ Timestamp rewinds drop the suffix and are flagged in the export header.
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import math
+from collections.abc import Sequence
 from pathlib import Path
 from statistics import median
-from typing import Sequence
 
 from driftzero_ml.contracts import validate_sensor_frame
 from driftzero_ml.datasets.io_vnbd import SmartphoneRow, TimestampRewind, trim_nondecreasing_rows
@@ -93,7 +94,10 @@ def export_sensor_frames(
     if not ordered:
         raise ValueError("no smartphone rows to export")
     trip_id = source_id or ordered[0].trip_id
-    aligned = alignment if alignment is not None else alignment_from_rows(ordered, trip_id)
+    calibration_rows = ordered if mask_start_ns is None else [
+        row for row in ordered if row.timestamp_ns < mask_start_ns
+    ]
+    aligned = alignment if alignment is not None else alignment_from_rows(calibration_rows, trip_id)
     gyros, fixes = _gyro_and_unique_fixes(ordered)
     heading_decision = heading_gyro_decision(gyros, fixes, mask_start_ns=mask_start_ns)
     frames: list[dict] = []
@@ -150,22 +154,21 @@ def export_sensor_frames(
             gyro_flags.extend(gyro_extra)
             if gap:
                 gyro_flags.append("imu_gap")
-            if gyro is None:
-                continue
-            frames.append(
-                _vector_frame(
-                    trip_id,
-                    sequence,
-                    stamp,
-                    "gyroscope",
-                    GYRO_UNIT,
-                    gyro,
-                    available=True,
-                    accuracy_code=3,
-                    flags=gyro_flags,
+            if gyro is not None:
+                frames.append(
+                    _vector_frame(
+                        trip_id,
+                        sequence,
+                        stamp,
+                        "gyroscope",
+                        GYRO_UNIT,
+                        gyro,
+                        available=True,
+                        accuracy_code=3,
+                        flags=gyro_flags,
+                    )
                 )
-            )
-            sequence += 1
+                sequence += 1
 
         if row.latitude_deg is None or row.longitude_deg is None:
             continue
@@ -188,6 +191,14 @@ def export_sensor_frames(
     header["official_row"] = True
     header["sensitivity"] = False
     header["heading_gyro"] = _heading_gyro_header(heading_decision)
+    header["gyro_convention"] = "right_handed_up_v2"
+    header["gravity_calibration"] = {
+        "source": "provided" if alignment is not None else (
+            "pre_mask" if mask_start_ns is not None else "full_trip_no_mask"
+        ),
+        "sample_count": 0 if aligned is None else aligned.sample_count,
+        "mask_start_ns": mask_start_ns,
+    }
     header["notes"] = _export_notes(heading_decision, rewind)
     if rewind is not None:
         header["timestamp_rewind"] = {
@@ -218,7 +229,7 @@ def hold_last_imu_upsample(
 
     if target_hz <= 0.0 or not math.isfinite(target_hz):
         raise ValueError("target_hz must be positive and finite")
-    period_ns = int(round(NS_PER_S / target_hz))
+    period_ns = round(NS_PER_S / target_hz)
     if period_ns <= 0:
         raise ValueError("target_hz is too high")
     imu = [row for row in frames if row["kind"] in ("accelerometer", "gyroscope")]
@@ -310,7 +321,7 @@ def imu_gap_count(frames: Sequence[dict], *, max_integrate_s: float = MAX_INTEGR
         if row["kind"] == "accelerometer"
     ]
     gaps = 0
-    for earlier, later in zip(times, times[1:]):
+    for earlier, later in itertools.pairwise(times):
         if (later - earlier) / NS_PER_S > max_integrate_s:
             gaps += 1
     return gaps
@@ -405,11 +416,13 @@ def _gyro_and_unique_fixes(
     fixes: list[tuple[int, float, float]] = []
     last: tuple[float, float] | None = None
     for row in rows:
-        if row.gyro_yaw is not None and row.gyro_pitch is not None and row.gyro_roll is not None:
-            if all(math.isfinite(axis) for axis in (row.gyro_yaw, row.gyro_pitch, row.gyro_roll)):
-                gyros.append(
-                    (int(row.timestamp_ns), float(row.gyro_yaw), float(row.gyro_pitch), float(row.gyro_roll))
-                )
+        if (
+            row.gyro_yaw is not None and row.gyro_pitch is not None and row.gyro_roll is not None
+            and all(math.isfinite(axis) for axis in (row.gyro_yaw, row.gyro_pitch, row.gyro_roll))
+        ):
+            gyros.append(
+                (int(row.timestamp_ns), float(row.gyro_yaw), float(row.gyro_pitch), float(row.gyro_roll))
+            )
         if row.latitude_deg is None or row.longitude_deg is None:
             continue
         pos = (float(row.latitude_deg), float(row.longitude_deg))
@@ -437,7 +450,7 @@ def _heading_rate_gyro(
     alignment: TripAlignment | None,
     decision: HeadingGyroDecision,
 ) -> tuple[tuple[float, float, float] | None, list[str]]:
-    """Place heading rate on +Z. Do not treat yaw/pitch/roll as device XYZ."""
+    """Convert clockwise course rate to right-handed angular velocity on +Z."""
 
     extra: list[str] = []
     if not all(math.isfinite(axis) for axis in raw):
@@ -447,7 +460,7 @@ def _heading_rate_gyro(
         rate = heading_gyro_radps(raw, pick)
         if not math.isfinite(rate):
             return None, extra
-        return (0.0, 0.0, rate), [f"gyro_heading_axis_{pick.axis}"]
+        return (0.0, 0.0, -rate), [f"gyro_heading_axis_{pick.axis}"]
     extra.append(FLAG_HEADING_PICK_WEAK)
     extra.append(f"gyro_heading_pick_{decision.reason}")
     if alignment is None:
@@ -458,7 +471,7 @@ def _heading_rate_gyro(
         extra.append(FLAG_HEADING_UNAVAILABLE)
         return None, extra
     extra.append(FLAG_HEADING_VERTICAL)
-    return (0.0, 0.0, rate), extra
+    return (0.0, 0.0, -rate), extra
 
 
 def _heading_gyro_header(decision: HeadingGyroDecision) -> dict:

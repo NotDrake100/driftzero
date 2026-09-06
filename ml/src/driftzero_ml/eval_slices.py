@@ -5,10 +5,11 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-from datetime import date, datetime
+import math
+from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from statistics import median
-from typing import Mapping, Sequence
 
 from driftzero_ml.gnss_truth import unique_fix_median_spacing_s
 
@@ -200,11 +201,11 @@ def slice_tables(
     }
 
 
-def _fmt(value: float | int | None, digits: int) -> str:
+def _fmt(value: float | None, digits: int) -> str:
     if value is None:
         return "n/a"
     number = float(value)
-    if number != number:  # NaN
+    if math.isnan(number):  # NaN
         return "n/a"
     return f"{number:.{digits}f}"
 
@@ -261,7 +262,7 @@ def write_slices_markdown(path: Path, markdown: str) -> None:
 
 
 def file_date_iso(path: Path) -> str:
-    return datetime.fromtimestamp(path.stat().st_mtime).date().isoformat()
+    return datetime.fromtimestamp(path.stat().st_mtime, tz=UTC).date().isoformat()
 
 
 def build_slices_from_screening_dir(
@@ -287,7 +288,7 @@ def build_slices_from_screening_dir(
         tables,
         source=str(csv_path),
         metrics_date=file_date_iso(csv_path),
-        written_date=date.today().isoformat(),
+        written_date=datetime.now(UTC).date().isoformat(),
     )
     return tables, markdown
 

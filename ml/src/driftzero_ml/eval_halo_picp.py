@@ -7,10 +7,11 @@ Does not import eval_navstate. Kotlin replay can feed the same files later.
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Sequence
 
 from driftzero_ml.contracts import ContractError, validate_navigation_state
 from driftzero_ml.metrics import haversine_m
@@ -92,7 +93,7 @@ def halo_picp(
     if not truth:
         raise ValueError("truth must not be empty")
     state_times = [int(row["timestamp_ns"]) for row in states]
-    for previous, current in zip(state_times, state_times[1:]):
+    for previous, current in itertools.pairwise(state_times):
         if current < previous:
             raise ValueError("states timestamps must be non-decreasing")
     rows: list[HaloPicpRow] = []

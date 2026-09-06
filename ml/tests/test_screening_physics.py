@@ -42,19 +42,7 @@ class ScreeningPhysicsTests(unittest.TestCase):
             }
             for name in PHYSICS_SYSTEMS
         }
-        text = "\n".join(
-            [
-                "| System | drift p50 | drift p90 | drift p95 | drift worst | endpoint p50 m | speed MAE p50 | heading MAE p50 rad |",
-                "|---|---:|---:|---:|---:|---:|---:|---:|",
-                "| persist | 0.5168 | 1.3887 | 19.8706 | 204.0427 | 234.47 | 3.439 | 0.673 |",
-                "| linear | 0.7132 | 2.5454 | 9.1404 | 11.1149 | 286.98 | 5.034 | 0.724 |",
-                "| gru | 0.7550 | 3.1158 | 19.3799 | 191.8346 | 292.76 | 4.847 | 0.741 |",
-                "",
-                "## SIH gate",
-                "",
-                "kept",
-            ]
-        )
+        text = "| System | drift p50 | drift p90 | drift p95 | drift worst | endpoint p50 m | speed MAE p50 | heading MAE p50 rad |\n|---|---:|---:|---:|---:|---:|---:|---:|\n| persist | 0.5168 | 1.3887 | 19.8706 | 204.0427 | 234.47 | 3.439 | 0.673 |\n| linear | 0.7132 | 2.5454 | 9.1404 | 11.1149 | 286.98 | 5.034 | 0.724 |\n| gru | 0.7550 | 3.1158 | 19.3799 | 191.8346 | 292.76 | 4.847 | 0.741 |\n\n## SIH gate\n\nkept"
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "summary.md"
             path.write_text(text + "\n")

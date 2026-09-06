@@ -1,0 +1,67 @@
+name: Locked accuracy evidence
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/driftzero-accuracy]
+    paths: [.github/workflows/accuracy.yml, ml/src/driftzero_ml/export_sensorframe.py]
+permissions:
+  contents: read
+jobs:
+  screening:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build replay
+        run: ./gradlew :navigation-core:installDist --no-daemon
+      - uses: actions/checkout@v4
+        with:
+          repository: onyekpeu/IO-VNBD
+          ref: 118939602e3422d47b8ab0807b623751c3ac135b
+          path: data/raw/io_vnbd
+          lfs: false
+          persist-credentials: false
+      - name: Materialize pinned smartphone data only
+        working-directory: data/raw/io_vnbd
+        run: git lfs pull --include='**/Categorised IOVNB Dataset/**/S-*.csv'
+      - name: Record provenance
+        run: |
+          mkdir -p results/accuracy_candidate
+          git rev-parse HEAD > results/accuracy_candidate/code_commit.txt
+          git -C data/raw/io_vnbd rev-parse HEAD > results/accuracy_candidate/data_commit.txt
+          git -C data/raw/io_vnbd lfs ls-files --long > results/accuracy_candidate/lfs_objects.txt
+          python --version > results/accuracy_candidate/runtime.txt
+          java -version 2>> results/accuracy_candidate/runtime.txt
+      - name: Replay all locked intervals with fresh pre-mask calibration
+        env:
+          PYTHONPATH: ml/src
+        run: >-
+          python -m driftzero_ml.eval_kotlin_replay
+          --out results/accuracy_candidate --system gravity_yaw_v2
+          --coast-mode=yaw_speed_hold --replay-arg=--weak-heading-policy=hold_course
+          --reexport --rerun --skip-sensitivity
+      - name: Evaluate strict ten percent target
+        env:
+          PYTHONPATH: ml/src
+        run: >-
+          python -m driftzero_ml.accuracy_gate
+          results/accuracy_candidate/metrics_gravity_yaw_v2.json
+          --out results/accuracy_candidate/target_gate.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: locked-accuracy-evidence
+          retention-days: 30
+          path: |
+            results/accuracy_candidate/*.json
+            results/accuracy_candidate/*.csv
+            results/accuracy_candidate/*.txt
+            results/accuracy_candidate/logs/

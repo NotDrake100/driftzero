@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from math import exp, log
 from pathlib import Path
-from typing import Sequence
 
 from driftzero_ml.features.causal_imu import FEATURE_NAMES, MAX_SPEED_MPS
 

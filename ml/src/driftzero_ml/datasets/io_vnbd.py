@@ -4,21 +4,20 @@ from __future__ import annotations
 
 import csv
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Sequence
 
-from driftzero_ml.metrics import EARTH_MEAN_RADIUS_M
+from driftzero_ml.datasets.errors import DatasetLfsMissing, DatasetMissing
+from driftzero_ml.datasets.lfs import FETCH_DOC, is_lfs_pointer, require_real_file
 from driftzero_ml.gnss_truth import (
     SPEED_UNIT_MPS,
     column_speed_to_mps,
     infer_speed_unit,
 )
-
-from driftzero_ml.datasets.errors import DatasetLfsMissing, DatasetMissing
-from driftzero_ml.datasets.lfs import FETCH_DOC, is_lfs_pointer, require_real_file
 from driftzero_ml.io_vnbd.discover import inspect_delimited_table, read_table_text
 from driftzero_ml.io_vnbd.locate import PREFERRED_RELATIVE, SOURCE_URL, require_local_root
+from driftzero_ml.metrics import EARTH_MEAN_RADIUS_M
 
 FETCH_HINT = (
     f"Clone {SOURCE_URL} into data/raw/io_vnbd/ and pull Git LFS, "

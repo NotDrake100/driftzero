@@ -10,11 +10,12 @@ Do not write results/pune_v1. Do not claim the official 0.10 gate.
 from __future__ import annotations
 
 import argparse
+import itertools
 import math
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Sequence
 
 from driftzero_ml.metrics import EARTH_MEAN_RADIUS_M, LatLon, haversine_m
 
@@ -113,13 +114,13 @@ def yaw_about_gravity(gyro_radps: tuple[float, float, float], gravity: tuple[flo
 def _seg_lengths(points: Sequence[PolyPoint]) -> list[float]:
     return [
         math.hypot(b.east_m - a.east_m, b.north_m - a.north_m)
-        for a, b in zip(points, points[1:])
+        for a, b in itertools.pairwise(points)
     ]
 
 
 def _seg_headings(points: Sequence[PolyPoint]) -> list[float]:
     headings: list[float] = []
-    for a, b in zip(points, points[1:]):
+    for a, b in itertools.pairwise(points):
         headings.append(math.atan2(b.east_m - a.east_m, b.north_m - a.north_m))
     return headings
 

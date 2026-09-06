@@ -23,6 +23,7 @@ class DeadReckoningEngine(
     private val matcher: RoadMatcher? = null,
     private val graph: RoadGraph? = null,
     private val mapCoast: MapCoastSession = MapCoastSession(),
+    private val mapFeedback: Boolean = true,
 ) : NavigationEngine {
     private val _states = MutableSharedFlow<NavigationState>(extraBufferCapacity = 16)
     private var lastEmitNs: Long = -1L
@@ -60,19 +61,23 @@ class DeadReckoningEngine(
      * Synchronous consume for JVM replay. Same 10 Hz cadence and student
      * inject as [consume]. Default Replay stays consume-only.
      */
-    fun ingestForReplay(frame: SensorFrame): NavigationState? {
+    fun ingestForReplay(
+        frame: SensorFrame,
+        beforeEmit: ((Nanoseconds) -> Unit)? = null,
+    ): NavigationState? {
         filter.consume(frame)
         motion.ingestFrame(frame)
-        return emitIfDue(frame.timestamp)
+        return emitIfDue(frame.timestamp, beforeEmit)
     }
 
-    private fun emitIfDue(timestamp: Nanoseconds): NavigationState? {
+    private fun emitIfDue(timestamp: Nanoseconds, beforeEmit: ((Nanoseconds) -> Unit)? = null): NavigationState? {
         val t = timestamp.value
         if (lastEmitNs >= 0L && t - lastEmitNs < PERIOD_NS) {
             return null
         }
         motion.inferAt(timestamp)?.let { filter.ingestMotionPseudo(it, timestamp) }
         motion.inferDisplacementAt(timestamp)?.let { filter.ingestDisplacementPseudo(it, timestamp) }
+        beforeEmit?.invoke(timestamp)
         val raw = filter.poseAt(timestamp) ?: return null
         lastEmitNs = t
         return overlayMatch(raw)
@@ -84,9 +89,9 @@ class DeadReckoningEngine(
         if (activeMatcher == null || activeGraph == null || activeGraph.isEmpty()) {
             return state
         }
-        val result = activeMatcher.update(FilterSnapshot(state), activeGraph)
-        val coasting = filter.isGnssHeld() || state.mode == NavigationMode.DEAD_RECKONING
-        if (coasting) {
+        val result = mapCoast.match(state, activeMatcher, activeGraph) ?: return state
+        val coasting = filter.isGnssHeld() || state.gnssHealth.lastTrustedFixAgeS > filter.gnssStaleAfterS()
+        if (coasting && mapFeedback) {
             mapCoast.apply(filter, result, state, state.timestamp.value)
             val after = filter.poseAt(state.timestamp) ?: state
             return after.withMapMatch(result)

@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from math import exp, log, pi
 from pathlib import Path
-from typing import Mapping, Sequence
 
 from driftzero_ml.blackout import GNSS_KEYS
 from driftzero_ml.datasets.io_vnbd import (
@@ -34,7 +34,12 @@ from driftzero_ml.features.residual_imu import (
     hold_mean_from_series,
     horizontal_sf_and_omega_series,
 )
-from driftzero_ml.gnss_truth import SPEED_UNIT_MPS, column_speed_to_mps, infer_speed_unit, unique_fix_indices
+from driftzero_ml.gnss_truth import (
+    SPEED_UNIT_MPS,
+    column_speed_to_mps,
+    infer_speed_unit,
+    unique_fix_indices,
+)
 from driftzero_ml.io_vnbd import assign_grouped_trip_splits
 from driftzero_ml.metrics import EARTH_MEAN_RADIUS_M, picp
 from driftzero_ml.student.linear import LinearMotionStudent, _dot, _ridge, load_linear_student
@@ -662,8 +667,8 @@ def _fix_at_horizon(
     t0_ns: int,
     horizon_s: float,
 ) -> tuple[int, float] | None:
-    target_ns = t0_ns + int(round(horizon_s * 1_000_000_000.0))
-    slack_ns = int(round(HORIZON_SLACK_S[horizon_s] * 1_000_000_000.0))
+    target_ns = t0_ns + round(horizon_s * 1_000_000_000.0)
+    slack_ns = round(HORIZON_SLACK_S[horizon_s] * 1_000_000_000.0)
     best: tuple[int, float] | None = None
     best_delta: int | None = None
     for stamp, speed in later:

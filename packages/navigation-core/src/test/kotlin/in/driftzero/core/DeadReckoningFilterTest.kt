@@ -542,11 +542,11 @@ class DeadReckoningFilterTest {
         }
         val pose = filter.poseAt(Nanoseconds(steps * dtNs))!!
         val heading = pose.motion.heading.value
-        val headingErr = minHeadingDelta(heading, 1.0)
-        assertTrue("heading should change by ~1 rad, got $heading", headingErr < 0.15)
+        val headingErr = minHeadingDelta(heading, -1.0)
+        assertTrue("right-handed up yaw turns heading west, got $heading", headingErr < 0.15)
         assertEquals("speed held", 15.0, pose.motion.speed.value, 0.5)
         val p = filter.positionEnu()
-        assertTrue("path should curve east, east=${p.x}", abs(p.x) > 20.0)
+        assertTrue("path should curve west, east=${p.x}", p.x < -20.0)
         assertTrue("north should be less than a straight 150 m, north=${p.y}", p.y < 145.0)
     }
 
@@ -946,9 +946,9 @@ class DeadReckoningFilterTest {
         val integrate = run(WeakHeadingPolicy.INTEGRATE, weak = true)
         val hold = run(WeakHeadingPolicy.HOLD_COURSE, weak = true)
         val strong = run(WeakHeadingPolicy.HOLD_COURSE, weak = false)
-        assertTrue("INTEGRATE should yaw ~1 rad, got ${integrate.first}", minHeadingDelta(integrate.first, 1.0) < 0.15)
+        assertTrue("INTEGRATE should yaw ~-1 rad, got ${integrate.first}", minHeadingDelta(integrate.first, -1.0) < 0.15)
         assertTrue("HOLD_COURSE weak must not yaw, heading=${hold.first}", minHeadingDelta(hold.first, 0.0) < 0.05)
-        assertTrue("HOLD_COURSE with a strong pick still yaws, heading=${strong.first}", minHeadingDelta(strong.first, 1.0) < 0.15)
+        assertTrue("HOLD_COURSE with a strong pick still yaws, heading=${strong.first}", minHeadingDelta(strong.first, -1.0) < 0.15)
         assertTrue(
             "HOLD_COURSE should grow heading95 vs INTEGRATE, hold=${hold.second} integrate=${integrate.second}",
             hold.second > integrate.second + 0.05,

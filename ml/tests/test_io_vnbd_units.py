@@ -14,7 +14,6 @@ from driftzero_ml.datasets.io_vnbd import (
 )
 from driftzero_ml.gnss_truth import SPEED_UNIT_KMH, SPEED_UNIT_MPS
 
-
 _HEADER = (
     "GPS LATITUDE (degrees),GPS LONGITUDE (degrees),GPS ALTITUDE (m),"
     "GPS SPEED (Kmh),GPS ACCURACY (m),GPS SATELLITES IN RANGE,"
@@ -51,10 +50,6 @@ class IoVnbdUnitTests(unittest.TestCase):
 
     def test_unique_fix_ratio_accepts_metres_per_second(self) -> None:
         # 10 m north in 1 s. Column 10 matches m/s, not km/h.
-        rows = [
-            "52.0,-1.5,80.0,10.0,4.0,8 / 8,0,0.1,0.2,9.8,0.0,0.0,9.8,0.0,0.0,0.0",
-            "52.0000899,-1.5,80.0,10.0,4.0,8 / 8,1000,0.1,0.2,9.8,0.0,0.0,9.8,0.0,0.0,0.0",
-        ]
         # Need 8 pairs. Repeat the 10 m/s step.
         lat = 52.0
         built = []

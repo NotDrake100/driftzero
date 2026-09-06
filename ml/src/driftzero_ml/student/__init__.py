@@ -8,6 +8,6 @@ __all__ = [
     "MotionHeads",
     "coast_speed_mps",
     "fit_linear_motion_student",
-    "zupt_accel_infer",
     "zero_speed_baseline",
+    "zupt_accel_infer",
 ]

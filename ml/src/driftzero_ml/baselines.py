@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import itertools
+from collections.abc import Sequence
 from math import cos, pi, radians, sin
-from typing import Sequence
 
 from .metrics import EARTH_MEAN_RADIUS_M, LatLon
 
@@ -37,7 +38,7 @@ def constant_velocity_baseline(
         _validate_fix((lat, lon))
         if timestamp < 0:
             raise ValueError("timestamps must be non-negative")
-    for previous, current in zip(history, history[1:]):
+    for previous, current in itertools.pairwise(history):
         if current[2] < previous[2]:
             raise ValueError("history timestamps must be non-decreasing")
     last_lat, last_lon, last_t = history[-1]

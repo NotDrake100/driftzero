@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import shutil
 from pathlib import Path
 
@@ -238,11 +239,11 @@ def persist_losses(
     return losses
 
 
-def _fmt(value: float | int | None, digits: int) -> str:
+def _fmt(value: float | None, digits: int) -> str:
     if value is None:
         return "n/a"
     number = float(value)
-    if number != number:
+    if math.isnan(number):
         return "n/a"
     return f"{number:.{digits}f}"
 
@@ -446,11 +447,11 @@ def write_readme(
             "",
             "Persist holds last unique-fix GNSS speed and course. It does not integrate gyro.",
             "",
-            f"S-Vw16b:mid mechanism on official v6: {fired}. "
+            (f"S-Vw16b:mid mechanism on official v6: {fired}. "
             f"Endpoint {_fmt(mechanism.get('endpoint_error_m'), 2)} m "
             f"(persist 12.07 m, v5 332.46 m). Reseed fires at the unique fix at mask start. "
             "A 0 m/s column after a long unique hop uses hop speed and the 10 m course. "
-            "Honest coast P grows so gate=6*(sigma+sqrt(P_h)) would also admit that fix if reseed were off.",
+            "Honest coast P grows so gate=6*(sigma+sqrt(P_h)) would also admit that fix if reseed were off."),
             "",
         ]
     )

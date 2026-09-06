@@ -209,7 +209,7 @@ class DeadReckoningFilter(
      */
     fun setImuStill(still: Boolean) {
         synchronized(lock) {
-            imuStill = still
+            imuStill = still && !phoneHandling
         }
     }
 
@@ -247,6 +247,26 @@ class DeadReckoningFilter(
             }
             if (flags.contains(FLAG_HEADING_PICK_WEAK)) {
                 headingPickWeak = true
+            }
+        }
+    }
+
+    private var phoneHandling = false
+    private var phoneYawUp: Double? = null
+    private var phoneYawNs = -1L
+
+    /** Preserve position when the phone moves independently of the vehicle. */
+    fun setPhoneMotion(handling: Boolean, yawUpRadps: Double?, timestamp: Nanoseconds) {
+        synchronized(lock) {
+            if (timestamp.value < phoneYawNs) return
+            phoneHandling = handling
+            phoneYawUp = yawUpRadps?.takeIf { it.isFinite() }
+            phoneYawNs = timestamp.value
+            if (handling) {
+                imuStill = false
+                lastStopProbability = 0.0
+                lastPseudo = false
+                lastDisplacement = false
             }
         }
     }
@@ -319,6 +339,7 @@ class DeadReckoningFilter(
             if (!initialized) {
                 return
             }
+            if (phoneHandling) return
             lastStopProbability = meas.stopProbability
             predictTo(timestamp.value)
             if (!numericalOk) {
@@ -338,6 +359,7 @@ class DeadReckoningFilter(
      */
     fun ingestDisplacementPseudo(meas: DisplacementPseudoMeasurement, timestamp: Nanoseconds) {
         synchronized(lock) {
+            if (phoneHandling) return
             if (!initialized) {
                 return
             }
@@ -549,6 +571,9 @@ class DeadReckoningFilter(
 
     fun reset(reason: ResetReason) {
         synchronized(lock) {
+            phoneHandling = false
+            phoneYawUp = null
+            phoneYawNs = -1L
             initialized = false
             numericalOk = true
             eastM = 0.0
@@ -663,6 +688,7 @@ class DeadReckoningFilter(
                 (now.value - lastGatedGnssNs) / NS_PER_S < config.gatedRecentS
             val degraded = lastHorizAccM > config.degradedAccuracyM || gatedRecently
             val mode = when {
+                phoneHandling -> NavigationMode.LOW_CONFIDENCE
                 horizontal95 > config.lowConfidenceRadiusM -> NavigationMode.LOW_CONFIDENCE
                 coasting -> NavigationMode.DEAD_RECKONING
                 coastedSinceFix -> NavigationMode.REACQUIRING
@@ -670,6 +696,7 @@ class DeadReckoningFilter(
                 else -> NavigationMode.GNSS_FUSED
             }
             val riskFlags = buildSet {
+                if (phoneHandling) add("phone_handling")
                 if (coasting) add(RISK_STALE_GNSS)
                 if (lastHorizAccM > config.degradedAccuracyM && !coasting) add(RISK_POOR_ACCURACY)
                 if (gatedRecently) add(RISK_GATED_FIX)
@@ -682,6 +709,10 @@ class DeadReckoningFilter(
             }
             val flags = buildSet {
                 add(FLAG_ESKF)
+                if (phoneHandling) add("phone_handling")
+                if (phoneYawUp != null && now.value >= phoneYawNs && now.value - phoneYawNs <= 500_000_000L) {
+                    add("phone_gravity_yaw")
+                }
                 if (gnssHeld) add(FLAG_GPS_HELD)
                 if (lastZupt) add(FLAG_ZUPT)
                 if (lastNhc) add(FLAG_NHC)
@@ -951,6 +982,17 @@ class DeadReckoningFilter(
             recordClone()
             return
         }
+        if (phoneHandling) {
+            noteCoastEntry(tNs)
+            coastVelocity(dt)
+            // Variance grows per second, independent of sensor sample rate.
+            p[0, 0] += 25.0 * dt
+            p[1, 1] += 25.0 * dt
+            p[8, 8] += 0.04 * dt
+            timeNs = tNs
+            recordClone()
+            return
+        }
         val gyro = lastGyro
         val accel = lastAccel
         if (gyro == null || accel == null) {
@@ -1010,9 +1052,9 @@ class DeadReckoningFilter(
      * into velocity. Horizontal speed is held in m/s. Vertical velocity is 0.
      *
      * Body gyro (rad/s, IMU frame minus gyro bias) is rotated into n-frame ENU
-     * with the current attitude. The ENU-up component is the heading rate.
+     * with the current attitude. The negative ENU-up component is the heading rate.
      * Navigation heading is clockwise from north (0 = north, positive toward
-     * east), matching persist: `heading += omega_up * dt`. Horizontal velocity
+     * east), so `heading -= omega_up * dt`. Horizontal velocity
      * is the held speed rotated by that heading. Position is metres ENU.
      *
      * Attitude still follows the body gyro so ZUPT, NHC, and later road
@@ -1021,9 +1063,14 @@ class DeadReckoningFilter(
     private fun yawSpeedHold(dt: Double, gyroMeas: Vec3, accelMeas: Vec3, tNs: Long) {
         val omegaBody = gyroMeas - bg
         val omegaNav = q.toRotation() * omegaBody
-        val omegaUp = if (holdCourseActive()) 0.0 else omegaNav.z
+        val projected = phoneYawUp?.takeIf {
+            imuFrame == VectorFrame.ANDROID_DEVICE && tNs >= phoneYawNs && tNs - phoneYawNs <= 500_000_000L
+        }
+        val omegaUp = if (holdCourseActive()) 0.0 else projected ?: omegaNav.z
+        val startHeading = coastHeadingRad
+        val startSpeed = heldSpeedMps
         if (!coastStopped) {
-            coastHeadingRad = wrapHeadingRad(coastHeadingRad + omegaUp * dt)
+            coastHeadingRad = wrapHeadingRad(coastHeadingRad - omegaUp * dt)
         }
         q = NFrameMechanization.integrateAttitude(q, omegaBody, dt)
         val lat = currentLatitudeDeg()
@@ -1054,8 +1101,13 @@ class DeadReckoningFilter(
         ve = heldSpeedMps * sin(coastHeadingRad)
         vn = heldSpeedMps * cos(coastHeadingRad)
         vu = 0.0
-        eastM += ve * dt
-        northM += vn * dt
+        // Integrate the circular arc, including the straight-line limit.
+        // Endpoint Euler integration introduces a sample-rate-dependent lateral bias.
+        val halfTurn = -0.5 * omegaUp * dt
+        val sinc = if (abs(halfTurn) < 1e-6) 1.0 - halfTurn * halfTurn / 6.0 else sin(halfTurn) / halfTurn
+        val distance = 0.5 * (startSpeed + heldSpeedMps) * dt * sinc
+        eastM += distance * sin(startHeading + halfTurn)
+        northM += distance * cos(startHeading + halfTurn)
         lastHeadingRad = coastHeadingRad
         pushAccelHist(hypot3(aNav.x, aNav.y, aNav.z))
     }
@@ -1533,7 +1585,7 @@ class DeadReckoningFilter(
         if (abs(dYaw) < 1e-12) {
             return
         }
-        val half = 0.5 * dYaw
+        val half = -0.5 * dYaw
         val dq = Quat(cos(half), 0.0, 0.0, sin(half))
         q = dq.times(q).normalized()
     }
@@ -1569,6 +1621,7 @@ class DeadReckoningFilter(
     private fun maybeConstraints() {
         lastZupt = false
         lastNhc = false
+        if (phoneHandling) return
         val accel = lastAccel ?: return
         val gyro = lastGyro ?: return
         if (config.coastStopDetect &&

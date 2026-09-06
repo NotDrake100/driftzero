@@ -8,13 +8,28 @@ import hashlib
 import json
 import subprocess
 from collections import defaultdict
-from math import atan2, cos, exp, pi, radians, sin
+from collections.abc import Callable, Sequence
+from math import cos, exp, pi, radians, sin
 from pathlib import Path
 from statistics import mean, median
-from typing import Callable, Sequence
 
-from driftzero_ml.baselines import constant_velocity_baseline, freeze_baseline, persist_course_baseline
-from driftzero_ml.blackout import GNSS_KEYS, BlackoutInterval, assert_no_gnss_leakage, mask_gnss_records
+from driftzero_ml.baselines import (
+    constant_velocity_baseline,
+    freeze_baseline,
+    persist_course_baseline,
+)
+from driftzero_ml.blackout import (
+    GNSS_KEYS,
+    BlackoutInterval,
+    assert_no_gnss_leakage,
+    mask_gnss_records,
+)
+from driftzero_ml.curve_speed import (
+    estimate_forward_axis,
+    linear_curve_speed_fn,
+    observe_curve_speeds,
+    persist_curve_speed_fn,
+)
 from driftzero_ml.datasets.errors import DatasetLfsMissing, DatasetMissing
 from driftzero_ml.datasets.io_vnbd import load_smartphone_csv
 from driftzero_ml.eval_iovnbd_blackout import (
@@ -43,7 +58,13 @@ from driftzero_ml.features.causal_imu import (
     records_to_imu_samples,
     trim_causal_window,
 )
-from driftzero_ml.gnss_truth import TruthGateConfig, assess_truth, score_epochs, seed_heading_rad, unique_fix_median_spacing_s
+from driftzero_ml.gnss_truth import (
+    TruthGateConfig,
+    assess_truth,
+    score_epochs,
+    seed_heading_rad,
+    unique_fix_median_spacing_s,
+)
 from driftzero_ml.io_vnbd import IOVNBDMissing, assign_grouped_trip_splits
 from driftzero_ml.learned_imu import hacf_sequence
 from driftzero_ml.metrics import (
@@ -52,14 +73,7 @@ from driftzero_ml.metrics import (
     circular_mae_rad,
     evaluate_blackout,
     path_heading_rad,
-    path_length_m,
     wrap_heading_error_rad,
-)
-from driftzero_ml.curve_speed import (
-    estimate_forward_axis,
-    linear_curve_speed_fn,
-    observe_curve_speeds,
-    persist_curve_speed_fn,
 )
 from driftzero_ml.selfcal_speed import (
     ROLL_WINDOW_NS,
@@ -978,7 +992,7 @@ def _write_csvs(out_dir: Path, per_interval: list[dict], systems: dict) -> None:
 
 
 def _table_row(name: str, row: dict) -> str:
-    def fmt(key: str, digits: int = 4) -> str:
+    def fmt(key: str, digits: int = 4, row=row) -> str:
         if key not in row:
             return "n/a"
         return f"{float(row[key]):.{digits}f}"
@@ -1018,9 +1032,7 @@ def insert_physics_summary_rows(path: Path, systems: dict) -> None:
         raise ValueError(f"{path} has a partial physics table ({replaced} rows)")
     insert_after = None
     for index, line in enumerate(out):
-        if line.startswith("| timesfm_coast |"):
-            insert_after = index
-        elif insert_after is None and line.startswith("| linear |") and not line.startswith("| linear_"):
+        if line.startswith("| timesfm_coast |") or insert_after is None and line.startswith("| linear |") and not line.startswith("| linear_"):
             insert_after = index
     if insert_after is None:
         raise ValueError(f"{path} has no linear row to insert after")
@@ -1265,7 +1277,7 @@ def write_summary(path: Path, payload: dict, versions: dict, commands: list[str]
             continue
         row = payload["systems"][name]
 
-        def fmt(key: str, digits: int = 4) -> str:
+        def fmt(key: str, digits: int = 4, row=row) -> str:
             if key not in row:
                 return "n/a"
             return f"{float(row[key]):.{digits}f}"

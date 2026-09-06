@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from driftzero_ml.contracts import ContractError, validate_navigation_state
 from driftzero_ml.gnss_truth import TruthGateConfig, assess_truth, score_epochs
@@ -25,7 +26,7 @@ def load_navigation_state_jsonl(path: Path) -> list[dict]:
         rows.append(obj)
     if not rows:
         raise ContractError(f"{path} has no NavigationState rows")
-    for previous, current in zip(rows, rows[1:]):
+    for previous, current in itertools.pairwise(rows):
         if int(current["timestamp_ns"]) < int(previous["timestamp_ns"]):
             raise ContractError("NavigationState JSONL timestamps must be non-decreasing")
     return rows

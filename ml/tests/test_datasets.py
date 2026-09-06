@@ -97,9 +97,8 @@ class IoVnbdLoaderTests(unittest.TestCase):
         self.assertEqual(rewind.first_rewind_ns, 8_000_000)
 
     def test_missing_root_is_explicit(self) -> None:
-        with tempfile.TemporaryDirectory() as folder:
-            with self.assertRaisesRegex(FileNotFoundError, "IO-VNBD"):
-                require_iovnbd_tables(Path(folder) / "missing")
+        with tempfile.TemporaryDirectory() as folder, self.assertRaisesRegex(FileNotFoundError, "IO-VNBD"):
+            require_iovnbd_tables(Path(folder) / "missing")
 
     def test_screening_prefers_categorised_unique_stems(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
@@ -158,11 +157,10 @@ class EurocTumviTests(unittest.TestCase):
         self.assertEqual(len(rows), 3)
 
     def test_missing_euroc_root(self) -> None:
-        with tempfile.TemporaryDirectory() as folder:
-            with self.assertRaisesRegex(DatasetMissing, "EuRoC"):
-                from driftzero_ml.datasets.euroc import find_imu_csv
+        with tempfile.TemporaryDirectory() as folder, self.assertRaisesRegex(DatasetMissing, "EuRoC"):
+            from driftzero_ml.datasets.euroc import find_imu_csv
 
-                find_imu_csv(Path(folder))
+            find_imu_csv(Path(folder))
 
 
 class OxiodRoninTests(unittest.TestCase):
@@ -178,16 +176,14 @@ class OxiodRoninTests(unittest.TestCase):
             self.assertAlmostEqual(rows[0].gx, 0.01)
 
     def test_ronin_missing_is_explicit(self) -> None:
-        with tempfile.TemporaryDirectory() as folder:
-            with self.assertRaisesRegex(DatasetMissing, "RoNIN"):
-                require_ronin_sequence(Path(folder))
+        with tempfile.TemporaryDirectory() as folder, self.assertRaisesRegex(DatasetMissing, "RoNIN"):
+            require_ronin_sequence(Path(folder))
 
     def test_gsdc_missing_root_is_explicit(self) -> None:
         from driftzero_ml.datasets.gsdc import find_imu_csvs
 
-        with tempfile.TemporaryDirectory() as folder:
-            with self.assertRaisesRegex(DatasetMissing, "GSDC"):
-                find_imu_csvs(Path(folder) / "missing")
+        with tempfile.TemporaryDirectory() as folder, self.assertRaisesRegex(DatasetMissing, "GSDC"):
+            find_imu_csvs(Path(folder) / "missing")
 
 
 if __name__ == "__main__":

@@ -187,6 +187,7 @@ object ContractMaps {
         fix.isMock?.let { put("is_mock", it) }
         fix.speedAccuracyMps?.let { put("speed_accuracy_mps", it.value) }
         fix.bearingAccuracyRad?.let { put("bearing_accuracy_rad", it) }
+        fix.verticalAccuracyM?.let { put("vertical_accuracy_m", it.value) }
     }
 
     private fun statusMap(status: GnssStatusPayload): Map<String, Any?> = linkedMapOf(
@@ -258,6 +259,9 @@ object ContractMaps {
             },
             bearingAccuracyRad = obj["bearing_accuracy_rad"]?.let {
                 ContractJson.asDouble(it, "bearing_accuracy_rad")
+            },
+            verticalAccuracyM = obj["vertical_accuracy_m"]?.let {
+                Metres(ContractJson.asDouble(it, "vertical_accuracy_m"))
             },
         )
     }

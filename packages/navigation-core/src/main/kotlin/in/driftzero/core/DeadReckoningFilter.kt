@@ -2429,6 +2429,8 @@ data class CoastFix(
     val altitudeM: Double? = null,
     val speedAccuracyMps: Double? = null,
     val bearingAccuracyRad: Double? = null,
+    val isMock: Boolean? = null,
+    val verticalAccuracyM: Double? = null,
 ) {
     init {
         require(latitudeDeg.isFinite() && longitudeDeg.isFinite())
@@ -2438,6 +2440,7 @@ data class CoastFix(
         altitudeM?.let { require(it.isFinite()) }
         speedAccuracyMps?.let { require(it.isFinite() && it >= 0.0) }
         bearingAccuracyRad?.let { require(it.isFinite() && it >= 0.0) }
+        verticalAccuracyM?.let { require(it.isFinite() && it >= 0.0) }
     }
 }
 

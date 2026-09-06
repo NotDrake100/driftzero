@@ -98,11 +98,11 @@ class PhoneImuSource(
         when (event.sensor.type) {
             Sensor.TYPE_ACCELEROMETER -> {
                 noteRate(QueuedImuKind.ACCEL, stamp.value)
-                store.offerImu(QueuedImuKind.ACCEL, stamp, x, y, z)
+                store.offerImu(QueuedImuKind.ACCEL, stamp, x, y, z, accuracyCode = event.accuracy)
             }
             Sensor.TYPE_GYROSCOPE -> {
                 noteRate(QueuedImuKind.GYRO, stamp.value)
-                store.offerImu(QueuedImuKind.GYRO, stamp, x, y, z)
+                store.offerImu(QueuedImuKind.GYRO, stamp, x, y, z, accuracyCode = event.accuracy)
             }
             Sensor.TYPE_MAGNETIC_FIELD ->
                 store.offerImu(QueuedImuKind.MAG, stamp, x, y, z, accuracyCode = event.accuracy)

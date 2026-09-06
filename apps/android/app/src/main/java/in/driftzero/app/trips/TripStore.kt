@@ -23,6 +23,12 @@ data class TripSummary(
     val measuredGyroHz: Double? = null,
     val accelSampleCount: Int = 0,
     val gyroSampleCount: Int = 0,
+    val accelMinDtNs: Long? = null,
+    val accelMaxDtNs: Long? = null,
+    val gyroMinDtNs: Long? = null,
+    val gyroMaxDtNs: Long? = null,
+    val droppedSensorFrames: Int = 0,
+    val droppedStateFrames: Int = 0,
 ) {
     val durationS: Double
         get() = ((endNs - startNs).coerceAtLeast(0L)) / 1_000_000_000.0
@@ -58,6 +64,12 @@ data class TripSummary(
         "measured_gyro_hz" to measuredGyroHz,
         "accel_sample_count" to accelSampleCount.toLong(),
         "gyro_sample_count" to gyroSampleCount.toLong(),
+        "accel_min_dt_ns" to accelMinDtNs,
+        "accel_max_dt_ns" to accelMaxDtNs,
+        "gyro_min_dt_ns" to gyroMinDtNs,
+        "gyro_max_dt_ns" to gyroMaxDtNs,
+        "dropped_sensor_frames" to droppedSensorFrames.toLong(),
+        "dropped_state_frames" to droppedStateFrames.toLong(),
     )
 }
 
@@ -200,6 +212,12 @@ class TripStore(private val root: File) {
                 measuredGyroHz = doubleField(obj["measured_gyro_hz"]),
                 accelSampleCount = longField(obj["accel_sample_count"])?.toInt() ?: 0,
                 gyroSampleCount = longField(obj["gyro_sample_count"])?.toInt() ?: 0,
+                accelMinDtNs = longField(obj["accel_min_dt_ns"]),
+                accelMaxDtNs = longField(obj["accel_max_dt_ns"]),
+                gyroMinDtNs = longField(obj["gyro_min_dt_ns"]),
+                gyroMaxDtNs = longField(obj["gyro_max_dt_ns"]),
+                droppedSensorFrames = longField(obj["dropped_sensor_frames"])?.toInt() ?: 0,
+                droppedStateFrames = longField(obj["dropped_state_frames"])?.toInt() ?: 0,
             )
         }
 

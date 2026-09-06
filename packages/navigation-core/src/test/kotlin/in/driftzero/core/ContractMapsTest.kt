@@ -88,6 +88,7 @@ class ContractMapsTest {
                     speedMps = MetresPerSecond(10.0),
                     bearingRad = HeadingRadians(0.5),
                     isMock = false,
+                    verticalAccuracyM = Metres(4.5),
                 ),
             ),
         )
@@ -98,6 +99,7 @@ class ContractMapsTest {
         assertEquals(0.5, fix.bearingRad!!.value, 0.0)
         assertEquals(920.0, fix.altitudeM!!, 0.0)
         assertEquals(false, fix.isMock)
+        assertEquals(4.5, fix.verticalAccuracyM!!.value, 0.0)
         assertEquals(1_700_000_000_000L, fix.providerTimeMs)
     }
 

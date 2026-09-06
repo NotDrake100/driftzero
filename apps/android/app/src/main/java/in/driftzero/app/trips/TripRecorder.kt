@@ -50,6 +50,8 @@ class TripRecorder(
     private var lastNs: Long? = null
     private val accelRate = ImuRateMeter()
     private val gyroRate = ImuRateMeter()
+    private var droppedSensorFrames: Int = 0
+    private var droppedStateFrames: Int = 0
 
     fun start() {
         synchronized(lock) {
@@ -63,12 +65,24 @@ class TripRecorder(
         flush()
     }
 
-    fun offerAccel(timestamp: Nanoseconds, x: Double, y: Double, z: Double) {
-        offerSensor(TripFrames.accel(nextSequence(), timestamp, x, y, z))
+    fun offerAccel(
+        timestamp: Nanoseconds,
+        x: Double,
+        y: Double,
+        z: Double,
+        accuracyCode: Int = 2,
+    ) {
+        offerSensor(TripFrames.accel(nextSequence(), timestamp, x, y, z, accuracyCode))
     }
 
-    fun offerGyro(timestamp: Nanoseconds, x: Double, y: Double, z: Double) {
-        offerSensor(TripFrames.gyro(nextSequence(), timestamp, x, y, z))
+    fun offerGyro(
+        timestamp: Nanoseconds,
+        x: Double,
+        y: Double,
+        z: Double,
+        accuracyCode: Int = 2,
+    ) {
+        offerSensor(TripFrames.gyro(nextSequence(), timestamp, x, y, z, accuracyCode))
     }
 
     fun offerGnss(fix: CoastFix, held: Boolean = false) {
@@ -86,7 +100,9 @@ class TripRecorder(
                 SensorKind.GYROSCOPE -> gyroRate.accept(frame.timestamp.value)
                 else -> Unit
             }
-            sensors.add(frame)
+            if (sensors.add(frame)) {
+                droppedSensorFrames += 1
+            }
             shouldFlush = true
         }
         if (shouldFlush) {
@@ -100,7 +116,9 @@ class TripRecorder(
             if (!active) {
                 return
             }
-            states.add(state)
+            if (states.add(state)) {
+                droppedStateFrames += 1
+            }
             noteState(state)
             shouldFlush = true
         }
@@ -165,6 +183,12 @@ class TripRecorder(
                 measuredGyroHz = gyro.medianHz,
                 accelSampleCount = accel.sampleCount,
                 gyroSampleCount = gyro.sampleCount,
+                accelMinDtNs = accel.minDtNs,
+                accelMaxDtNs = accel.maxDtNs,
+                gyroMinDtNs = gyro.minDtNs,
+                gyroMaxDtNs = gyro.maxDtNs,
+                droppedSensorFrames = droppedSensorFrames,
+                droppedStateFrames = droppedStateFrames,
             )
         }
     }

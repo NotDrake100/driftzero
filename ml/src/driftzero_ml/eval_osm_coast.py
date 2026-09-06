@@ -6,6 +6,7 @@ import csv
 import hashlib
 import json
 import math
+from dataclasses import replace
 from pathlib import Path
 from statistics import median
 
@@ -18,55 +19,23 @@ from driftzero_ml.eval_kotlin_replay import (
 )
 from driftzero_ml.eval_navstate import score_states_against_truth
 from driftzero_ml.gnss_truth import score_epochs
-from driftzero_ml.osm_coast import Graph, RoadCoast, acquire_map, prefix_seed
-from driftzero_ml.prefix_acceleration import fit_prefix_acceleration
+from driftzero_ml.osm_coast import Graph, acquire_map, prefix_seed
+from driftzero_ml.road_adapter import RoadAdapterConfig, apply_causal_overlay, with_heading_sigma
 
 
 def infer(frames: list[dict], baseline: list[dict], start: int, end: int,
-          graph: Graph, sigma: float, use_acceleration: bool = False) -> tuple[list[dict], dict]:
-    seed = prefix_seed(frames, start)
-    coast = RoadCoast(graph, seed, heading_sigma=sigma)
-    model = fit_prefix_acceleration(frames, start) if use_acceleration else None
-    # Strip all unavailable GNSS before inference. Only IMU timestamps drive propagation.
-    grouped: dict[int, dict] = {}
-    for frame in frames:
-        stamp = frame['timestamp_ns']
-        if seed['timestamp_ns'] < stamp < end and frame['kind'] in ('accelerometer', 'gyroscope'):
-            grouped.setdefault(stamp, {})[frame['kind']] = frame
-    estimates, failure, previous = [], None, seed['timestamp_ns']
-    for stamp, sensors in sorted(grouped.items()):
-        gyro = sensors.get('gyroscope')
-        rate = None if gyro is None else gyro['payload']['z']
-        if gyro and 'gyro_heading_pick_weak' in gyro['quality']['flags']:
-            rate = None  # Same conservative course hold as selected deterministic coast.
-        try:
-            accel = sensors.get('accelerometer')
-            prediction = model.predict(accel['payload']['x'], accel['payload']['y']) if model and accel else 0.0
-            coast.step((stamp-previous)/1e9, rate, prediction)
-            estimates.append((stamp, coast.estimate()))
-        except ValueError as error:
-            failure = {'timestamp_ns': stamp, 'reason': str(error)}
-            break
-        previous = stamp
-    out, index, latest, used = [], 0, None, 0
-    for state in baseline:
-        stamp = state['timestamp_ns']
-        while index < len(estimates) and estimates[index][0] <= stamp:
-            latest = estimates[index]
-            index += 1
-        copied = dict(state)
-        if (start < stamp < end and latest is not None and stamp-latest[0] <= 150_000_000
-                and (failure is None or stamp < failure['timestamp_ns'])):
-            lat, lon, spread = latest[1]
-            copied['position'] = dict(state['position'], latitude_deg=lat, longitude_deg=lon)
-            copied['road_research_spread_m'] = spread
-            used += 1
-        out.append(copied)
-    return out, {'road_states': used, 'failure': failure, 'acceleration_model_accepted': model is not None, 'posterior': 'mean with uncalibrated spread; no lane claim'}
+          graph: Graph, sigma: float, use_acceleration: bool = False,
+          config: RoadAdapterConfig | None = None) -> tuple[list[dict], dict]:
+    # Adapter-shaped hook. D owns further runner wiring. Default is ADR 014.
+    cfg = config or with_heading_sigma('adr014_reproduce', sigma)
+    if use_acceleration:
+        cfg = replace(cfg, use_acceleration=True)
+    return apply_causal_overlay(frames, baseline, start, end, graph, cfg)
 
 
 def evaluate(repo: Path, directory: Path, ids: list[str] | None, sigma: float,
-             *, download: bool, use_acceleration: bool = False, reuse_baseline: bool = False) -> dict:
+             *, download: bool, use_acceleration: bool = False, reuse_baseline: bool = False,
+             config: RoadAdapterConfig | None = None) -> dict:
     base = directory / 'baseline'
     if reuse_baseline:
         payload = json.loads((base / 'metrics_latch_sparse_reseed.json').read_text())
@@ -85,8 +54,9 @@ def evaluate(repo: Path, directory: Path, ids: list[str] | None, sigma: float,
         try:
             seed = prefix_seed(frames, start)
             osm, meta = acquire_map(seed, repo / 'results/road_coast/maps', download=download)
-            graph = Graph(osm, (seed['latitude_deg'], seed['longitude_deg']))
-            states, note = infer(frames, states, start, end, graph, sigma, use_acceleration)
+            cfg = config or with_heading_sigma('adr014_reproduce', sigma)
+            graph = Graph(osm, (seed['latitude_deg'], seed['longitude_deg']), **cfg.graph_kwargs())
+            states, note = infer(frames, states, start, end, graph, sigma, use_acceleration, cfg)
             note.update(map_sha256=meta['sha256'], segment_count=len(graph.edges))
         except (OSError, ValueError, RuntimeError) as error:
             note = {'road_states': 0, 'fallback_reason': str(error)}

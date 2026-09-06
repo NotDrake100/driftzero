@@ -1,0 +1,68 @@
+{
+  "task": "B-road-reliability",
+  "recorded_before_new_runs": true,
+  "date_utc": "2026-09-06",
+  "base_commit": "c7a1ab9ccf1c156c48da1cac7b6e10ef384f66d4",
+  "io_vnbd": "118939602e3422d47b8ab0807b623751c3ac135b",
+  "seed": 26168,
+  "development_manifest": "results/accuracy_v3_20260906/development/manifest.json",
+  "interval_ids": [
+    "S-Vta11:mid",
+    "S-Vta29:mid",
+    "S-Vta29:d1000",
+    "S-Vta6:mid",
+    "S-Vta8:mid",
+    "S-Vta8:d1000",
+    "S-Vtb2:mid",
+    "S-Vtb2:d1000",
+    "S-Vtb7:mid",
+    "S-Vw3:mid",
+    "S-Vw3:d1000"
+  ],
+  "adr014_not_reinterpreted": {
+    "development_median": 0.2690,
+    "development_p95": 0.8461,
+    "below_10": "2/11",
+    "decision": "rejected_tail",
+    "locked_confirmation": false
+  },
+  "published_deterministic_development": {
+    "median": 0.3984,
+    "p95": 0.5402,
+    "below_10": "1/11",
+    "note": "Comparison baseline from the accuracy campaign. Fresh replay is required for the gate."
+  },
+  "development_gate": {
+    "name": "relative_development_gate_v1",
+    "not_the_absolute_0_10_target": true,
+    "rules": [
+      "complete finite predictions on all 11 development intervals",
+      "median <= 0.90 * fresh latch_sparse_reseed median",
+      "p95 <= fresh latch_sparse_reseed p95",
+      "count(drift >= 0.10) <= baseline count",
+      "fallback and missing-map rows stay in the denominator",
+      "do not run locked confirmation from this task"
+    ]
+  },
+  "confidence_constants": {
+    "min_dominant_mass": 0.5,
+    "cluster_cell_m": 25.0,
+    "spread_floor_m": 30.0,
+    "spread_rate_mps": 3.0,
+    "max_disagreement_m": 150.0,
+    "source": "ADR 014 speed prior 3 m/s and the plan 1 km budget sum 150 m. Not fit to interval scores."
+  },
+  "configs": [
+    "adr014_reproduce",
+    "topo_v1",
+    "confidence_v1",
+    "combined_v1",
+    "lateral_heal_v1"
+  ],
+  "out_of_scope": [
+    "learned-motion training",
+    "Android live defaults",
+    "locked interval selection",
+    "changing map_query or interval IDs"
+  ]
+}

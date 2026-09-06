@@ -20,6 +20,15 @@ class AccuracyCampaignTest(unittest.TestCase):
         self.assertEqual(payload["pins"]["io_vnbd_commit"], "118939602e3422d47b8ab0807b623751c3ac135b")
         self.assertFalse(payload["claim"]["median_target_passed"])
         self.assertFalse(payload["claim"]["all_interval_target_passed"])
+        freeze = payload.get("split_freeze") or {}
+        if freeze:
+            locked = set(payload["exposed_groups"]["locked_session_groups"])
+            train = set(freeze["train_session_groups"])
+            hold = set(freeze["fresh_holdout_session_groups"])
+            self.assertTrue(train.isdisjoint(locked))
+            self.assertTrue(hold.isdisjoint(locked))
+            self.assertTrue(train.isdisjoint(hold))
+            self.assertFalse(freeze.get("c_may_train"))
         locked = {session_group_id(key.split(":")[0]) for key in GATED_INTERVAL_IDS}
         self.assertEqual(set(payload["exposed_groups"]["locked_session_groups"]), locked)
         self.assertEqual(len(GATED_INTERVAL_IDS), 35)

@@ -1,5 +1,8 @@
 # DriftZero
 
+
+Current improvement work: [coast correctness and phone placement continuity](docs/adr/011-coast-and-phone-continuity.md). No physical mount is required for a resting phone; pickup handling is conservative. The less-than-10% drift objective is still unverified. Historical screening scores below are not new measurements.
+
 [![ci](https://github.com/NotDrake100/driftzero/actions/workflows/ci.yml/badge.svg)](https://github.com/NotDrake100/driftzero/actions/workflows/ci.yml)
 
 Phone-only vehicle navigation that keeps a blue puck moving when GPS drops. The map is the product.

@@ -209,7 +209,7 @@ class DeadReckoningFilter(
      */
     fun setImuStill(still: Boolean) {
         synchronized(lock) {
-            imuStill = still
+            imuStill = still && !phoneHandling
         }
     }
 
@@ -247,6 +247,25 @@ class DeadReckoningFilter(
             }
             if (flags.contains(FLAG_HEADING_PICK_WEAK)) {
                 headingPickWeak = true
+            }
+        }
+    }
+
+    private var phoneHandling = false
+    private var phoneYawUp: Double? = null
+    private var phoneYawNs = -1L
+
+    /** Preserve position when the phone moves independently of the vehicle. */
+    fun setPhoneMotion(handling: Boolean, yawUpRadps: Double?, timestamp: Nanoseconds) {
+        synchronized(lock) {
+            phoneHandling = handling
+            phoneYawUp = yawUpRadps?.takeIf { it.isFinite() }
+            phoneYawNs = timestamp.value
+            if (handling) {
+                imuStill = false
+                lastStopProbability = 0.0
+                lastPseudo = false
+                lastDisplacement = false
             }
         }
     }
@@ -319,6 +338,7 @@ class DeadReckoningFilter(
             if (!initialized) {
                 return
             }
+            if (phoneHandling) return
             lastStopProbability = meas.stopProbability
             predictTo(timestamp.value)
             if (!numericalOk) {
@@ -338,6 +358,7 @@ class DeadReckoningFilter(
      */
     fun ingestDisplacementPseudo(meas: DisplacementPseudoMeasurement, timestamp: Nanoseconds) {
         synchronized(lock) {
+            if (phoneHandling) return
             if (!initialized) {
                 return
             }
@@ -549,6 +570,9 @@ class DeadReckoningFilter(
 
     fun reset(reason: ResetReason) {
         synchronized(lock) {
+            phoneHandling = false
+            phoneYawUp = null
+            phoneYawNs = -1L
             initialized = false
             numericalOk = true
             eastM = 0.0
@@ -663,6 +687,7 @@ class DeadReckoningFilter(
                 (now.value - lastGatedGnssNs) / NS_PER_S < config.gatedRecentS
             val degraded = lastHorizAccM > config.degradedAccuracyM || gatedRecently
             val mode = when {
+                phoneHandling -> NavigationMode.LOW_CONFIDENCE
                 horizontal95 > config.lowConfidenceRadiusM -> NavigationMode.LOW_CONFIDENCE
                 coasting -> NavigationMode.DEAD_RECKONING
                 coastedSinceFix -> NavigationMode.REACQUIRING
@@ -670,6 +695,7 @@ class DeadReckoningFilter(
                 else -> NavigationMode.GNSS_FUSED
             }
             val riskFlags = buildSet {
+                if (phoneHandling) add("phone_handling")
                 if (coasting) add(RISK_STALE_GNSS)
                 if (lastHorizAccM > config.degradedAccuracyM && !coasting) add(RISK_POOR_ACCURACY)
                 if (gatedRecently) add(RISK_GATED_FIX)
@@ -682,6 +708,8 @@ class DeadReckoningFilter(
             }
             val flags = buildSet {
                 add(FLAG_ESKF)
+                if (phoneHandling) add("phone_handling")
+                if (phoneYawUp != null) add("phone_gravity_yaw")
                 if (gnssHeld) add(FLAG_GPS_HELD)
                 if (lastZupt) add(FLAG_ZUPT)
                 if (lastNhc) add(FLAG_NHC)
@@ -951,6 +979,17 @@ class DeadReckoningFilter(
             recordClone()
             return
         }
+        if (phoneHandling) {
+            noteCoastEntry(tNs)
+            coastVelocity(dt)
+            // Variance grows per second, independent of sensor sample rate.
+            p[0, 0] += 25.0 * dt
+            p[1, 1] += 25.0 * dt
+            p[8, 8] += 0.04 * dt
+            timeNs = tNs
+            recordClone()
+            return
+        }
         val gyro = lastGyro
         val accel = lastAccel
         if (gyro == null || accel == null) {
@@ -1021,7 +1060,8 @@ class DeadReckoningFilter(
     private fun yawSpeedHold(dt: Double, gyroMeas: Vec3, accelMeas: Vec3, tNs: Long) {
         val omegaBody = gyroMeas - bg
         val omegaNav = q.toRotation() * omegaBody
-        val omegaUp = if (holdCourseActive()) 0.0 else omegaNav.z
+        val projected = phoneYawUp?.takeIf { tNs >= phoneYawNs && tNs - phoneYawNs <= 500_000_000L }
+        val omegaUp = if (holdCourseActive()) 0.0 else projected ?: omegaNav.z
         val startHeading = coastHeadingRad
         val startSpeed = heldSpeedMps
         if (!coastStopped) {
@@ -1576,6 +1616,7 @@ class DeadReckoningFilter(
     private fun maybeConstraints() {
         lastZupt = false
         lastNhc = false
+        if (phoneHandling) return
         val accel = lastAccel ?: return
         val gyro = lastGyro ?: return
         if (config.coastStopDetect &&

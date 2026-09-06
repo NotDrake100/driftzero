@@ -101,7 +101,7 @@ class MountPoseStoreTest {
     }
 
     @Test
-    fun remountReturnsPendingAndResetsFilter() {
+    fun remountReturnsPendingAndPreservesFilter() {
         var now = 0L
         val store = store { now }
         seedGnss(store, speedMps = 0.0)
@@ -135,7 +135,8 @@ class MountPoseStoreTest {
         assertEquals(ResetReason.REMOUNT, store.lastResetReason())
         assertEquals(MountSession.REMOUNT_USER_REASON, store.mountReason.value)
         assertEquals(VectorFrame.ANDROID_DEVICE, store.lastAccelEmit.value!!.frame)
-        assertNull(store.state.value)
+        assertNotNull(store.state.value)
+        assertTrue(store.state.value!!.health.flags.contains("phone_handling"))
     }
 
     @Test

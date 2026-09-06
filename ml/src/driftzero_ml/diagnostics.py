@@ -674,12 +674,10 @@ def attribute_interval(
         [original[t] for t in epochs_t if t in original]
     )
     hops = [haversine_m(a, b) for a, b in itertools.pairwise(truth)]
-    headings = []
     turns = 0
     last_heading = None
     for a, b in itertools.pairwise(truth):
         heading = path_heading_rad([a, b])
-        headings.append(heading)
         if last_heading is not None and abs(
             wrap_heading_error_rad(heading, last_heading)
         ) >= HEADING_TURN_RAD:
@@ -891,7 +889,9 @@ def compare_to_archived(payload: dict) -> dict:
             "matches_archive": not mismatches,
             "mismatches": mismatches,
             "note": (
-                "A mismatch is reported. The archived locked result is not replaced."
+                "Measured values match the archived locked result."
+                if not mismatches
+                else "A mismatch is reported. The archived locked result is not replaced."
             ),
         }
     )
@@ -1070,11 +1070,23 @@ def run_diagnostics(
             "attributed_intervals": len(attributions),
             "substituted_intervals": len(substitutions),
             "failures": failures,
+            "candidate_source": (
+                "replay_states" if states_dir is not None else "persist_seed_hold"
+            ),
+            "candidate_source_note": (
+                "Substitutions use last-seed speed and heading when replay states "
+                "are absent. That is not the selected latch_sparse_reseed coast."
+            ),
             "substitution_summary": substitution_summary,
-            "recommendation": recommendation(substitution_summary, attributions),
+            "recommendation": recommendation(
+                substitution_summary,
+                attributions,
+                against_archived=states_dir is not None,
+            ),
             "statuses": {
                 "code_merged": False,
                 "experiment_completed": bool(substitutions) and not failures,
+                "baseline_reproduced": comparison is not None,
                 "median_target_passed": False,
                 "all_interval_target_passed": False,
                 "field_placements_tested": False,
@@ -1212,7 +1224,12 @@ def write_attribution_csv(path: Path, rows: Sequence[dict]) -> None:
             )
 
 
-def recommendation(summary: dict, attributions: Sequence[dict]) -> dict:
+def recommendation(
+    summary: dict,
+    attributions: Sequence[dict],
+    *,
+    against_archived: bool,
+) -> dict:
     def p50(name: str) -> float | None:
         row = summary.get(name) or {}
         return row.get("drift_p50")
@@ -1222,32 +1239,42 @@ def recommendation(summary: dict, attributions: Sequence[dict]) -> dict:
     road = p50("ref_road")
     joint = p50("ref_joint")
     archived = ARCHIVED_LOCKED["drift_ratio_p50"]
+    baseline = archived if against_archived else None
     for_b = []
     for_c = []
-    if road is not None and road < 0.85 * archived:
+    if not against_archived:
         for_b.append(
-            "Reference polyline following reduced median drift. Investigate "
-            "causal map hypotheses and fork uncertainty on development groups."
+            "These substitutions used persist seed hold, not the selected coast. "
+            "Re-run with replay states before treating a map delta as decisive."
         )
-    if road is not None and road >= 0.85 * archived:
+        for_c.append(
+            "These substitutions used persist seed hold, not latch_sparse_reseed. "
+            "Re-run with replay states before choosing a motion-model target."
+        )
+    if road is not None and baseline is not None and road < 0.85 * baseline:
+        for_b.append(
+            "Reference polyline following reduced median drift versus the "
+            "selected coast. Investigate causal map hypotheses on development."
+        )
+    if road is not None and baseline is not None and road >= 0.85 * baseline:
         for_b.append(
             "Reference-informed road choice did not move the median enough. "
             "Audit distance, seed, and reference quality before map rollout."
         )
-    if speed is not None and speed < 0.85 * archived:
+    if speed is not None and heading is not None and heading < speed:
         for_c.append(
-            "Reference speed substitution reduced median drift. A causal motion "
-            "model on unused train groups is the first C experiment."
+            "Reference heading substitution beat reference speed on this "
+            "diagnostic. Do not default to a speed-only network."
         )
-    if speed is not None and speed >= 0.85 * archived:
+    elif speed is not None and heading is not None and speed < heading:
         for_c.append(
-            "Fixing speed alone changed little. Do not default to speed-network "
-            "training. Check heading, seed, and scoring first."
+            "Reference speed substitution beat heading on this diagnostic. "
+            "A causal speed/distance model on train groups is the first C run."
         )
-    if heading is not None and heading < 0.85 * archived:
+    if speed is not None and baseline is not None and speed >= 0.85 * baseline:
         for_c.append(
-            "Reference heading substitution reduced median drift. Prioritize "
-            "turn-rate and heading-hold work alongside or before speed."
+            "Fixing speed alone changed little versus the selected coast. "
+            "Check heading, seed, and scoring first."
         )
     if joint is not None and joint > 0.20:
         for_b.append(

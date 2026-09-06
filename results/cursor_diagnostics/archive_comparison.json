@@ -1,0 +1,25 @@
+{
+  "archived": {
+    "source": "results/accuracy_v3_20260906/development/locked_selected/metrics_latch_sparse_reseed.json",
+    "csv": "results/accuracy_v3_20260906/development/locked_selected/metrics_per_interval_latch_sparse_reseed.csv",
+    "interval_count": 35,
+    "drift_ratio_p50": 0.48834485395037297,
+    "drift_ratio_p95": 2.682407053981851,
+    "drift_ratio_worst": 3.1766947772530147,
+    "intervals_below_10": 6,
+    "endpoint_p50_m": 110.41919116328249
+  },
+  "measured": {
+    "interval_count": 35,
+    "drift_ratio_p50": 0.48834485395037297,
+    "drift_ratio_p95": 2.6824070539818505,
+    "drift_ratio_worst": 3.1766947772530147,
+    "intervals_below_10": 6
+  },
+  "matches_archive": true,
+  "mismatches": [],
+  "note": "Measured values match the archived locked result.",
+  "label": "DIAGNOSTIC_ONLY",
+  "diagnostic_only": true,
+  "evidence_class": "DIAGNOSTIC_ONLY"
+}

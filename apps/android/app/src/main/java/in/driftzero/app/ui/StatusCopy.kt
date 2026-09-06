@@ -155,6 +155,9 @@ object StatusCopy {
         if (flags.contains(PoseStore.FLAG_MOUNT_REMOUNT)) {
             return MountSession.REMOUNT_USER_REASON
         }
+        if (flags.contains("phone_handling")) {
+            return "Phone moving. Position confidence reduced."
+        }
         if (modeReason == null) {
             return null
         }

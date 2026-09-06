@@ -21,7 +21,7 @@ Same figures: [docs/figures/architecture.md](docs/figures/architecture.md), [doc
 
 Sensors copy into `PoseStore`. Mount still plus straight can emit `VEHICLE_FLU`. NHC runs only in that frame. Magnetometer is stored and unused. Hold GNSS stops `ingestGnss`. The matcher overlays `displayPose`. It does not write lat/lon into the ESKF. When a Ready `graph.bin` is MATCHED, live coast may apply a heading prior and an along-track Road DNA heal. Unmatched coasts raise uncertainty. `LocalRouter` is the graph router when a Ready pack has `graph.bin`. TimesFM is not on this path.
 
-Eval replay uses `--coast-mode=yaw_speed_hold`. Live `PoseStore` still constructs `DeadReckoningFilter()` with default `InsConfig`, so the APK coast is `STRAPDOWN` until that constructor changes.
+Eval replay selects `--coast-mode=yaw_speed_hold` explicitly. Live `PoseStore.LIVE_INS_CONFIG` already selects `YAW_SPEED_HOLD`, with an 8 s stale threshold and conservative uncertainty growth. Replay defaults remain `STRAPDOWN`; live and screening configurations are distinct.
 
 ```mermaid
 flowchart TD

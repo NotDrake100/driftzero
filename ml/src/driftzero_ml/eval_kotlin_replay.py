@@ -774,6 +774,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--states-dir", type=Path, default=None)
     parser.add_argument("--logs-dir", type=Path, default=None)
     parser.add_argument("--coast-mode", default=None)
+    parser.add_argument("--replay-arg", action="append", default=[])
     parser.add_argument("--skip-sensitivity", action="store_true")
     parser.add_argument("--skip-export", action="store_true")
     parser.add_argument("--force-rebuild", action="store_true")
@@ -802,6 +803,7 @@ def main(argv: list[str] | None = None) -> int:
         skip_sensitivity=args.skip_sensitivity,
         skip_export=args.skip_export,
         coast_mode=args.coast_mode,
+        extra_replay_args=args.replay_arg,
         force_rebuild=args.force_rebuild,
         rebuild_retries=args.rebuild_retries,
     )

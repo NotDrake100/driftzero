@@ -27,13 +27,16 @@ def assess(payload: dict) -> dict:
         metrics = row["metrics"]
         endpoint = metrics.get("endpoint_error_m")
         distance = metrics.get("truth_path_length_m")
-        if (not isinstance(endpoint, (int, float)) or not isinstance(distance, (int, float))
+        if (type(endpoint) not in (int, float) or type(distance) not in (int, float)
                 or not math.isfinite(endpoint) or not math.isfinite(distance)
                 or endpoint < 0 or distance <= 0):
             reasons.append(f"invalid error/distance: {row['interval_id']}")
             continue
         # Recompute from measured error and distance; never trust a cached ratio.
         ratio = endpoint / distance
+        if not math.isfinite(ratio):
+            reasons.append(f"nonfinite drift: {row['interval_id']}")
+            continue
         ratios.append(ratio)
         if ratio >= 0.10:
             failed.append(row["interval_id"])

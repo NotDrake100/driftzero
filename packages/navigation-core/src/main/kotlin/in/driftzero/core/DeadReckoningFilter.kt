@@ -258,6 +258,7 @@ class DeadReckoningFilter(
     /** Preserve position when the phone moves independently of the vehicle. */
     fun setPhoneMotion(handling: Boolean, yawUpRadps: Double?, timestamp: Nanoseconds) {
         synchronized(lock) {
+            if (timestamp.value < phoneYawNs) return
             phoneHandling = handling
             phoneYawUp = yawUpRadps?.takeIf { it.isFinite() }
             phoneYawNs = timestamp.value
@@ -709,7 +710,9 @@ class DeadReckoningFilter(
             val flags = buildSet {
                 add(FLAG_ESKF)
                 if (phoneHandling) add("phone_handling")
-                if (phoneYawUp != null) add("phone_gravity_yaw")
+                if (phoneYawUp != null && now.value >= phoneYawNs && now.value - phoneYawNs <= 500_000_000L) {
+                    add("phone_gravity_yaw")
+                }
                 if (gnssHeld) add(FLAG_GPS_HELD)
                 if (lastZupt) add(FLAG_ZUPT)
                 if (lastNhc) add(FLAG_NHC)
@@ -1060,7 +1063,9 @@ class DeadReckoningFilter(
     private fun yawSpeedHold(dt: Double, gyroMeas: Vec3, accelMeas: Vec3, tNs: Long) {
         val omegaBody = gyroMeas - bg
         val omegaNav = q.toRotation() * omegaBody
-        val projected = phoneYawUp?.takeIf { tNs >= phoneYawNs && tNs - phoneYawNs <= 500_000_000L }
+        val projected = phoneYawUp?.takeIf {
+            imuFrame == VectorFrame.ANDROID_DEVICE && tNs >= phoneYawNs && tNs - phoneYawNs <= 500_000_000L
+        }
         val omegaUp = if (holdCourseActive()) 0.0 else projected ?: omegaNav.z
         val startHeading = coastHeadingRad
         val startSpeed = heldSpeedMps

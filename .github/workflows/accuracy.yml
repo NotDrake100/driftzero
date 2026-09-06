@@ -46,7 +46,8 @@ jobs:
         run: >-
           python -m driftzero_ml.eval_kotlin_replay
           --out results/accuracy_candidate --system gravity_yaw_v2
-          --coast-mode=yaw_speed_hold --reexport --rerun --skip-sensitivity
+          --coast-mode=yaw_speed_hold --replay-arg=--weak-heading-policy=hold_course
+          --reexport --rerun --skip-sensitivity
       - name: Evaluate strict ten percent target
         env:
           PYTHONPATH: ml/src

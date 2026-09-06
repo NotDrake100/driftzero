@@ -4,6 +4,7 @@ Dates follow git history on this repository. Unreleased work is the working tree
 
 ## Unreleased
 
+- Preregister a causal joint distance and heading student on the frozen train groups. No candidate trained.
 - Trip logs copy IMU accuracy codes, GNSS mock/vertical accuracy, and ring-drop counts. No field drive attached.
 - Repository front door, CI, and attribution hygiene for SIH review.
 

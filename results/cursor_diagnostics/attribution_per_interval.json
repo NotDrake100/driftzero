@@ -1,0 +1,1691 @@
+[
+  {
+    "interval_id": "S-S1:d1000",
+    "start_ns": 1047921000000,
+    "end_ns": 1146822000001,
+    "duration_s": 98.901000001,
+    "score_epochs": 12,
+    "truth_path_length_m": 1046.1970781420862,
+    "seed": {
+      "latitude_deg": 52.415195,
+      "longitude_deg": -1.600776,
+      "timestamp_ns": 1047921000000,
+      "speed_mps": 2.97,
+      "heading_rad": -2.820949569227668,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 130.00998181806298,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.7474107971079614,
+    "candidate_endpoint_error_m": 781.938992,
+    "candidate_along_track_error_m": 2072.8247010750733,
+    "candidate_cross_track_error_m": 738.6040092306548,
+    "candidate_speed_mae_mps": 6.513333,
+    "candidate_heading_mae_rad": 0.654018,
+    "candidate_distance_error_m": 52692.50363291085,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg",
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-S1:mid",
+    "start_ns": 2080921000000,
+    "end_ns": 2107921000001,
+    "duration_s": 27.000000001,
+    "score_epochs": 4,
+    "truth_path_length_m": 135.55111971967287,
+    "seed": {
+      "latitude_deg": 52.419147,
+      "longitude_deg": -1.597818,
+      "timestamp_ns": 2080921000000,
+      "speed_mps": 5.87,
+      "heading_rad": -1.2108155474262436,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 61.17481291600249,
+    "heading_turns_ge_30deg": 1,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.2680430379328478,
+    "candidate_endpoint_error_m": 36.333534,
+    "candidate_along_track_error_m": -3207.942811689976,
+    "candidate_cross_track_error_m": -943.5241770960083,
+    "candidate_speed_mae_mps": 2.425,
+    "candidate_heading_mae_rad": 0.194765,
+    "candidate_distance_error_m": 53797.15237899733,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 1,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "road_choice_at_turns",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-S3a:d1000",
+    "start_ns": 532320000000,
+    "end_ns": 664320000001,
+    "duration_s": 132.000000001,
+    "score_epochs": 13,
+    "truth_path_length_m": 1027.6894590898764,
+    "seed": {
+      "latitude_deg": 52.397995,
+      "longitude_deg": -1.438411,
+      "timestamp_ns": 532320000000,
+      "speed_mps": 7.34,
+      "heading_rad": 2.14222568829691,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 130.50848621230244,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.17167763710613287,
+    "candidate_endpoint_error_m": 176.431298,
+    "candidate_along_track_error_m": 11899.413762769695,
+    "candidate_cross_track_error_m": 348.5662007617552,
+    "candidate_speed_mae_mps": 4.945385,
+    "candidate_heading_mae_rad": 0.295422,
+    "candidate_distance_error_m": 30426.98065166316,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg",
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-S3b:d1000",
+    "start_ns": 2503320000000,
+    "end_ns": 2687321000001,
+    "duration_s": 184.001000001,
+    "score_epochs": 21,
+    "truth_path_length_m": 1002.8893828785461,
+    "seed": {
+      "latitude_deg": 52.37045,
+      "longitude_deg": -1.254437,
+      "timestamp_ns": 2503320000000,
+      "speed_mps": 11.61,
+      "heading_rad": -1.1892666556564908,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 101.7690673198085,
+    "heading_turns_ge_30deg": 10,
+    "stop_epochs_speed_lt_0_4": 3,
+    "stop_samples_speed_lt_0_4": 180,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 2.399629187220142,
+    "candidate_endpoint_error_m": 2406.562635,
+    "candidate_along_track_error_m": 660.5277693291807,
+    "candidate_cross_track_error_m": 2555.520071210759,
+    "candidate_speed_mae_mps": 5.347619,
+    "candidate_heading_mae_rad": 1.901376,
+    "candidate_distance_error_m": 1364.7707493762064,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 10,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "road_choice_at_turns",
+      "stop_restart",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-S3b:mid",
+    "start_ns": 2503320000000,
+    "end_ns": 2532321000001,
+    "duration_s": 29.001000001,
+    "score_epochs": 4,
+    "truth_path_length_m": 92.02212573665166,
+    "seed": {
+      "latitude_deg": 52.37045,
+      "longitude_deg": -1.254437,
+      "timestamp_ns": 2503320000000,
+      "speed_mps": 11.61,
+      "heading_rad": -1.1892666556564908,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.001,
+    "max_hop_m": 64.28447630539951,
+    "heading_turns_ge_30deg": 1,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 2.6824070441493606,
+    "candidate_endpoint_error_m": 246.840799,
+    "candidate_along_track_error_m": -321.41061319316884,
+    "candidate_cross_track_error_m": 163.29597109532264,
+    "candidate_speed_mae_mps": 5.31,
+    "candidate_heading_mae_rad": 0.921385,
+    "candidate_distance_error_m": 2404.7510129957573,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 1,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "road_choice_at_turns",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-S3c:mid",
+    "start_ns": 1971407000000,
+    "end_ns": 1998407000001,
+    "duration_s": 27.000000001,
+    "score_epochs": 4,
+    "truth_path_length_m": 415.78685583788945,
+    "seed": {
+      "latitude_deg": 52.437206,
+      "longitude_deg": -1.427024,
+      "timestamp_ns": 1971407000000,
+      "speed_mps": 19.25,
+      "heading_rad": -1.2556166553939687,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 152.5835231227305,
+    "heading_turns_ge_30deg": 1,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.22150069602007813,
+    "candidate_endpoint_error_m": 92.097078,
+    "candidate_along_track_error_m": 5441.435070895942,
+    "candidate_cross_track_error_m": 1690.1868772558291,
+    "candidate_speed_mae_mps": 3.925,
+    "candidate_heading_mae_rad": 0.553004,
+    "candidate_distance_error_m": 58414.82723169546,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 1,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "road_choice_at_turns",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vfa01:mid",
+    "start_ns": 470508000000,
+    "end_ns": 497507000001,
+    "duration_s": 26.999000001,
+    "score_epochs": 4,
+    "truth_path_length_m": 352.3241491046366,
+    "seed": {
+      "latitude_deg": 52.639454,
+      "longitude_deg": -1.498878,
+      "timestamp_ns": 470508000000,
+      "speed_mps": 20.22,
+      "heading_rad": -0.675642809580438,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 131.80469327659196,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.6261080133908165,
+    "candidate_endpoint_error_m": 220.592973,
+    "candidate_along_track_error_m": 2545.110506655322,
+    "candidate_cross_track_error_m": 7216.215939486726,
+    "candidate_speed_mae_mps": 7.515,
+    "candidate_heading_mae_rad": 0.568529,
+    "candidate_distance_error_m": 23592.842253255363,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg",
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta12:mid",
+    "start_ns": 1208512000000,
+    "end_ns": 1226512000001,
+    "duration_s": 18.000000001,
+    "score_epochs": 3,
+    "truth_path_length_m": 338.0911089843407,
+    "seed": {
+      "latitude_deg": 52.89912,
+      "longitude_deg": -1.767162,
+      "timestamp_ns": 1208512000000,
+      "speed_mps": 20.81,
+      "heading_rad": 0.5658441273588303,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 183.572492662546,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.15752531368696832,
+    "candidate_endpoint_error_m": 53.257908,
+    "candidate_along_track_error_m": 363.04567552141066,
+    "candidate_cross_track_error_m": -49.09067757573489,
+    "candidate_speed_mae_mps": 2.33,
+    "candidate_heading_mae_rad": 0.155905,
+    "candidate_distance_error_m": 1013.3252490821569,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg",
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta15:mid",
+    "start_ns": 1631512000000,
+    "end_ns": 1658512000001,
+    "duration_s": 27.000000001,
+    "score_epochs": 4,
+    "truth_path_length_m": 560.1366765317238,
+    "seed": {
+      "latitude_deg": 52.970715,
+      "longitude_deg": -1.751974,
+      "timestamp_ns": 1631512000000,
+      "speed_mps": 18.73,
+      "heading_rad": 0.44550096349134705,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 192.19196347218755,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.21769665513261865,
+    "candidate_endpoint_error_m": 121.939881,
+    "candidate_along_track_error_m": 444.767332645715,
+    "candidate_cross_track_error_m": -94.09616091698305,
+    "candidate_speed_mae_mps": 2.3625,
+    "candidate_heading_mae_rad": 0.317782,
+    "candidate_distance_error_m": 1411.8714094586712,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg",
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta17:d1000",
+    "start_ns": 2930512000000,
+    "end_ns": 3056496000001,
+    "duration_s": 125.984000001,
+    "score_epochs": 15,
+    "truth_path_length_m": 1019.1685430914011,
+    "seed": {
+      "latitude_deg": 53.05322,
+      "longitude_deg": -1.787846,
+      "timestamp_ns": 2930512000000,
+      "speed_mps": 9.26,
+      "heading_rad": -0.8256430994925191,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 119.81718370406318,
+    "heading_turns_ge_30deg": 4,
+    "stop_epochs_speed_lt_0_4": 1,
+    "stop_samples_speed_lt_0_4": 90,
+    "imu_gaps_over_0_40s": 1,
+    "candidate_drift_ratio": 0.8606708870919302,
+    "candidate_endpoint_error_m": 877.168694,
+    "candidate_along_track_error_m": 1161.9285401994955,
+    "candidate_cross_track_error_m": 81.70078187778796,
+    "candidate_speed_mae_mps": 3.481333,
+    "candidate_heading_mae_rad": 1.243502,
+    "candidate_distance_error_m": 5062.0517902965785,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 4,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "road_choice_at_turns",
+      "stop_restart",
+      "imu_gap_handling",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta17:mid",
+    "start_ns": 3020496000000,
+    "end_ns": 3047497000001,
+    "duration_s": 27.001000001,
+    "score_epochs": 4,
+    "truth_path_length_m": 98.60033877714383,
+    "seed": {
+      "latitude_deg": 53.05464,
+      "longitude_deg": -1.799417,
+      "timestamp_ns": 3020496000000,
+      "speed_mps": 4.96,
+      "heading_rad": -2.251618831934595,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 57.07839021320272,
+    "heading_turns_ge_30deg": 1,
+    "stop_epochs_speed_lt_0_4": 1,
+    "stop_samples_speed_lt_0_4": 90,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.392846925201748,
+    "candidate_endpoint_error_m": 38.73484,
+    "candidate_along_track_error_m": 1237.6561522650393,
+    "candidate_cross_track_error_m": -46.03069471432332,
+    "candidate_speed_mae_mps": 2.6825,
+    "candidate_heading_mae_rad": 0.899047,
+    "candidate_distance_error_m": 5227.9797375113,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 1,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "road_choice_at_turns",
+      "stop_restart",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta1a:d1000",
+    "start_ns": 514025000000,
+    "end_ns": 575020000001,
+    "duration_s": 60.995000001,
+    "score_epochs": 62,
+    "truth_path_length_m": 1004.6833778846787,
+    "seed": {
+      "latitude_deg": 52.598145,
+      "longitude_deg": -1.478151,
+      "timestamp_ns": 514025000000,
+      "speed_mps": 21.05,
+      "heading_rad": 0.3716150783518695,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 1.0,
+    "max_hop_m": 20.7196195400834,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 1.4695376178503872,
+    "candidate_endpoint_error_m": 1476.420018,
+    "candidate_along_track_error_m": 13452.96662634004,
+    "candidate_cross_track_error_m": -15416.730119412949,
+    "candidate_speed_mae_mps": 4.587097,
+    "candidate_heading_mae_rad": 1.462665,
+    "candidate_distance_error_m": 89739.69226101214,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": false,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta1a:d50",
+    "start_ns": 1027020000000,
+    "end_ns": 1029020000001,
+    "duration_s": 2.000000001,
+    "score_epochs": 3,
+    "truth_path_length_m": 52.105902617515966,
+    "seed": {
+      "latitude_deg": 52.6606,
+      "longitude_deg": -1.539034,
+      "timestamp_ns": 1027020000000,
+      "speed_mps": 25.71,
+      "heading_rad": -0.128680214557659,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 1.0,
+    "max_hop_m": 26.717566530336132,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 2.11913016841873,
+    "candidate_endpoint_error_m": 110.419191,
+    "candidate_along_track_error_m": 10038.670198824635,
+    "candidate_cross_track_error_m": -8634.516520715733,
+    "candidate_speed_mae_mps": 0.893333,
+    "candidate_heading_mae_rad": 0.608731,
+    "candidate_distance_error_m": 90425.23447096023,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": false,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance"
+    ],
+    "would_not_close_gap": [
+      "speed_mae_already_small",
+      "no_reference_turn_ge_30deg"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta1a:mid",
+    "start_ns": 1027020000000,
+    "end_ns": 1047020000001,
+    "duration_s": 20.000000001,
+    "score_epochs": 21,
+    "truth_path_length_m": 532.6211797591795,
+    "seed": {
+      "latitude_deg": 52.6606,
+      "longitude_deg": -1.539034,
+      "timestamp_ns": 1027020000000,
+      "speed_mps": 25.71,
+      "heading_rad": -0.128680214557659,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 1.0,
+    "max_hop_m": 28.910799519198836,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 1.0736551126262008,
+    "candidate_endpoint_error_m": 571.851453,
+    "candidate_along_track_error_m": 7812.108644658531,
+    "candidate_cross_track_error_m": -10243.060766960318,
+    "candidate_speed_mae_mps": 1.523333,
+    "candidate_heading_mae_rad": 1.124927,
+    "candidate_distance_error_m": 90796.39497074315,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": false,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta1b:d50",
+    "start_ns": 2621020000000,
+    "end_ns": 2626021000001,
+    "duration_s": 5.001000001,
+    "score_epochs": 6,
+    "truth_path_length_m": 59.89803425472438,
+    "seed": {
+      "latitude_deg": 52.754974,
+      "longitude_deg": -1.675873,
+      "timestamp_ns": 2621020000000,
+      "speed_mps": 10.4,
+      "heading_rad": -0.7109000033680802,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 1.0,
+    "max_hop_m": 13.098067570678422,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.07646848642811882,
+    "candidate_endpoint_error_m": 4.580312,
+    "candidate_along_track_error_m": 461.65379610869,
+    "candidate_cross_track_error_m": 244.9756244047987,
+    "candidate_speed_mae_mps": 2.995693,
+    "candidate_heading_mae_rad": 0.180366,
+    "candidate_distance_error_m": 2054.9489133014986,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": false,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [],
+    "would_not_close_gap": [
+      "already_below_10_percent"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta1b:mid",
+    "start_ns": 2621020000000,
+    "end_ns": 2641020000001,
+    "duration_s": 20.000000001,
+    "score_epochs": 21,
+    "truth_path_length_m": 261.90722969600284,
+    "seed": {
+      "latitude_deg": 52.754974,
+      "longitude_deg": -1.675873,
+      "timestamp_ns": 2621020000000,
+      "speed_mps": 10.4,
+      "heading_rad": -0.7109000033680802,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 1.0,
+    "max_hop_m": 15.766001152784389,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.31705741762073536,
+    "candidate_endpoint_error_m": 83.03963,
+    "candidate_along_track_error_m": 333.1246776525971,
+    "candidate_cross_track_error_m": 58.7006943211625,
+    "candidate_speed_mae_mps": 3.136865,
+    "candidate_heading_mae_rad": 0.328912,
+    "candidate_distance_error_m": 1793.2070113808925,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": false,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "cross_track_heading_or_road",
+      "along_track_distance"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta2:d1000",
+    "start_ns": 2904020000000,
+    "end_ns": 2988019000001,
+    "duration_s": 83.999000001,
+    "score_epochs": 85,
+    "truth_path_length_m": 1001.2491478126507,
+    "seed": {
+      "latitude_deg": 52.7748,
+      "longitude_deg": -1.642717,
+      "timestamp_ns": 2904020000000,
+      "speed_mps": 10.19,
+      "heading_rad": 0.6889712367686701,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 1.0,
+    "max_hop_m": 18.189195008646706,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.5676823127743625,
+    "candidate_endpoint_error_m": 568.391432,
+    "candidate_along_track_error_m": 1073.7470323796365,
+    "candidate_cross_track_error_m": -3667.4796679410256,
+    "candidate_speed_mae_mps": 2.28358,
+    "candidate_heading_mae_rad": 0.913678,
+    "candidate_distance_error_m": 24283.270086403834,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": false,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta2:d50",
+    "start_ns": 3124020000000,
+    "end_ns": 3130020000001,
+    "duration_s": 6.000000001,
+    "score_epochs": 7,
+    "truth_path_length_m": 53.12914336889227,
+    "seed": {
+      "latitude_deg": 52.789066,
+      "longitude_deg": -1.623463,
+      "timestamp_ns": 3124020000000,
+      "speed_mps": 9.93,
+      "heading_rad": 0.41276668792037674,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 1.0,
+    "max_hop_m": 10.021415409854143,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.8586869545401853,
+    "candidate_endpoint_error_m": 45.621302,
+    "candidate_along_track_error_m": 2138.825736690492,
+    "candidate_cross_track_error_m": -1907.5832597617236,
+    "candidate_speed_mae_mps": 2.874945,
+    "candidate_heading_mae_rad": 0.86264,
+    "candidate_distance_error_m": 26585.98273113155,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": false,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta2:mid",
+    "start_ns": 3124020000000,
+    "end_ns": 3144023000001,
+    "duration_s": 20.003000001,
+    "score_epochs": 21,
+    "truth_path_length_m": 198.20175186058182,
+    "seed": {
+      "latitude_deg": 52.789066,
+      "longitude_deg": -1.623463,
+      "timestamp_ns": 3124020000000,
+      "speed_mps": 9.93,
+      "heading_rad": 0.41276668792037674,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 1.0,
+    "max_hop_m": 11.170196644766559,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 1.3736173633823379,
+    "candidate_endpoint_error_m": 272.253368,
+    "candidate_along_track_error_m": 2717.200230106393,
+    "candidate_cross_track_error_m": 106.50989822434815,
+    "candidate_speed_mae_mps": 1.323553,
+    "candidate_heading_mae_rad": 1.733774,
+    "candidate_distance_error_m": 26142.18839558565,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": false,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta20:mid",
+    "start_ns": 238515000000,
+    "end_ns": 265515000001,
+    "duration_s": 27.000000001,
+    "score_epochs": 4,
+    "truth_path_length_m": 224.47313085183492,
+    "seed": {
+      "latitude_deg": 53.042355,
+      "longitude_deg": -1.813186,
+      "timestamp_ns": 238515000000,
+      "speed_mps": 4.43,
+      "heading_rad": null,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 84.57852652800845,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.4883448522843476,
+    "candidate_endpoint_error_m": 109.620298,
+    "candidate_along_track_error_m": -217.9044099750704,
+    "candidate_cross_track_error_m": 13.00614822335669,
+    "candidate_speed_mae_mps": 4.3175,
+    "candidate_heading_mae_rad": 0.319845,
+    "candidate_distance_error_m": 857.1103761918425,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg",
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta22:d1000",
+    "start_ns": 550515000000,
+    "end_ns": 649514000001,
+    "duration_s": 98.999000001,
+    "score_epochs": 12,
+    "truth_path_length_m": 1089.8548565190888,
+    "seed": {
+      "latitude_deg": 53.054424,
+      "longitude_deg": -1.799072,
+      "timestamp_ns": 550515000000,
+      "speed_mps": 4.32,
+      "heading_rad": 0.2667051708159331,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 127.32636540937597,
+    "heading_turns_ge_30deg": 2,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 1.2244620496286875,
+    "candidate_endpoint_error_m": 1334.485912,
+    "candidate_along_track_error_m": 252.4912720370101,
+    "candidate_cross_track_error_m": -50.74082810639402,
+    "candidate_speed_mae_mps": 7.163333,
+    "candidate_heading_mae_rad": 2.336876,
+    "candidate_distance_error_m": 1668.2383023310597,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 2,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "road_choice_at_turns",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta22:mid",
+    "start_ns": 586514000000,
+    "end_ns": 613514000001,
+    "duration_s": 27.000000001,
+    "score_epochs": 4,
+    "truth_path_length_m": 280.7922953275849,
+    "seed": {
+      "latitude_deg": 53.054863,
+      "longitude_deg": -1.796126,
+      "timestamp_ns": 586514000000,
+      "speed_mps": 10.58,
+      "heading_rad": 1.5660797970634919,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 104.23600601261306,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.04990671485483602,
+    "candidate_endpoint_error_m": 14.013421,
+    "candidate_along_track_error_m": 713.6491485004403,
+    "candidate_cross_track_error_m": 199.71998146845607,
+    "candidate_speed_mae_mps": 0.775,
+    "candidate_heading_mae_rad": 0.693104,
+    "candidate_distance_error_m": 2047.5710240696674,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [],
+    "would_not_close_gap": [
+      "already_below_10_percent"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta24:mid",
+    "start_ns": 847514000000,
+    "end_ns": 874514000001,
+    "duration_s": 27.000000001,
+    "score_epochs": 4,
+    "truth_path_length_m": 319.0652856829839,
+    "seed": {
+      "latitude_deg": 53.05178,
+      "longitude_deg": -1.764156,
+      "timestamp_ns": 847514000000,
+      "speed_mps": 2.83,
+      "heading_rad": 0.8202358082841933,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 130.98581313582318,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.7639843276463488,
+    "candidate_endpoint_error_m": 243.760878,
+    "candidate_along_track_error_m": 65.93392829777893,
+    "candidate_cross_track_error_m": -12.565474831736019,
+    "candidate_speed_mae_mps": 8.0025,
+    "candidate_heading_mae_rad": 0.496275,
+    "candidate_distance_error_m": 682.7551925098561,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "along_track_distance",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg",
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vta25:mid",
+    "start_ns": 954514000000,
+    "end_ns": 976514000001,
+    "duration_s": 22.000000001,
+    "score_epochs": 3,
+    "truth_path_length_m": 20.77062849951958,
+    "seed": {
+      "latitude_deg": 53.051174,
+      "longitude_deg": -1.756566,
+      "timestamp_ns": 954514000000,
+      "speed_mps": 2.63,
+      "heading_rad": 1.6779743179212983,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 11.0,
+    "max_hop_m": 11.344303490725569,
+    "heading_turns_ge_30deg": 1,
+    "stop_epochs_speed_lt_0_4": 1,
+    "stop_samples_speed_lt_0_4": 130,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 3.1766948500546066,
+    "candidate_endpoint_error_m": 65.981947,
+    "candidate_along_track_error_m": -61.402418367955605,
+    "candidate_cross_track_error_m": 39.087262195792455,
+    "candidate_speed_mae_mps": 1.415176,
+    "candidate_heading_mae_rad": 2.238245,
+    "candidate_distance_error_m": 431.13662220254736,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 1,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "road_choice_at_turns",
+      "stop_restart",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vtb1:mid",
+    "start_ns": 1299329000000,
+    "end_ns": 1326328000001,
+    "duration_s": 26.999000001,
+    "score_epochs": 4,
+    "truth_path_length_m": 438.477521751963,
+    "seed": {
+      "latitude_deg": 53.224167,
+      "longitude_deg": -1.731856,
+      "timestamp_ns": 1299329000000,
+      "speed_mps": 15.33,
+      "heading_rad": 2.675783912686362,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 166.4158654544487,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.10703261545981825,
+    "candidate_endpoint_error_m": 46.931396,
+    "candidate_along_track_error_m": 3302.6729919973814,
+    "candidate_cross_track_error_m": 6221.502187594651,
+    "candidate_speed_mae_mps": 2.1175,
+    "candidate_heading_mae_rad": 0.42606,
+    "candidate_distance_error_m": 56082.757289252484,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg",
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vtb6:mid",
+    "start_ns": 7971915000000,
+    "end_ns": 7989914000001,
+    "duration_s": 17.999000001,
+    "score_epochs": 3,
+    "truth_path_length_m": 340.87779542343117,
+    "seed": {
+      "latitude_deg": 52.575607,
+      "longitude_deg": -1.532535,
+      "timestamp_ns": 7971915000000,
+      "speed_mps": 19.01,
+      "heading_rad": 2.281772988565482,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 8.999500000000001,
+    "max_hop_m": 176.01015395921686,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.03632471279040045,
+    "candidate_endpoint_error_m": 12.382288,
+    "candidate_along_track_error_m": 89.50798975886767,
+    "candidate_cross_track_error_m": 15.362377538829683,
+    "candidate_speed_mae_mps": 1.336667,
+    "candidate_heading_mae_rad": 0.821519,
+    "candidate_distance_error_m": 555.4605749533242,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [],
+    "would_not_close_gap": [
+      "already_below_10_percent"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vtb8:mid",
+    "start_ns": 8079913000000,
+    "end_ns": 8097914000001,
+    "duration_s": 18.001000001,
+    "score_epochs": 3,
+    "truth_path_length_m": 339.18008594581056,
+    "seed": {
+      "latitude_deg": 52.56645,
+      "longitude_deg": -1.509434,
+      "timestamp_ns": 8079913000000,
+      "speed_mps": 19.85,
+      "heading_rad": 2.0187232376282958,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.000499999999999,
+    "max_hop_m": 177.30872522352658,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.05381032599891493,
+    "candidate_endpoint_error_m": 18.251391,
+    "candidate_along_track_error_m": 408.29469582231417,
+    "candidate_cross_track_error_m": -10.864600541204453,
+    "candidate_speed_mae_mps": 0.836667,
+    "candidate_heading_mae_rad": 0.593794,
+    "candidate_distance_error_m": 1163.7342035821457,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [],
+    "would_not_close_gap": [
+      "already_below_10_percent"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vtb9:mid",
+    "start_ns": 8151914000000,
+    "end_ns": 8169913000001,
+    "duration_s": 17.999000001,
+    "score_epochs": 3,
+    "truth_path_length_m": 373.55998274336207,
+    "seed": {
+      "latitude_deg": 52.560818,
+      "longitude_deg": -1.490284,
+      "timestamp_ns": 8151914000000,
+      "speed_mps": 21.22,
+      "heading_rad": 2.0174174941255396,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 8.999500000000001,
+    "max_hop_m": 189.33607819107985,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.019726706112415688,
+    "candidate_endpoint_error_m": 7.369108,
+    "candidate_along_track_error_m": 9.502755231361304,
+    "candidate_cross_track_error_m": 0.2171920165361425,
+    "candidate_speed_mae_mps": 1.846667,
+    "candidate_heading_mae_rad": 0.786014,
+    "candidate_distance_error_m": 746.0168848367202,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [],
+    "would_not_close_gap": [
+      "already_below_10_percent"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vw16a:d1000",
+    "start_ns": 125310000000,
+    "end_ns": 215310000001,
+    "duration_s": 90.000000001,
+    "score_epochs": 11,
+    "truth_path_length_m": 1073.4068568121725,
+    "seed": {
+      "latitude_deg": 52.593773,
+      "longitude_deg": -1.601306,
+      "timestamp_ns": 125310000000,
+      "speed_mps": 12.05,
+      "heading_rad": 2.0303240197966708,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 8.999,
+    "max_hop_m": 124.91809272085587,
+    "heading_turns_ge_30deg": 1,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.018904891344475545,
+    "candidate_endpoint_error_m": 20.29264,
+    "candidate_along_track_error_m": 6410.566261034764,
+    "candidate_cross_track_error_m": 4.382427653612922,
+    "candidate_speed_mae_mps": 1.764545,
+    "candidate_heading_mae_rad": 0.285437,
+    "candidate_distance_error_m": 11809.720780468951,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 1,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [],
+    "would_not_close_gap": [
+      "already_below_10_percent"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vw16a:mid",
+    "start_ns": 242310000000,
+    "end_ns": 269309000001,
+    "duration_s": 26.999000001,
+    "score_epochs": 4,
+    "truth_path_length_m": 476.03941902417,
+    "seed": {
+      "latitude_deg": 52.587864,
+      "longitude_deg": -1.581802,
+      "timestamp_ns": 242310000000,
+      "speed_mps": 14.76,
+      "heading_rad": 2.0508970323776046,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 190.53380068006823,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.16850212776181883,
+    "candidate_endpoint_error_m": 80.213655,
+    "candidate_along_track_error_m": 5525.467677336375,
+    "candidate_cross_track_error_m": -43.954087470934155,
+    "candidate_speed_mae_mps": 3.58,
+    "candidate_heading_mae_rad": 0.651295,
+    "candidate_distance_error_m": 12599.528579836606,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg",
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vw16b:d1000",
+    "start_ns": 629310000000,
+    "end_ns": 701409000001,
+    "duration_s": 72.099000001,
+    "score_epochs": 9,
+    "truth_path_length_m": 1047.2739027314767,
+    "seed": {
+      "latitude_deg": 52.560497,
+      "longitude_deg": -1.489673,
+      "timestamp_ns": 629310000000,
+      "speed_mps": 23.48,
+      "heading_rad": 2.029083886894072,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 195.56386501515894,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 1,
+    "stop_samples_speed_lt_0_4": 89,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.6101148784187741,
+    "candidate_endpoint_error_m": 638.95739,
+    "candidate_along_track_error_m": 200.63448100835927,
+    "candidate_cross_track_error_m": 10.592433437944692,
+    "candidate_speed_mae_mps": 8.785556,
+    "candidate_heading_mae_rad": 0.249945,
+    "candidate_distance_error_m": 2271.7372882356703,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "along_track_distance",
+      "stop_restart",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg",
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vw16b:mid",
+    "start_ns": 656410000000,
+    "end_ns": 683310000001,
+    "duration_s": 26.900000001,
+    "score_epochs": 4,
+    "truth_path_length_m": 335.5224174208279,
+    "seed": {
+      "latitude_deg": 52.55879,
+      "longitude_deg": -1.483569,
+      "timestamp_ns": 656410000000,
+      "speed_mps": 0.0,
+      "heading_rad": 2.014007141637072,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 8.9,
+    "max_hop_m": 151.60680187881283,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 1,
+    "stop_samples_speed_lt_0_4": 89,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.1697283135630249,
+    "candidate_endpoint_error_m": 56.947654,
+    "candidate_along_track_error_m": 457.97658287429323,
+    "candidate_cross_track_error_m": 14.850152276141728,
+    "candidate_speed_mae_mps": 7.104362,
+    "candidate_heading_mae_rad": 0.557402,
+    "candidate_distance_error_m": 1736.60669022893,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "stop_restart",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg",
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Vw5:mid",
+    "start_ns": 12715310000000,
+    "end_ns": 12742410000001,
+    "duration_s": 27.100000001,
+    "score_epochs": 4,
+    "truth_path_length_m": 147.07136324498856,
+    "seed": {
+      "latitude_deg": 52.20986,
+      "longitude_deg": -2.189921,
+      "timestamp_ns": 12715310000000,
+      "speed_mps": 6.49,
+      "heading_rad": -1.52183515347488,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 67.47960766631192,
+    "heading_turns_ge_30deg": 1,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 1.1507892124451178,
+    "candidate_endpoint_error_m": 169.248138,
+    "candidate_along_track_error_m": 142.4665716278154,
+    "candidate_cross_track_error_m": -62.32961118186271,
+    "candidate_speed_mae_mps": 2.93,
+    "candidate_heading_mae_rad": 0.992826,
+    "candidate_distance_error_m": 1082.6405798801163,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 1,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "road_choice_at_turns",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Y1:d1000",
+    "start_ns": 1345114000000,
+    "end_ns": 1426116000001,
+    "duration_s": 81.002000001,
+    "score_epochs": 10,
+    "truth_path_length_m": 1033.3860983484772,
+    "seed": {
+      "latitude_deg": 52.466038,
+      "longitude_deg": -1.51069,
+      "timestamp_ns": 1345114000000,
+      "speed_mps": 13.16,
+      "heading_rad": -0.05753861222384673,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 122.25882724165369,
+    "heading_turns_ge_30deg": 1,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 1.0535088464098923,
+    "candidate_endpoint_error_m": 1088.681396,
+    "candidate_along_track_error_m": -3948.9497715391235,
+    "candidate_cross_track_error_m": 5548.939633314347,
+    "candidate_speed_mae_mps": 0.406,
+    "candidate_heading_mae_rad": 1.017442,
+    "candidate_distance_error_m": 82336.29796801852,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 1,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "road_choice_at_turns",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "speed_mae_already_small",
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  },
+  {
+    "interval_id": "S-Y1:mid",
+    "start_ns": 2685115000000,
+    "end_ns": 2712114000001,
+    "duration_s": 26.999000001,
+    "score_epochs": 4,
+    "truth_path_length_m": 459.6995377650041,
+    "seed": {
+      "latitude_deg": 52.43601,
+      "longitude_deg": -1.493721,
+      "timestamp_ns": 2685115000000,
+      "speed_mps": 9.52,
+      "heading_rad": -1.3187754783654808,
+      "source": "interval_start_unique_fix"
+    },
+    "seed_error_m": 0.0,
+    "unique_fix_median_spacing_s": 9.0,
+    "max_hop_m": 189.79928783183146,
+    "heading_turns_ge_30deg": 0,
+    "stop_epochs_speed_lt_0_4": 0,
+    "stop_samples_speed_lt_0_4": 0,
+    "imu_gaps_over_0_40s": 0,
+    "candidate_drift_ratio": 0.44868081203074867,
+    "candidate_endpoint_error_m": 206.258362,
+    "candidate_along_track_error_m": 329.58717221828715,
+    "candidate_cross_track_error_m": 3371.9667996697726,
+    "candidate_speed_mae_mps": 6.845,
+    "candidate_heading_mae_rad": 0.478093,
+    "candidate_distance_error_m": 75969.33704327424,
+    "road_ambiguity": {
+      "osm_topology": "unsupported",
+      "reference_polyline_turns_ge_30deg": 0,
+      "sparse_fixes": true,
+      "note": "OSM fork ambiguity is Task B. This row only reports reference-polyline heading changes and fix sparsity."
+    },
+    "plausibly_closes_gap": [
+      "causal_speed_or_distance",
+      "heading_or_turn",
+      "cross_track_heading_or_road",
+      "along_track_distance",
+      "reference_uncertainty_sparse_fixes"
+    ],
+    "would_not_close_gap": [
+      "no_reference_turn_ge_30deg",
+      "cannot_certify_5m_on_sparse_reference"
+    ],
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "evidence_class": "DIAGNOSTIC_ONLY"
+  }
+]

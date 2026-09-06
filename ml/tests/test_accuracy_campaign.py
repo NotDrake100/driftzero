@@ -28,7 +28,10 @@ class AccuracyCampaignTest(unittest.TestCase):
             self.assertTrue(train.isdisjoint(locked))
             self.assertTrue(hold.isdisjoint(locked))
             self.assertTrue(train.isdisjoint(hold))
-            self.assertFalse(freeze.get("c_may_train"))
+            self.assertNotIn("S-Vtb3", train)
+            self.assertNotIn("S-Vtb3", hold)
+            self.assertTrue(freeze.get("c_may_train"))
+            self.assertFalse(freeze.get("holdout_open", False))
         locked = {session_group_id(key.split(":")[0]) for key in GATED_INTERVAL_IDS}
         self.assertEqual(set(payload["exposed_groups"]["locked_session_groups"]), locked)
         self.assertEqual(len(GATED_INTERVAL_IDS), 35)

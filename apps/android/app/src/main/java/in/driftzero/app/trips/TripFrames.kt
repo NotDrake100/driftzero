@@ -30,17 +30,42 @@ internal object TripFrames {
     const val SOURCE_ID: String = "phone"
     const val FLAG_GNSS_HELD: String = "gnss_held"
 
-    fun accel(sequence: Long, timestamp: Nanoseconds, x: Double, y: Double, z: Double): SensorFrame =
-        vector(sequence, timestamp, SensorKind.ACCELEROMETER, "m/s^2", x, y, z)
+    fun accel(
+        sequence: Long,
+        timestamp: Nanoseconds,
+        x: Double,
+        y: Double,
+        z: Double,
+        accuracyCode: Int = 2,
+    ): SensorFrame = vector(sequence, timestamp, SensorKind.ACCELEROMETER, "m/s^2", x, y, z, accuracyCode)
 
-    fun gyro(sequence: Long, timestamp: Nanoseconds, x: Double, y: Double, z: Double): SensorFrame =
-        vector(sequence, timestamp, SensorKind.GYROSCOPE, "rad/s", x, y, z)
+    fun gyro(
+        sequence: Long,
+        timestamp: Nanoseconds,
+        x: Double,
+        y: Double,
+        z: Double,
+        accuracyCode: Int = 2,
+    ): SensorFrame = vector(sequence, timestamp, SensorKind.GYROSCOPE, "rad/s", x, y, z, accuracyCode)
 
-    fun gravity(sequence: Long, timestamp: Nanoseconds, x: Double, y: Double, z: Double): SensorFrame =
-        vector(sequence, timestamp, SensorKind.GRAVITY, "m/s^2", x, y, z)
+    fun gravity(
+        sequence: Long,
+        timestamp: Nanoseconds,
+        x: Double,
+        y: Double,
+        z: Double,
+        accuracyCode: Int = 2,
+    ): SensorFrame = vector(sequence, timestamp, SensorKind.GRAVITY, "m/s^2", x, y, z, accuracyCode)
 
-    fun linearAccel(sequence: Long, timestamp: Nanoseconds, x: Double, y: Double, z: Double): SensorFrame =
-        vector(sequence, timestamp, SensorKind.LINEAR_ACCELERATION, "m/s^2", x, y, z)
+    fun linearAccel(
+        sequence: Long,
+        timestamp: Nanoseconds,
+        x: Double,
+        y: Double,
+        z: Double,
+        accuracyCode: Int = 2,
+    ): SensorFrame =
+        vector(sequence, timestamp, SensorKind.LINEAR_ACCELERATION, "m/s^2", x, y, z, accuracyCode)
 
     fun gyroUncal(
         sequence: Long,
@@ -94,6 +119,8 @@ internal object TripFrames {
                 bearingRad = fix.headingRad?.let { HeadingRadians(wrapHeadingRad(it)) },
                 speedAccuracyMps = fix.speedAccuracyMps?.let { MetresPerSecond(it) },
                 bearingAccuracyRad = fix.bearingAccuracyRad,
+                isMock = fix.isMock,
+                verticalAccuracyM = fix.verticalAccuracyM?.let { Metres(it) },
             ),
         ),
     )
@@ -106,13 +133,14 @@ internal object TripFrames {
         x: Double,
         y: Double,
         z: Double,
+        accuracyCode: Int = 2,
     ): SensorFrame = SensorFrame(
         sourceId = SOURCE_ID,
         sequence = sequence,
         timestamp = timestamp,
         clockDomain = ClockDomain.ANDROID_ELAPSED_REALTIME,
         kind = kind,
-        quality = Quality(available = true, accuracyCode = 2),
+        quality = Quality(available = true, accuracyCode = accuracyCode.coerceIn(-1, 3)),
         payload = VectorPayload(
             Vector3Payload(x, y, z, unit, VectorFrame.ANDROID_DEVICE),
         ),

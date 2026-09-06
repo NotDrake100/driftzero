@@ -1,6 +1,6 @@
 # Accuracy campaign index
 
-Date: 2026-09-06. Coordinator checkpoint v3. This is a tracking document, not
+Date: 2026-09-06. Coordinator checkpoint v4. This is a tracking document, not
 an accuracy result. Machine-readable copy:
 [results/cursor_campaign/v1/manifest.json](../results/cursor_campaign/v1/manifest.json).
 Plan: [docs/15_CURSOR_ACCURACY_EXECUTION_PLAN.md](15_CURSOR_ACCURACY_EXECUTION_PLAN.md).
@@ -10,8 +10,8 @@ Coordination ADR: [015](adr/015-accuracy-campaign.md).
 
 | Status | Value | Evidence |
 |---|---|---|
-| Code merged | No | Main is still `c7a1ab9`. No campaign merge. |
-| Experiment completed | Partial | A diagnostic run completed. B scored a development rejection. |
+| Code merged | Partial | Diagnostics PR 17 and capture-audit PR 18 are on main. B overlay is not. C/D are not. |
+| Experiment completed | Partial | A diagnostics done. B rejected. C not trained. No field drive. |
 | Median target passed | No | Reproduced locked median 48.83% |
 | All-interval target passed | No | `accuracy_gate` failed. 6/35 below 10% |
 | Field placements tested | No | No owner drives |
@@ -20,20 +20,17 @@ Do not describe the 48.83% locked median as a fresh independent validation.
 
 ## Live task evidence
 
-| Task | Agent lifecycle | Branch | Latest commit | PR | Experiment |
-|---|---|---|---|---|---|
-| A diagnostics | IDLE | `cursor/accuracy-diagnostics-9aba` | `8913eb08beb466f706a6b872892eb10905f37c05` | [17](https://github.com/NotDrake100/driftzero/pull/17) | Reproduced locked 35. Matches archive. DIAGNOSTIC_ONLY substitutions scored. Not merged. |
-| B road reliability | IDLE | `cursor/road-reliability-8d5b` | `e161bff` | [19](https://github.com/NotDrake100/driftzero/pull/19) | Five development configs scored. Relative gate failed. Locked confirmation not run. Not merged. |
-| E capture audit | Coordinator | `cursor/phone-validation-d676` | see PR 18 | [18](https://github.com/NotDrake100/driftzero/pull/18) | Logger audit. 0 field drives. Model wiring blocked. |
-| C learned motion | Not started | | | | Blocked. Split is frozen. Do not train until A PR 17 is reviewed for merge. |
-| D evaluation | Not started | | | | Blocked. B is a measured rejection. No C candidate. |
+| Task | Status | Branch | PR | Experiment |
+|---|---|---|---|---|
+| A diagnostics | Merged | `cursor/accuracy-diagnostics-9aba` | [17](https://github.com/NotDrake100/driftzero/pull/17) | Score-only. Locked 35 reproduced. Split frozen. |
+| B road reliability | Closed rejection | `cursor/road-reliability-8d5b` | [19](https://github.com/NotDrake100/driftzero/pull/19) | Relative gate failed. Overlay not enabled. Not merged. |
+| C learned motion | Preregistered | `cursor/learned-motion-d676` | [20](https://github.com/NotDrake100/driftzero/pull/20) | Joint distance and heading. Holdout closed. Not trained. |
+| D evaluation | Checks prepared | `cursor/accuracy-evaluation-d676` | [21](https://github.com/NotDrake100/driftzero/pull/21) | Parity and leakage only. Selection blocked. |
+| E capture audit | Logger merged | `cursor/phone-validation-d676` | [18](https://github.com/NotDrake100/driftzero/pull/18) | 0 field drives. Placement validation pending. |
 
-First check found A and B as lifecycle RUNNING with no branch, no PR, no diff.
-That is not experiment evidence. Git branches appeared later.
+## A measured report, merged
 
-## A measured report, reviewed not merged
-
-Source: `results/cursor_diagnostics/` on `8913eb0`. `accuracy_gate` exit 1.
+Source: `results/cursor_diagnostics/` at merge `18e6772`. `accuracy_gate` exit 1.
 
 | Result | Value |
 |---|---|
@@ -46,13 +43,13 @@ Source: `results/cursor_diagnostics/` on `8913eb0`. `accuracy_gate` exit 1.
 | ref_joint median | ~0 DIAGNOSTIC_ONLY |
 
 Oracle joint near-zero is a coordinate/time/scoring audit. It is not achieved
-accuracy. Seed error is 0 m on every locked interval.
+accuracy. Seed error is 0 m on every locked interval. Heading plus distance is
+the remaining gap.
 
 ## Split freeze
 
-Coordinator reviewed `split_manifest.json`. Roles are disjoint. Fresh holdout
-is not previously exposed. C must not train on locked, development, or
-fresh-holdout groups.
+Roles remain disjoint. C may now train on the 24 train groups. Fresh holdout
+stays closed.
 
 - Train (24): S-M, S-S2, S-Vfa02, S-Vta3, S-Vta7, S-Vta9, S-Vta10, S-Vta16,
   S-Vta21, S-Vta23, S-Vta26, S-Vta28, S-Vtb10, S-Vtb12, S-Vw2, S-Vw4, S-Vw6,
@@ -61,41 +58,55 @@ fresh-holdout groups.
   S-Vtb5, S-Vtb11, S-Vw1, S-Vw10
 - Excluded: S-Vtb3 (speed column unit mismatch)
 
-C stays blocked until PR 17 is reviewed for merge of the diagnostic module.
+## B measured report, closed not merged
 
-## B measured report, rejected not merged
+Source: `results/road_reliability_20260906/` on `e161bff`. Relative gate
+failed. Locked confirmation was not run. The posterior-mean overlay is not
+enabled on main. Do not start another map-only pass without a new hypothesis.
 
-Source: `results/road_reliability_20260906/` on `e161bff`. Decision file
-`FOR_TASK_D.json`: rejection. Do not run locked confirmation. Do not change
-Android defaults. Kotlin was not rerun. Maps hashes match ADR 014 complete
-provenance.
+| Config | Median | p95 | Gate |
+|---|---:|---:|---|
+| `adr014_reproduce` | 26.90% | 84.61% | fail p95 |
+| `topo_v1` | 24.25% | 68.17% | fail p95 |
+| `confidence_v1` | 39.84% | 54.02% | fail median |
+| `combined_v1` | 39.84% | 54.02% | fail median |
+| `lateral_heal_v1` | 39.84% | 54.02% | fail median |
 
-Baseline reused from Actions run `34061769087` (median 39.84%, p95 54.02%,
-1/11 below 0.10).
+## C preregistration
 
-| Config | Median | p95 | below 0.10 | Gate |
-|---|---:|---:|---:|---|
-| `adr014_reproduce` | 26.90% | 84.61% | 2/11 | fail p95 |
-| `topo_v1` | 24.25% | 68.17% | 2/11 | fail p95 |
-| `confidence_v1` | 39.84% | 54.02% | 1/11 | fail median |
-| `combined_v1` | 39.84% | 54.02% | 1/11 | fail median |
-| `lateral_heal_v1` | 39.84% | 54.02% | 1/11 | fail median |
+ADR [016](https://github.com/NotDrake100/driftzero/blob/cursor/learned-motion-d676/docs/adr/016-learned-motion.md).
+Joint travelled distance and heading change, uncertainty, persist-speed/heading
+fallback. Primary score is blackout position drift. TCN/GRU configs are
+registered, not trained. No GPU assumed. Synthetic CPU smoke is not a
+candidate.
 
-`topo_v1` cut some tails (S-Vta8:d1000 84.61% to 58.53%, S-Vtb7:mid 20.15%
-to 2.87%) but S-Vta11:mid stayed at 68.17% and S-Vta29:d1000 stayed near
-65.8%. Confidence gating fell back on 3653/4983 epochs and recovered the
-deterministic median. The always-on posterior mean still writes those
-failures into lat/lon.
+## D checks
 
-Adapter for later D: `driftzero_ml.road_adapter` (`CONFIGS`,
-`apply_causal_overlay`, `development_gate`).
+ADR [017](https://github.com/NotDrake100/driftzero/blob/cursor/accuracy-evaluation-d676/docs/adr/017-evaluation-checks.md).
+Locked IDs unchanged. DIAGNOSTIC_ONLY and oracle reports rejected. Matrix
+unselectable. Selection and locked confirmation stay blocked until an eligible
+candidate exists.
 
-## E status
+## E owner capture
 
-Capture audit in [docs/17_CAPTURE_AUDIT.md](https://github.com/NotDrake100/driftzero/blob/cursor/phone-validation-d676/docs/17_CAPTURE_AUDIT.md)
-on PR 18. IMU accuracy codes, GNSS mock/vertical accuracy, and ring-drop
-counts. `ANDROID_HOME` missing in this workspace, so Android app tests were
-not run here. No field zip.
+Logger fields from PR 18 are on main. Physical placement validation remains
+pending. Exact steps:
+
+1. Install the APK. Complete first-run still capture, then a short straight
+   drive for yaw alignment. Precise location is required.
+2. Map, overflow, Settings. Turn on Record trips. Confirm REC on the bottom
+   strip.
+3. Keep one placement for the whole trip. Resting passenger seat, console or
+   cup holder is slice 1. Pickup is a separate trip. Handheld is a later trip.
+4. Passenger sidecar: start placement, every pickup, device model, Android
+   version, intended Hold intervals.
+5. For a scored blackout, long-press the mode lamp when speed is below 8 m/s.
+   Long-press again to release.
+6. Settings, turn Record trips off. Map, overflow, Trips, Export. Share the zip.
+7. Cite `measured_accel_hz` and `accel_max_dt_ns` from `manifest.json`. Do not
+   cite 100 Hz from the request string.
+
+Full procedure: [docs/17_CAPTURE_AUDIT.md](17_CAPTURE_AUDIT.md).
 
 ## Previously exposed groups. Not fresh
 
@@ -110,16 +121,14 @@ Route and vehicle identities are unavailable. Driver letter is prefix-only.
 
 ## Next justified work
 
-1. Review A PR 17 tests before any merge. Keep DIAGNOSTIC_ONLY out of
-   `accuracy_gate` candidates.
-2. Do not merge PR 19 as a live map default. A later research merge of the
-   negative result is allowed only if labeled as rejection.
-3. Keep C blocked until that A review. Then train only on the frozen train
-   groups. Learn displacement and turn, not speed MAE alone.
-4. Keep D blocked. B produced no passing candidate. Keep E model wiring
-   blocked.
+1. Train C on the 24 train groups only. Score blackout position drift on
+   development. Do not open the holdout.
+2. Keep D selection closed until an eligible C config exists.
+3. Do not merge PR 19 as a live map default.
+4. Owner field drives remain required for placement validation.
 
 ## Resume
 
-Resume from this file and `results/cursor_campaign/v1/manifest.json`. Do not
-restart A's completed diagnostic run. Do not promise work after this session.
+Resume from this file and `results/cursor_campaign/v1/manifest.json`. A and the
+E logger are on main. B is closed. C/D are drafted. Do not restart A's
+diagnostic run.

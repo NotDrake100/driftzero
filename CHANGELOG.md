@@ -5,6 +5,7 @@ Dates follow git history on this repository. Unreleased work is the working tree
 ## Unreleased
 
 - Accuracy campaign tracking (ADR 015). Not a 10% target pass.
+- Trip logs copy IMU accuracy codes, GNSS mock/vertical accuracy, and ring-drop counts. No field drive attached.
 - Repository front door, CI, and attribution hygiene for SIH review.
 
 ## 2026-09-02

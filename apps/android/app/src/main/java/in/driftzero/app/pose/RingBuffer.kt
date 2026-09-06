@@ -9,11 +9,14 @@ class RingBuffer<T>(val capacity: Int) {
 
     val size: Int get() = items.size
 
-    fun add(item: T) {
-        if (items.size == capacity) {
+    /** Returns true when the oldest sample was dropped to make room. */
+    fun add(item: T): Boolean {
+        val dropped = items.size == capacity
+        if (dropped) {
             items.removeFirst()
         }
         items.addLast(item)
+        return dropped
     }
 
     fun toList(): List<T> = items.toList()

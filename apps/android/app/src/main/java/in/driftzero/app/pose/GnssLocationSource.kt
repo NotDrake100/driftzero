@@ -313,6 +313,17 @@ internal fun Location.toCoastFix(): CoastFix {
     } else {
         null
     }
+    val verticalAcc = if (Build.VERSION.SDK_INT >= 26 && hasVerticalAccuracy()) {
+        optionalNonNegAccuracy(verticalAccuracyMeters.toDouble())
+    } else {
+        null
+    }
+    val mock = if (Build.VERSION.SDK_INT >= 31) {
+        isMock
+    } else {
+        @Suppress("DEPRECATION")
+        isFromMockProvider
+    }
     return CoastFix(
         timestamp = Nanoseconds(elapsed),
         latitudeDeg = latitude,
@@ -323,6 +334,8 @@ internal fun Location.toCoastFix(): CoastFix {
         altitudeM = if (hasAltitude()) altitude else null,
         speedAccuracyMps = speedAcc,
         bearingAccuracyRad = bearingAcc,
+        isMock = mock,
+        verticalAccuracyM = verticalAcc,
     )
 }
 

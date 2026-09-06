@@ -1,0 +1,25 @@
+{
+  "label": "DIAGNOSTIC_ONLY",
+  "diagnostic_only": true,
+  "last_completed_step": "reproduced_baseline_and_reference_substitutions",
+  "commit_at_measurement": "f78576b540816674e658d030c664bd300943f535",
+  "failures": [
+    "accuracy_gate exit 1 on the reproduced locked 35",
+    "median target not passed",
+    "all-interval target not passed",
+    "field placements not tested"
+  ],
+  "next_step": "Task B and C consume FINDINGS.md. Do not train on locked or fresh-holdout groups.",
+  "seed": "26168",
+  "code_base_at_launch": "c7a1ab9ccf1c156c48da1cac7b6e10ef384f66d4",
+  "data_commit": "118939602e3422d47b8ab0807b623751c3ac135b",
+  "java": "Temurin 17 at /usr/lib/jvm/temurin-17-jdk-amd64",
+  "archive_comparison": "matches_archive true. median 0.48834485395037297, p95 2.6824070539818505, 6/35 below 10%",
+  "candidate_source": "replay_states",
+  "substitution_medians": {
+    "ref_speed": 0.34082284110488026,
+    "ref_heading": 0.16286799441490213,
+    "ref_road": 0.16287245385534213,
+    "ref_joint": 4.564954039142319e-08
+  }
+}

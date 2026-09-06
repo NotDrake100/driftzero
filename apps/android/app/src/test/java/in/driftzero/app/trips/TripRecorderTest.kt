@@ -1,6 +1,7 @@
 package `in`.driftzero.app.trips
 
 import `in`.driftzero.app.pose.PoseStore
+import `in`.driftzero.app.pose.QueuedImuKind
 import `in`.driftzero.core.ClockDomain
 import `in`.driftzero.core.CoastFix
 import `in`.driftzero.core.DeadReckoningFilter
@@ -149,6 +150,128 @@ class TripRecorderTest {
             assertTrue(loaded is ReplayLoadResult.Ready)
             val ready = loaded as ReplayLoadResult.Ready
             assertTrue(ready.source.frames.any { it.kind == SensorKind.GRAVITY })
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun poseStoreOfferImuCopiesAccuracyIntoTripLog() {
+        val root = createTempDirectory("trip-imu-acc").toFile()
+        try {
+            val pending = ArrayList<Runnable>()
+            val recorder = TripRecorder(
+                dir = File(root, "trip-imu-acc"),
+                id = "trip-imu-acc",
+                startWallMs = 0L,
+                schedule = { pending += it },
+            )
+            recorder.start()
+            pending.clear()
+            var now = 0L
+            val store = PoseStore(filter = DeadReckoningFilter(), clockNs = { now })
+            store.attachRecorder(recorder)
+            store.offerImu(QueuedImuKind.ACCEL, Nanoseconds(0L), 0.0, 0.0, 9.8, accuracyCode = 0)
+            store.offerImu(QueuedImuKind.GYRO, Nanoseconds(0L), 0.0, 0.0, 0.0, accuracyCode = 1)
+            now = 100_000_000L
+            store.tick()
+            pending.forEach { it.run() }
+            val loaded = ReplayJsonl.load(File(recorder.dir, TripRecorder.SENSORS).toPath())
+            assertTrue(loaded is ReplayLoadResult.Ready)
+            val frames = (loaded as ReplayLoadResult.Ready).source.frames
+            assertEquals(0, frames.first { it.kind == SensorKind.ACCELEROMETER }.quality.accuracyCode)
+            assertEquals(1, frames.first { it.kind == SensorKind.GYROSCOPE }.quality.accuracyCode)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun imuAccuracyCodeSurvivesTripJsonl() {
+        val root = createTempDirectory("trip-acc").toFile()
+        try {
+            val pending = ArrayList<Runnable>()
+            val recorder = TripRecorder(
+                dir = File(root, "trip-acc"),
+                id = "trip-acc",
+                startWallMs = 0L,
+                schedule = { pending += it },
+            )
+            recorder.start()
+            pending.clear()
+            recorder.offerAccel(Nanoseconds(0L), 0.0, 0.0, 9.8, accuracyCode = 0)
+            recorder.offerGyro(Nanoseconds(10_000_000L), 0.0, 0.0, 0.0, accuracyCode = 1)
+            pending.forEach { it.run() }
+            val loaded = ReplayJsonl.load(File(recorder.dir, TripRecorder.SENSORS).toPath())
+            assertTrue(loaded is ReplayLoadResult.Ready)
+            val frames = (loaded as ReplayLoadResult.Ready).source.frames
+            assertEquals(0, frames.first { it.kind == SensorKind.ACCELEROMETER }.quality.accuracyCode)
+            assertEquals(1, frames.first { it.kind == SensorKind.GYROSCOPE }.quality.accuracyCode)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun manifestRecordsGapsAndRingDrops() {
+        val root = createTempDirectory("trip-gaps").toFile()
+        try {
+            val pending = ArrayList<Runnable>()
+            val recorder = TripRecorder(
+                dir = File(root, "trip-gaps"),
+                id = "trip-gaps",
+                startWallMs = 0L,
+                schedule = { pending += it },
+                sensorCap = 2,
+            )
+            recorder.start()
+            pending.clear()
+            recorder.offerAccel(Nanoseconds(0L), 0.0, 0.0, 9.8)
+            recorder.offerAccel(Nanoseconds(10_000_000L), 0.0, 0.0, 9.8)
+            recorder.offerAccel(Nanoseconds(40_000_000L), 0.0, 0.0, 9.8)
+            pending.forEach { it.run() }
+            val summary = recorder.stop()
+            assertEquals(1, summary.droppedSensorFrames)
+            assertEquals(10_000_000L, summary.accelMinDtNs)
+            assertEquals(30_000_000L, summary.accelMaxDtNs)
+            val manifest = File(recorder.dir, TripRecorder.MANIFEST).readText()
+            assertTrue(manifest.contains("dropped_sensor_frames"))
+            assertTrue(manifest.contains("accel_max_dt_ns"))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun gnssMockAndVerticalAccuracySurviveTripJsonl() {
+        val root = createTempDirectory("trip-mock").toFile()
+        try {
+            val pending = ArrayList<Runnable>()
+            val recorder = TripRecorder(
+                dir = File(root, "trip-mock"),
+                id = "trip-mock",
+                startWallMs = 0L,
+                schedule = { pending += it },
+            )
+            recorder.start()
+            pending.clear()
+            recorder.offerGnss(
+                CoastFix(
+                    timestamp = Nanoseconds(0L),
+                    latitudeDeg = 18.5,
+                    longitudeDeg = 73.8,
+                    horizontalAccuracyM = 4.0,
+                    isMock = true,
+                    verticalAccuracyM = 6.0,
+                ),
+            )
+            pending.forEach { it.run() }
+            val loaded = ReplayJsonl.load(File(recorder.dir, TripRecorder.SENSORS).toPath())
+            assertTrue(loaded is ReplayLoadResult.Ready)
+            val payload = ((loaded as ReplayLoadResult.Ready).source.frames[0].payload
+                as `in`.driftzero.core.FixPayload).fix
+            assertEquals(true, payload.isMock)
+            assertEquals(6.0, payload.verticalAccuracyM!!.value, 0.0)
         } finally {
             root.deleteRecursively()
         }

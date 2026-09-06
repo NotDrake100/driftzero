@@ -38,8 +38,10 @@ must not compete for the estimator or rewrite the locked benchmark.
    rejection if it is not already present.
 
 4. Start A and B independently. Start C only after A freezes usable data and
-   splits. D integrates after A, then after B/C candidates exist. E may audit
-   capture immediately and may integrate a model only after D selects one.
+   splits and the diagnostic module is reviewed. That review is complete: PR 17
+   is on main. D may prepare parity and leakage checks now. Candidate selection
+   waits for an eligible B or C candidate. E may audit capture immediately and
+   may integrate a model only after D selects one.
 
 5. No automatic merge of an unfinished branch. Research rejections may land as
    research with their negative numbers. Failing candidates must not change live

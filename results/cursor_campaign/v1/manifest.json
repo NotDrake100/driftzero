@@ -1,6 +1,6 @@
 {
   "campaign": "cursor-accuracy-below-10pct",
-  "version": 3,
+  "version": 4,
   "date_utc": "2026-09-06",
   "role": "F-coordinator",
   "status": "checkpoint",
@@ -10,7 +10,7 @@
     "median_target_passed": false,
     "all_interval_target_passed": false,
     "field_placements_tested": false,
-    "notes": "A reproduced the locked baseline and published DIAGNOSTIC_ONLY substitutions. That is not a candidate pass. B scored five preregistered development configs and failed the relative gate. Do not run locked confirmation. Do not change Android defaults. E capture audit has no field drive."
+    "notes": "A diagnostics and E logger audit are on main. That is not a 10% pass. B is a closed rejection and is not merged. C is preregistered, not trained. D checks are prepared. Selection and locked confirmation stay blocked. No field drive."
   },
   "pins": {
     "campaign_base_commit": "c7a1ab9ccf1c156c48da1cac7b6e10ef384f66d4",
@@ -161,8 +161,9 @@
       "S-Vw10"
     ],
     "excluded_session_groups": ["S-Vtb3"],
-    "c_may_train": false,
-    "c_block_reason": "Split is frozen. C stays blocked until A PR 17 is reviewed for merge of the diagnostic module. Do not start training this turn."
+    "c_may_train": true,
+    "holdout_open": false,
+    "c_block_reason": "A PR 17 is on main. C may train the 24 frozen train groups. Fresh holdout stays closed. S-Vtb3 stays excluded."
   },
   "exposed_groups": {
     "locked_session_groups": [
@@ -214,8 +215,8 @@
       "pr": "https://github.com/NotDrake100/driftzero/pull/17",
       "latest_commit": "8913eb08beb466f706a6b872892eb10905f37c05",
       "agent_status": "IDLE",
-      "experiment_status": "diagnostic_run_completed. not merged. not a 10% pass",
-      "status": "reviewed_not_merged"
+      "experiment_status": "diagnostic_run_completed. merged. not a 10% pass",
+      "status": "merged"
     },
     "B": {
       "name": "road-reliability",
@@ -225,20 +226,29 @@
       "pr": "https://github.com/NotDrake100/driftzero/pull/19",
       "latest_commit": "e161bff69fae794cfd7032dd5f6c9cd010f0a506",
       "agent_status": "IDLE",
-      "experiment_status": "development_ablations_completed. relative_gate_failed. locked_confirmation_not_run",
-      "status": "measured_rejection_not_merged"
+      "experiment_status": "round_closed. relative_gate_failed. overlay_not_enabled. not_merged",
+      "status": "closed_rejection_not_merged"
     },
     "C": {
       "name": "learned-motion",
-      "status": "blocked",
-      "start_condition": "after A PR 17 is reviewed for merge and this freeze remains unchanged",
-      "branch_intent": "cursor/learned-motion"
+      "status": "preregistered",
+      "branch": "cursor/learned-motion-d676",
+      "pr": "https://github.com/NotDrake100/driftzero/pull/20",
+      "latest_commit": "e209baf27cef4f7ce428f68800431427c3a08917",
+      "training_started": false,
+      "holdout_open": false,
+      "objective": "joint_distance_and_heading",
+      "primary_score": "blackout_position_drift"
     },
     "D": {
       "name": "evaluation",
-      "status": "blocked",
-      "start_condition": "after A, then a passing B or C candidate. B is a measured rejection.",
-      "branch_intent": "cursor/accuracy-evaluation",
+      "status": "checks_prepared",
+      "branch": "cursor/accuracy-evaluation-d676",
+      "pr": "https://github.com/NotDrake100/driftzero/pull/21",
+      "latest_commit": "f792a99",
+      "selection_open": false,
+      "locked_confirmation_open": false,
+      "holdout_open": false,
       "b_import": {
         "module": "driftzero_ml.road_adapter",
         "symbols": ["CONFIGS", "apply_causal_overlay", "development_gate"],
@@ -248,12 +258,14 @@
     },
     "E": {
       "name": "phone-validation",
-      "status": "capture_audit_open",
+      "status": "logger_merged_placements_pending",
       "branch": "cursor/phone-validation-d676",
       "pr": "https://github.com/NotDrake100/driftzero/pull/18",
       "latest_commit": "a85e4708299343c3b3d8a8db3a495be744599ffb",
+      "merged": true,
       "model_wiring": "blocked",
-      "field_drives": 0
+      "field_drives": 0,
+      "physical_placement_validation": "pending"
     },
     "F": {
       "name": "coordinator",
@@ -263,16 +275,16 @@
     }
   },
   "blockers": [
-    "A is not merged. DIAGNOSTIC_ONLY results must not change live defaults.",
-    "B scored development ablations and failed the relative gate. Do not merge as a map default. Do not run locked confirmation.",
-    "C stays blocked until A PR 17 is reviewed for merge of the diagnostic module.",
-    "D stays blocked. B produced no passing candidate. C has not started.",
-    "E model wiring stays blocked until D selects a candidate.",
+    "DIAGNOSTIC_ONLY results must not change live defaults.",
+    "B round is closed. Do not merge the overlay. Do not expand map-only tuning without a new hypothesis.",
+    "C may train the 24 groups. Do not open the fresh holdout.",
+    "D selection and locked confirmation stay blocked until an eligible candidate exists.",
+    "E model wiring stays blocked until D selects a candidate. Physical placement validation is pending.",
     "No field recordings exist. Cloud agents cannot manufacture drives.",
     "This coordinator workspace has no ANDROID_HOME. Android app unit tests were not run here."
   ],
-  "last_completed_step": "F v3: recorded B measured rejection. Updated PR 19. Split remains frozen. C/D not started.",
-  "next_step": "Review A PR 17 tests before any merge of the diagnostic module. Do not start C or D. Do not merge B as a live default. Keep E model wiring blocked.",
+  "last_completed_step": "F v4: merged PR 17 and PR 18. Closed B as rejected. Unblocked C with joint-motion preregistration. Prepared D checks. Selection still blocked.",
+  "next_step": "Train C on the 24 train groups and score blackout position drift on development. Keep holdout closed. Do not merge B. Do not run locked confirmation.",
   "failures": [
     "A and B first appeared as RUNNING with no branch. Git evidence arrived later. Do not treat lifecycle RUNNING as an experiment."
   ]

@@ -109,6 +109,26 @@ class MapCoastSession {
     private var graph: RoadGraph? = null
     private var lastHealNs: Long = Long.MIN_VALUE
     private var lastInflateNs: Long = Long.MIN_VALUE
+    private var lastMatchNs: Long = Long.MIN_VALUE
+    private var lastMatcher: RoadMatcher? = null
+    private var lastMatchGraph: RoadGraph? = null
+    private var lastMatch: MapMatchResult? = null
+    private var lastApplyNs: Long = Long.MIN_VALUE
+    private var lastReport: MapCoastReport? = null
+
+    /** One HMM observation per sensor epoch, shared by live, engine, and replay. */
+    fun match(pose: NavigationState, matcher: RoadMatcher?, graph: RoadGraph?): MapMatchResult? {
+        if (matcher == null || graph == null || graph.isEmpty()) return null
+        if (matcher === lastMatcher && graph === lastMatchGraph && pose.timestamp.value <= lastMatchNs) {
+            return lastMatch
+        }
+        val result = matcher.update(FilterSnapshot(pose), graph)
+        lastMatcher = matcher
+        lastMatchGraph = graph
+        lastMatchNs = pose.timestamp.value
+        lastMatch = result
+        return result
+    }
 
     fun setGraph(next: RoadGraph?) {
         graph = if (next == null || next.isEmpty()) null else next
@@ -151,6 +171,10 @@ class MapCoastSession {
         pose: NavigationState,
         nowNs: Long,
     ): MapCoastReport {
+        val previous = lastReport
+        if (previous != null && nowNs <= lastApplyNs) {
+            return previous.copy(headingAccepted = false, healAccepted = false, inflated = false)
+        }
         val headingRad = pose.motion.heading.value
         val speedMps = pose.motion.speed.value
         if (!headingRad.isFinite() || !speedMps.isFinite() || speedMps < 0.0) {
@@ -226,6 +250,8 @@ class MapCoastSession {
                 stopped = pose.health.flags.contains(DeadReckoningFilter.FLAG_ZUPT),
             )
         }
+        lastApplyNs = nowNs
+        lastReport = report
         return report
     }
 
@@ -233,5 +259,11 @@ class MapCoastSession {
         dnaTracker.reset()
         lastHealNs = Long.MIN_VALUE
         lastInflateNs = Long.MIN_VALUE
+        lastMatchNs = Long.MIN_VALUE
+        lastMatcher = null
+        lastMatchGraph = null
+        lastMatch = null
+        lastApplyNs = Long.MIN_VALUE
+        lastReport = null
     }
 }

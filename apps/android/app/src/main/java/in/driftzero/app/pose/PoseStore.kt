@@ -8,7 +8,6 @@ import `in`.driftzero.core.CoastFix
 import `in`.driftzero.core.CoastMode
 import `in`.driftzero.core.DeadReckoningFilter
 import `in`.driftzero.core.DriftBudgetTracker
-import `in`.driftzero.core.FilterSnapshot
 import `in`.driftzero.core.GeoPoint
 import `in`.driftzero.core.GraphEdge
 import `in`.driftzero.core.HmmRoadMatcher
@@ -617,7 +616,7 @@ class PoseStore(
             activeGraph != null &&
             !activeGraph.isEmpty()
         ) {
-            activeMatcher.update(FilterSnapshot(raw), activeGraph)
+            mapCoast.match(raw, activeMatcher, activeGraph)
         } else {
             null
         }

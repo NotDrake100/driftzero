@@ -542,11 +542,11 @@ class DeadReckoningFilterTest {
         }
         val pose = filter.poseAt(Nanoseconds(steps * dtNs))!!
         val heading = pose.motion.heading.value
-        val headingErr = minHeadingDelta(heading, 1.0)
-        assertTrue("heading should change by ~1 rad, got $heading", headingErr < 0.15)
+        val headingErr = minHeadingDelta(heading, -1.0)
+        assertTrue("right-handed up yaw turns heading west, got $heading", headingErr < 0.15)
         assertEquals("speed held", 15.0, pose.motion.speed.value, 0.5)
         val p = filter.positionEnu()
-        assertTrue("path should curve east, east=${p.x}", abs(p.x) > 20.0)
+        assertTrue("path should curve west, east=${p.x}", p.x < -20.0)
         assertTrue("north should be less than a straight 150 m, north=${p.y}", p.y < 145.0)
     }
 

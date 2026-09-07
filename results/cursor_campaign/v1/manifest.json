@@ -1,7 +1,7 @@
 {
   "campaign": "cursor-accuracy-below-10pct",
-  "version": 4,
-  "date_utc": "2026-09-06",
+  "version": 5,
+  "date_utc": "2026-09-07",
   "role": "F-coordinator",
   "status": "checkpoint",
   "claim": {
@@ -10,10 +10,10 @@
     "median_target_passed": false,
     "all_interval_target_passed": false,
     "field_placements_tested": false,
-    "notes": "A diagnostics and E logger audit are on main. That is not a 10% pass. B is a closed rejection and is not merged. C is preregistered, not trained. D checks are prepared. Selection and locked confirmation stay blocked. No field drive."
+    "notes": "A diagnostics and E logger audit are on main. That is not a 10% pass. B is a closed rejection. C has a preregistration (PR 20) and an owner real-data training PR (22). PR 22 has no measured candidate yet. D selection stays blocked. No field drive."
   },
   "pins": {
-    "campaign_base_commit": "c7a1ab9ccf1c156c48da1cac7b6e10ef384f66d4",
+    "campaign_base_commit": "1bd76e345080ec2d37d483ee8732d42b13429e17",
     "plan_named_baseline_commit": "5a0893fdb321605784f1f492445ad53f2fae47fc",
     "selected_coast_commit": "1cd92fb3d5dc60fea57e944a4862991c714d484d",
     "io_vnbd_commit": "118939602e3422d47b8ab0807b623751c3ac135b",
@@ -231,21 +231,33 @@
     },
     "C": {
       "name": "learned-motion",
-      "status": "preregistered",
-      "branch": "cursor/learned-motion-d676",
-      "pr": "https://github.com/NotDrake100/driftzero/pull/20",
-      "latest_commit": "e209baf27cef4f7ce428f68800431427c3a08917",
-      "training_started": false,
+      "status": "training_pipeline_opened",
       "holdout_open": false,
       "objective": "joint_distance_and_heading",
-      "primary_score": "blackout_position_drift"
+      "primary_score": "blackout_position_drift",
+      "preregistration": {
+        "branch": "cursor/learned-motion-d676",
+        "pr": "https://github.com/NotDrake100/driftzero/pull/20",
+        "latest_commit": "e209baf27cef4f7ce428f68800431427c3a08917",
+        "training_started": false
+      },
+      "real_data_run": {
+        "branch": "codex/joint-motion-real-data",
+        "pr": "https://github.com/NotDrake100/driftzero/pull/22",
+        "latest_commit": "359f7288904943831bb23f62015a5f050c316061",
+        "author": "NotDrake100",
+        "training_started": true,
+        "measured_candidate": false,
+        "review": "fix_required_exact_group_pin",
+        "notes": "Filters train groups from the frozen manifest. Does not pin the exact 24/10/1 IDs in code. Parallel to PR 20. Do not merge as a candidate."
+      }
     },
     "D": {
       "name": "evaluation",
       "status": "checks_prepared",
       "branch": "cursor/accuracy-evaluation-d676",
       "pr": "https://github.com/NotDrake100/driftzero/pull/21",
-      "latest_commit": "f792a99",
+      "latest_commit": "f792a99ae0afabb2ea8162109f844bf12ed21c55",
       "selection_open": false,
       "locked_confirmation_open": false,
       "holdout_open": false,
@@ -277,14 +289,14 @@
   "blockers": [
     "DIAGNOSTIC_ONLY results must not change live defaults.",
     "B round is closed. Do not merge the overlay. Do not expand map-only tuning without a new hypothesis.",
-    "C may train the 24 groups. Do not open the fresh holdout.",
+    "C real-data training is PR 22. Pin exact frozen group IDs before merge. Do not open the fresh holdout.",
     "D selection and locked confirmation stay blocked until an eligible candidate exists.",
     "E model wiring stays blocked until D selects a candidate. Physical placement validation is pending.",
     "No field recordings exist. Cloud agents cannot manufacture drives.",
     "This coordinator workspace has no ANDROID_HOME. Android app unit tests were not run here."
   ],
-  "last_completed_step": "F v4: merged PR 17 and PR 18. Closed B as rejected. Unblocked C with joint-motion preregistration. Prepared D checks. Selection still blocked.",
-  "next_step": "Train C on the 24 train groups and score blackout position drift on development. Keep holdout closed. Do not merge B. Do not run locked confirmation.",
+  "last_completed_step": "F v5: recorded owner PR 22 as C real-data training. No candidate. Selection still blocked.",
+  "next_step": "Wait for PR 22 measured development tables and exact group-ID pins. Keep holdout closed. Do not run locked confirmation. Do not merge B.",
   "failures": [
     "A and B first appeared as RUNNING with no branch. Git evidence arrived later. Do not treat lifecycle RUNNING as an experiment."
   ]

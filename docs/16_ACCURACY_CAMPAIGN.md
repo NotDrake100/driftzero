@@ -1,6 +1,6 @@
 # Accuracy campaign index
 
-Date: 2026-09-06. Coordinator checkpoint v4. This is a tracking document, not
+Date: 2026-09-07. Coordinator checkpoint v5. This is a tracking document, not
 an accuracy result. Machine-readable copy:
 [results/cursor_campaign/v1/manifest.json](../results/cursor_campaign/v1/manifest.json).
 Plan: [docs/15_CURSOR_ACCURACY_EXECUTION_PLAN.md](15_CURSOR_ACCURACY_EXECUTION_PLAN.md).
@@ -11,7 +11,7 @@ Coordination ADR: [015](adr/015-accuracy-campaign.md).
 | Status | Value | Evidence |
 |---|---|---|
 | Code merged | Partial | Diagnostics PR 17 and capture-audit PR 18 are on main. B overlay is not. C/D are not. |
-| Experiment completed | Partial | A diagnostics done. B rejected. C not trained. No field drive. |
+| Experiment completed | Partial | A diagnostics done. B rejected. C training opened on PR 22. No candidate. |
 | Median target passed | No | Reproduced locked median 48.83% |
 | All-interval target passed | No | `accuracy_gate` failed. 6/35 below 10% |
 | Field placements tested | No | No owner drives |
@@ -24,7 +24,7 @@ Do not describe the 48.83% locked median as a fresh independent validation.
 |---|---|---|---|---|
 | A diagnostics | Merged | `cursor/accuracy-diagnostics-9aba` | [17](https://github.com/NotDrake100/driftzero/pull/17) | Score-only. Locked 35 reproduced. Split frozen. |
 | B road reliability | Closed rejection | `cursor/road-reliability-8d5b` | [19](https://github.com/NotDrake100/driftzero/pull/19) | Relative gate failed. Overlay not enabled. Not merged. |
-| C learned motion | Preregistered | `cursor/learned-motion-d676` | [20](https://github.com/NotDrake100/driftzero/pull/20) | Joint distance and heading. Holdout closed. Not trained. |
+| C learned motion | Training opened | `codex/joint-motion-real-data` | [22](https://github.com/NotDrake100/driftzero/pull/22) | Real-data joint sequence. Holdout closed. No candidate yet. Preregistration remains [20](https://github.com/NotDrake100/driftzero/pull/20). |
 | D evaluation | Checks prepared | `cursor/accuracy-evaluation-d676` | [21](https://github.com/NotDrake100/driftzero/pull/21) | Parity and leakage only. Selection blocked. |
 | E capture audit | Logger merged | `cursor/phone-validation-d676` | [18](https://github.com/NotDrake100/driftzero/pull/18) | 0 field drives. Placement validation pending. |
 
@@ -72,13 +72,14 @@ enabled on main. Do not start another map-only pass without a new hypothesis.
 | `combined_v1` | 39.84% | 54.02% | fail median |
 | `lateral_heal_v1` | 39.84% | 54.02% | fail median |
 
-## C preregistration
+## C status
 
-ADR [016](https://github.com/NotDrake100/driftzero/blob/cursor/learned-motion-d676/docs/adr/016-learned-motion.md).
-Joint travelled distance and heading change, uncertainty, persist-speed/heading
-fallback. Primary score is blackout position drift. TCN/GRU configs are
-registered, not trained. No GPU assumed. Synthetic CPU smoke is not a
-candidate.
+PR 20 remains the coordinator preregistration (ADR 016). Owner PR 22
+(`codex/joint-motion-real-data`, ADR 018) is the real-data training pipeline.
+It scores development blackout drift and keeps the holdout closed. It does not
+yet pin the exact 24/10/1 group IDs in code. That is a merge blocker, not a
+license to open the holdout. No measured candidate. Do not run locked
+confirmation from this PR.
 
 ## D checks
 
@@ -121,8 +122,8 @@ Route and vehicle identities are unavailable. Driver letter is prefix-only.
 
 ## Next justified work
 
-1. Train C on the 24 train groups only. Score blackout position drift on
-   development. Do not open the holdout.
+1. Land exact frozen-group pins on PR 22, then wait for measured development
+   tables. Do not open the holdout.
 2. Keep D selection closed until an eligible C config exists.
 3. Do not merge PR 19 as a live map default.
 4. Owner field drives remain required for placement validation.
@@ -130,5 +131,5 @@ Route and vehicle identities are unavailable. Driver letter is prefix-only.
 ## Resume
 
 Resume from this file and `results/cursor_campaign/v1/manifest.json`. A and the
-E logger are on main. B is closed. C/D are drafted. Do not restart A's
+E logger are on main. B is closed. C training is PR 22. Do not restart A's
 diagnostic run.

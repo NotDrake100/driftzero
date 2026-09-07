@@ -40,12 +40,12 @@ jobs:
         run: git lfs pull --include='**/Categorised IOVNB Dataset/**/S-*.csv'
       - name: Record provenance
         run: |
-          mkdir -p results/joint_sequence
-          git rev-parse HEAD > results/joint_sequence/code_commit.txt
-          git -C data/raw/io_vnbd rev-parse HEAD > results/joint_sequence/data_commit.txt
-          git -C data/raw/io_vnbd lfs ls-files --long > results/joint_sequence/lfs_objects.txt
-          python --version > results/joint_sequence/runtime.txt
-          java -version 2>> results/joint_sequence/runtime.txt
+          mkdir -p results/joint_sequence_raw
+          git rev-parse HEAD > results/joint_sequence_raw/code_commit.txt
+          git -C data/raw/io_vnbd rev-parse HEAD > results/joint_sequence_raw/data_commit.txt
+          git -C data/raw/io_vnbd lfs ls-files --long > results/joint_sequence_raw/lfs_objects.txt
+          python --version > results/joint_sequence_raw/runtime.txt
+          java -version 2>> results/joint_sequence_raw/runtime.txt
       - name: Train and score development checkpoints
         env:
           PYTHONPATH: ml/src
@@ -55,4 +55,4 @@ jobs:
         with:
           name: joint-motion-evidence
           retention-days: 30
-          path: results/joint_sequence/
+          path: results/joint_sequence_raw/

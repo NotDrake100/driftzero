@@ -28,11 +28,13 @@ from driftzero_ml.joint_sequence import (
     build_sequence,
     local_target,
     position_states,
+    raw_gyro_samples,
     validate_roles,
 )
 
 SEED = 26168
 EPOCHS = 16
+START_FRACTIONS = tuple(i/14 for i in range(1, 13))
 ARCHITECTURES = ('mlp', 'tcn', 'gru')
 
 
@@ -60,12 +62,12 @@ def training_samples(repo: Path, split: dict, out: Path) -> list[dict]:
                 if None not in pos and pos != last:
                     fixes.append(row.timestamp_ns)
                     last = pos
-            # Four deterministic training starts per trip; outcomes never choose them.
-            starts = sorted({fixes[min(len(fixes)-1, int(len(fixes)*f))] for f in (.2, .4, .6, .8)}) if fixes else []
+            # Twelve deterministic training starts per trip; outcomes never choose them.
+            starts = sorted({fixes[min(len(fixes)-1, int(len(fixes)*f))] for f in START_FRACTIONS}) if fixes else []
             for start in starts:
                 try:
                     _, frames = export_sensor_frames(rows, mask_start_ns=start)
-                    seq = build_sequence(frames, start, start+90_000_000_001)
+                    seq = build_sequence(frames, start, start+90_000_000_001, raw_gyro_samples(rows))
                     truth = {f['timestamp_ns']: f['payload'] for f in frames if f['kind'] == 'gnss_fix'}
                     labels, mask = [], []
                     for stamp in seq.stamps:
@@ -102,7 +104,7 @@ def load_frames(path: Path) -> list[dict]:
     return [row for line in path.read_text().splitlines() if 'kind' in (row := json.loads(line))]
 
 
-def evaluate(network, base_dir: Path, baseline: dict, out: Path) -> dict:
+def evaluate(network, base_dir: Path, baseline: dict, out: Path, raw_by_trip: dict) -> dict:
     import torch
 
     scored, failures = [], list(baseline['failures'])
@@ -112,7 +114,7 @@ def evaluate(network, base_dir: Path, baseline: dict, out: Path) -> dict:
         note = None
         try:
             frames = load_frames(base_dir/'frames'/f'{key}.jsonl')
-            seq = build_sequence(frames, row['start_ns'], row['end_ns'])
+            seq = build_sequence(frames, row['start_ns'], row['end_ns'], raw_by_trip[row['trip_id']])
             if network is None:
                 positions, position = [], [0., 0.]
                 for velocity, dt in zip(seq.base_velocity, seq.dt):
@@ -161,7 +163,7 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repo', type=Path, default=Path.cwd())
-    parser.add_argument('--out', type=Path, default=Path('results/joint_sequence'))
+    parser.add_argument('--out', type=Path, default=Path('results/joint_sequence_raw'))
     args = parser.parse_args()
     repo, out = args.repo.resolve(), args.repo.resolve()/args.out
     split_path = repo/'results/cursor_diagnostics/split_manifest.json'
@@ -172,7 +174,7 @@ def main() -> int:
     random.seed(SEED)
     torch.use_deterministic_algorithms(True)
     write_json(out/'preregistration.json', {'seed': SEED, 'architectures': ARCHITECTURES, 'epochs': EPOCHS,
-               'batch_size': 8, 'learning_rate': .001, 'training_window_s': 90, 'starts': [.2, .4, .6, .8],
+               'batch_size': 8, 'learning_rate': .001, 'training_window_s': 90, 'starts': START_FRACTIONS, 'variant': 'raw_gyro_v2',
                'checkpoint_every': 4, 'selection': 'complete, zero fallback, median 10% relative gain, p95 and fail10 no worse',
                'split_sha256': hashlib.sha256(split_path.read_bytes()).hexdigest(),
                'torch': torch.__version__, 'fresh_holdout_open': False, 'phone_changed': False})
@@ -184,8 +186,11 @@ def main() -> int:
     baseline = run(repo, base_dir, system='latch_sparse_reseed', reexport=True, rerun=True,
                    coast_mode='yaw_speed_hold', extra_replay_args=CANDIDATES['latch_sparse_reseed'],
                    skip_sensitivity=True, development_interval_ids=ids)
+    tables = {p.stem: p for p in screening_csv_paths(repo/'data/raw/io_vnbd')}
+    raw_by_trip = {trip: raw_gyro_samples(load_smartphone_csv(tables[trip]))
+                   for trip in sorted({r['trip_id'] for r in baseline['per_interval']})}
     candidates = {}
-    candidates['seed_gyro'] = evaluate(None, base_dir, baseline, out/'seed_gyro.json')
+    candidates['seed_gyro'] = evaluate(None, base_dir, baseline, out/'seed_gyro.json', raw_by_trip)
     all_features = torch.tensor([f for s in samples for f in s['features']])
     for kind in ARCHITECTURES:
         torch.manual_seed(SEED)
@@ -226,7 +231,7 @@ def main() -> int:
             if epoch % 4 == 0:
                 name = f'{kind}_{epoch}'
                 torch.save({'kind': kind, 'state_dict': model.state_dict()}, out/f'{name}.pt')
-                candidates[name] = evaluate(model, base_dir, baseline, out/f'{name}.json')
+                candidates[name] = evaluate(model, base_dir, baseline, out/f'{name}.json', raw_by_trip)
                 print(json.dumps({'candidate': name, **candidates[name]['summary']}), flush=True)
     accepted = [name for name, result in candidates.items() if eligible(result, baseline)]
     selected = min(accepted, key=lambda n: (candidates[n]['summary']['fail10'], candidates[n]['summary']['p95'],

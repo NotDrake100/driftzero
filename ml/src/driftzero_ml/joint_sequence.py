@@ -4,13 +4,14 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from driftzero_ml.datasets.io_vnbd import trim_nondecreasing_rows
 from driftzero_ml.gnss_truth import seed_heading_rad
 from driftzero_ml.osm_coast import prefix_seed
 from driftzero_ml.road_particle import enu_to_ll, ll_to_enu
 
 FEATURES = ('ax_g', 'ay_g', 'az_g', 'gyro_up', 'dt_s', 'age_90s', 'seed_speed_30mps',
             'relative_heading_sin', 'relative_heading_cos', 'gyro_available', 'gyro_strong',
-            'accel_available')
+            'accel_available', 'raw_gyro_yaw', 'raw_gyro_pitch', 'raw_gyro_roll', 'raw_gyro_available')
 
 
 @dataclass
@@ -25,7 +26,8 @@ class SequenceInput:
     start_ns: int
 
 
-def build_sequence(frames: list[dict], start: int, end: int) -> SequenceInput:
+def build_sequence(frames: list[dict], start: int, end: int,
+                   raw_gyro: dict[int, tuple[float, float, float]] | None = None) -> SequenceInput:
     seed = prefix_seed(frames, start)
     if seed['timestamp_ns'] != start:
         raise ValueError('research sequence requires a fresh fix exactly at mask start')
@@ -47,13 +49,16 @@ def build_sequence(frames: list[dict], start: int, end: int) -> SequenceInput:
             raise ValueError('IMU gap or invalid timestep')
         accel, gyro = sensors.get('accelerometer'), sensors.get('gyroscope')
         strong = gyro is not None and 'gyro_heading_pick_weak' not in gyro['quality']['flags']
-        rate = gyro['payload']['z'] if strong else 0.0
+        observed_rate = gyro['payload']['z'] if gyro is not None else 0.0
+        rate = observed_rate if strong else 0.0
         relative -= rate*dt
         # Zero placeholders are paired with explicit availability channels.
         axes = [accel['payload'][axis]/9.80665 if accel else 0.0 for axis in ('x', 'y', 'z')]
-        vector = [*axes, rate, dt, (stamp-start)/90e9, seed['speed_mps']/30,
+        raw = None if raw_gyro is None else raw_gyro.get(stamp)
+        vector = [*axes, observed_rate, dt, (stamp-start)/90e9, seed['speed_mps']/30,
                   math.sin(relative), math.cos(relative), float(gyro is not None),
-                  float(strong), float(accel is not None)]
+                  float(strong), float(accel is not None),
+                  *(raw if raw is not None else (0.0, 0.0, 0.0)), float(raw is not None)]
         if not all(math.isfinite(v) for v in vector):
             raise ValueError('nonfinite input')
         features.append(vector)
@@ -97,3 +102,14 @@ def validate_roles(manifest: dict) -> None:
         seen.update(values)
     if len(manifest['train_session_groups']) != 24 or len(manifest['fresh_holdout_session_groups']) != 10:
         raise ValueError('frozen split cardinality changed')
+
+
+def raw_gyro_samples(rows) -> dict[int, tuple[float, float, float]]:
+    """Extract only timestamp and published gyro columns; no GNSS values retained."""
+    out = {}
+    ordered, _ = trim_nondecreasing_rows(rows)
+    for row in ordered:
+        values = (row.gyro_yaw, row.gyro_pitch, row.gyro_roll)
+        if all(v is not None and math.isfinite(v) for v in values):
+            out[row.timestamp_ns] = tuple(float(v) for v in values)
+    return out

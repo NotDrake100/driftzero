@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from driftzero_ml.joint_sequence import (
+    FEATURES,
     build_sequence,
     local_target,
     position_states,
@@ -36,7 +37,9 @@ class JointSequenceTest(unittest.TestCase):
         self.assertLess(first.base_velocity[-1][0], 0)  # Physical up yaw turns left.
 
     def test_coordinate_roundtrip(self):
-        seq = build_sequence(frames(), 0, 3_000_000_001)
+        data = frames()
+        data[0]['payload']['bearing_rad'] = 1.1
+        seq = build_sequence(data, 0, 3_000_000_001)
         expected = [4., 12.]
         point = position_states(seq, [expected]*len(seq.stamps))[-1]['position']
         actual = local_target(seq, point['latitude_deg'], point['longitude_deg'])
@@ -77,7 +80,7 @@ class JointSequenceTest(unittest.TestCase):
         torch.set_num_threads(1)
         for kind in ('mlp', 'tcn', 'gru'):
             model = JointNetwork(kind)
-            x, base, dt = torch.randn(2, 35, 12), torch.randn(2, 35, 2), torch.full((2, 35), .1)
+            x, base, dt = torch.randn(2, 35, len(FEATURES)), torch.randn(2, 35, 2), torch.full((2, 35), .1)
             # Nonzero heads ensure test covers the learned path, not only zero-init fallback.
             torch.nn.init.normal_(model.head.weight, std=.01)
             full, sigma = model(x, base, dt)
@@ -85,3 +88,16 @@ class JointSequenceTest(unittest.TestCase):
             torch.testing.assert_close(full[:, :20], short, atol=1e-5, rtol=1e-5)
             (full.square().mean()+sigma.mean()).backward()
             self.assertTrue(all(p.grad is not None for p in model.parameters()))
+
+    def test_weak_gyro_is_visible_but_does_not_drive_physics(self):
+        data = frames()
+        for f in data:
+            if f['kind'] == 'gyroscope':
+                f['quality']['flags'] = ['gyro_heading_pick_weak']
+        raw = {100_000_000: (.1, -.3, .2), 9_000_000_000: (999., 999., 999.)}
+        seq = build_sequence(data, 0, 3_000_000_001, raw)
+        self.assertEqual(seq.features[0][3], .1)
+        self.assertEqual(seq.features[0][-4:], [.1, -.3, .2, 1.])
+        self.assertTrue(all(v == [0., 10.] for v in seq.base_velocity))
+        raw[9_000_000_000] = (-999., 0., 0.)
+        self.assertEqual(seq, build_sequence(data, 0, 3_000_000_001, raw))

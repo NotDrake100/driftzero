@@ -47,3 +47,24 @@ prefix-invariance, hidden-fix, coordinate, gap and split tests guard the boundar
 Results, raw per-interval CSV, training manifest, tensors, checkpoints and source
 provenance are archived by .github/workflows/joint-motion.yml. Artifacts expire;
 compact reports must also be committed. No measured score is asserted in this ADR.
+
+## Second declared round: retain raw gyro observations
+
+The initial 13 development candidates (physics baseline and twelve trained
+checkpoints) all failed the tail requirement. Best median was 33.93%; no candidate
+was selected. This result is retained separately, not overwritten.
+
+The first model input discarded weak-calibration gyro information along with the
+conservative physics path. In round two, retain the observed projected gyro even
+when weak, plus all three original IO-VNBD gyro columns and their availability.
+The physics path still holds heading when calibration is weak. Raw columns are
+not claimed to be Android XYZ. Timestamp rewinds are trimmed identically to the
+exporter so a later suffix cannot overwrite earlier samples. Extracted raw inputs
+contain only timestamps and gyro values, no GNSS fields.
+
+Increase training coverage to twelve deterministic starts per trip, fractions
+1/14 through 12/14, while retaining the 90-second horizon, 16 epochs, architecture
+width, losses and development gate. This is a joint input/coverage experiment;
+any gain cannot be attributed to one of these changes alone. The frozen train,
+development and closed holdout roles remain unchanged. Record it as raw_gyro_v2
+in results/joint_sequence_raw. No locked confirmation or Android change is implied.

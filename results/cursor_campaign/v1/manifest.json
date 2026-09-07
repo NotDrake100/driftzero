@@ -1,6 +1,6 @@
 {
   "campaign": "cursor-accuracy-below-10pct",
-  "version": 5,
+  "version": 6,
   "date_utc": "2026-09-07",
   "role": "F-coordinator",
   "status": "checkpoint",
@@ -10,7 +10,7 @@
     "median_target_passed": false,
     "all_interval_target_passed": false,
     "field_placements_tested": false,
-    "notes": "A diagnostics and E logger audit are on main. That is not a 10% pass. B is a closed rejection. C has a preregistration (PR 20) and an owner real-data training PR (22). PR 22 has no measured candidate yet. D selection stays blocked. No field drive."
+    "notes": "A diagnostics and E logger audit are on main. That is not a 10% pass. B is a closed rejection. C real-data training on PR 22 scored development and selected nobody. D selection stays blocked. No field drive."
   },
   "pins": {
     "campaign_base_commit": "1bd76e345080ec2d37d483ee8732d42b13429e17",
@@ -231,7 +231,7 @@
     },
     "C": {
       "name": "learned-motion",
-      "status": "training_pipeline_opened",
+      "status": "measured_rejection",
       "holdout_open": false,
       "objective": "joint_distance_and_heading",
       "primary_score": "blackout_position_drift",
@@ -249,7 +249,14 @@
         "training_started": true,
         "measured_candidate": false,
         "review": "fix_required_exact_group_pin",
-        "notes": "Filters train groups from the frozen manifest. Does not pin the exact 24/10/1 IDs in code. Parallel to PR 20. Do not merge as a candidate."
+        "actions_run": 34157730168,
+        "artifact": "joint-motion-evidence",
+        "selection_status": "rejected",
+        "locked_confirmation": false,
+        "fresh_holdout_open": false,
+        "baseline_seed_gyro": {"median": 0.400650494429274, "p95": 0.5894975874481975, "fail10": 10},
+        "best_median": {"config": "tcn_12", "median": 0.3393314477171919, "p95": 0.8877010555797002, "fail10": 11},
+        "notes": "Every checkpoint failed the relative development gate on p95 or fail10. Sparse train windows. Exact 24/10/1 IDs still not pinned in code. Do not merge as a candidate."
       }
     },
     "D": {
@@ -295,8 +302,8 @@
     "No field recordings exist. Cloud agents cannot manufacture drives.",
     "This coordinator workspace has no ANDROID_HOME. Android app unit tests were not run here."
   ],
-  "last_completed_step": "F v5: recorded owner PR 22 as C real-data training. No candidate. Selection still blocked.",
-  "next_step": "Wait for PR 22 measured development tables and exact group-ID pins. Keep holdout closed. Do not run locked confirmation. Do not merge B.",
+  "last_completed_step": "F v6: recorded PR 22 development scores. No eligible C candidate. Selection still blocked.",
+  "next_step": "Do not run locked confirmation. Keep holdout closed. Next C work needs denser train windows or a new joint-motion hypothesis, plus exact group-ID pins. Do not merge B.",
   "failures": [
     "A and B first appeared as RUNNING with no branch. Git evidence arrived later. Do not treat lifecycle RUNNING as an experiment."
   ]

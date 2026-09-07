@@ -1,6 +1,6 @@
 # Accuracy campaign index
 
-Date: 2026-09-07. Coordinator checkpoint v5. This is a tracking document, not
+Date: 2026-09-07. Coordinator checkpoint v6. This is a tracking document, not
 an accuracy result. Machine-readable copy:
 [results/cursor_campaign/v1/manifest.json](../results/cursor_campaign/v1/manifest.json).
 Plan: [docs/15_CURSOR_ACCURACY_EXECUTION_PLAN.md](15_CURSOR_ACCURACY_EXECUTION_PLAN.md).
@@ -11,7 +11,7 @@ Coordination ADR: [015](adr/015-accuracy-campaign.md).
 | Status | Value | Evidence |
 |---|---|---|
 | Code merged | Partial | Diagnostics PR 17 and capture-audit PR 18 are on main. B overlay is not. C/D are not. |
-| Experiment completed | Partial | A diagnostics done. B rejected. C training opened on PR 22. No candidate. |
+| Experiment completed | Partial | A diagnostics done. B rejected. C PR 22 scored and rejected. No candidate. |
 | Median target passed | No | Reproduced locked median 48.83% |
 | All-interval target passed | No | `accuracy_gate` failed. 6/35 below 10% |
 | Field placements tested | No | No owner drives |
@@ -24,7 +24,7 @@ Do not describe the 48.83% locked median as a fresh independent validation.
 |---|---|---|---|---|
 | A diagnostics | Merged | `cursor/accuracy-diagnostics-9aba` | [17](https://github.com/NotDrake100/driftzero/pull/17) | Score-only. Locked 35 reproduced. Split frozen. |
 | B road reliability | Closed rejection | `cursor/road-reliability-8d5b` | [19](https://github.com/NotDrake100/driftzero/pull/19) | Relative gate failed. Overlay not enabled. Not merged. |
-| C learned motion | Training opened | `codex/joint-motion-real-data` | [22](https://github.com/NotDrake100/driftzero/pull/22) | Real-data joint sequence. Holdout closed. No candidate yet. Preregistration remains [20](https://github.com/NotDrake100/driftzero/pull/20). |
+| C learned motion | Measured rejection | `codex/joint-motion-real-data` | [22](https://github.com/NotDrake100/driftzero/pull/22) | Development scored. No eligible candidate. Holdout closed. Preregistration remains [20](https://github.com/NotDrake100/driftzero/pull/20). |
 | D evaluation | Checks prepared | `cursor/accuracy-evaluation-d676` | [21](https://github.com/NotDrake100/driftzero/pull/21) | Parity and leakage only. Selection blocked. |
 | E capture audit | Logger merged | `cursor/phone-validation-d676` | [18](https://github.com/NotDrake100/driftzero/pull/18) | 0 field drives. Placement validation pending. |
 
@@ -75,11 +75,17 @@ enabled on main. Do not start another map-only pass without a new hypothesis.
 ## C status
 
 PR 20 remains the coordinator preregistration (ADR 016). Owner PR 22
-(`codex/joint-motion-real-data`, ADR 018) is the real-data training pipeline.
-It scores development blackout drift and keeps the holdout closed. It does not
-yet pin the exact 24/10/1 group IDs in code. That is a merge blocker, not a
-license to open the holdout. No measured candidate. Do not run locked
-confirmation from this PR.
+(`codex/joint-motion-real-data`, ADR 018) trained on Actions run
+`34157730168`. Selection status `rejected`. Locked confirmation off. Holdout
+closed.
+
+Development 11, run baseline `seed_gyro` median 40.07%, p95 58.95%, 1/11
+below 0.10. Learned checkpoints cut the median and grew the tail. Best
+median was `tcn_12` at 33.93% with p95 88.77% and 0/11 below 0.10. No
+config met the relative development gate. Train-window counts were sparse
+(several groups accepted 0 to 4 windows). Exact 24/10/1 group IDs are still
+not pinned in code. Do not merge as a candidate. Do not run locked
+confirmation.
 
 ## D checks
 
@@ -122,8 +128,9 @@ Route and vehicle identities are unavailable. Driver letter is prefix-only.
 
 ## Next justified work
 
-1. Land exact frozen-group pins on PR 22, then wait for measured development
-   tables. Do not open the holdout.
+1. Do not promote PR 22. A later C round needs denser train windows or a
+   new joint-motion hypothesis, plus exact frozen-group pins. Do not open
+   the holdout.
 2. Keep D selection closed until an eligible C config exists.
 3. Do not merge PR 19 as a live map default.
 4. Owner field drives remain required for placement validation.

@@ -1,6 +1,6 @@
 # Accuracy campaign index
 
-Date: 2026-09-07. Coordinator checkpoint v6. This is a tracking document, not
+Date: 2026-09-07. Coordinator checkpoint v7. This is a tracking document, not
 an accuracy result. Machine-readable copy:
 [results/cursor_campaign/v1/manifest.json](../results/cursor_campaign/v1/manifest.json).
 Plan: [docs/15_CURSOR_ACCURACY_EXECUTION_PLAN.md](15_CURSOR_ACCURACY_EXECUTION_PLAN.md).
@@ -87,6 +87,12 @@ config met the relative development gate. Train-window counts were sparse
 not pinned in code. Do not merge as a candidate. Do not run locked
 confirmation.
 
+Round 2 is declared as `raw_gyro_v2`: keep weak/projected gyro in the learned
+input, add the three published gyro columns, and use twelve deterministic
+starts per trip. Those two changes are confounded. First-round numbers stay
+in `results/joint_motion_20260907/initial`. `docs/20_JOINT_SEQUENCE_EXPERIMENT.md`
+still describes round 1.
+
 ## D checks
 
 ADR [017](https://github.com/NotDrake100/driftzero/blob/cursor/accuracy-evaluation-d676/docs/adr/017-evaluation-checks.md).
@@ -128,9 +134,8 @@ Route and vehicle identities are unavailable. Driver letter is prefix-only.
 
 ## Next justified work
 
-1. Do not promote PR 22. A later C round needs denser train windows or a
-   new joint-motion hypothesis, plus exact frozen-group pins. Do not open
-   the holdout.
+1. Wait for `raw_gyro_v2` development scores. Do not promote round 1. Pin
+   the exact frozen group IDs before merge. Do not open the holdout.
 2. Keep D selection closed until an eligible C config exists.
 3. Do not merge PR 19 as a live map default.
 4. Owner field drives remain required for placement validation.

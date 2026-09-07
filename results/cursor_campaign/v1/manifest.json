@@ -1,6 +1,6 @@
 {
   "campaign": "cursor-accuracy-below-10pct",
-  "version": 6,
+  "version": 7,
   "date_utc": "2026-09-07",
   "role": "F-coordinator",
   "status": "checkpoint",
@@ -244,19 +244,28 @@
       "real_data_run": {
         "branch": "codex/joint-motion-real-data",
         "pr": "https://github.com/NotDrake100/driftzero/pull/22",
-        "latest_commit": "359f7288904943831bb23f62015a5f050c316061",
+        "latest_commit": "bba1a9c69b7025acc625168db461927bee3d881a",
         "author": "NotDrake100",
         "training_started": true,
         "measured_candidate": false,
         "review": "fix_required_exact_group_pin",
-        "actions_run": 34157730168,
-        "artifact": "joint-motion-evidence",
-        "selection_status": "rejected",
-        "locked_confirmation": false,
-        "fresh_holdout_open": false,
-        "baseline_seed_gyro": {"median": 0.400650494429274, "p95": 0.5894975874481975, "fail10": 10},
-        "best_median": {"config": "tcn_12", "median": 0.3393314477171919, "p95": 0.8877010555797002, "fail10": 11},
-        "notes": "Every checkpoint failed the relative development gate on p95 or fail10. Sparse train windows. Exact 24/10/1 IDs still not pinned in code. Do not merge as a candidate."
+        "round1": {
+          "actions_run": 34157730168,
+          "archive": "results/joint_motion_20260907/initial",
+          "selection_status": "rejected",
+          "locked_confirmation": false,
+          "fresh_holdout_open": false,
+          "baseline_seed_gyro": {"median": 0.400650494429274, "p95": 0.5894975874481975, "fail10": 10},
+          "best_median": {"config": "tcn_12", "median": 0.3393314477171919, "p95": 0.8877010555797002, "fail10": 11}
+        },
+        "round2": {
+          "variant": "raw_gyro_v2",
+          "status": "declared_running",
+          "changes": ["retain_weak_and_column_gyro", "twelve_starts_per_trip"],
+          "output": "results/joint_sequence_raw",
+          "confounded": true
+        },
+        "notes": "Round 1 archived and matches Actions 34157730168. Round 2 is a new joint input/coverage experiment. Exact 24/10/1 IDs still not pinned. Do not merge as a candidate."
       }
     },
     "D": {
@@ -302,8 +311,8 @@
     "No field recordings exist. Cloud agents cannot manufacture drives.",
     "This coordinator workspace has no ANDROID_HOME. Android app unit tests were not run here."
   ],
-  "last_completed_step": "F v6: recorded PR 22 development scores. No eligible C candidate. Selection still blocked.",
-  "next_step": "Do not run locked confirmation. Keep holdout closed. Next C work needs denser train windows or a new joint-motion hypothesis, plus exact group-ID pins. Do not merge B.",
+  "last_completed_step": "F v7: confirmed PR 22 archived round-1 rejection and declared raw_gyro_v2. Group IDs still unpinned.",
+  "next_step": "Wait for raw_gyro_v2 development scores. Keep holdout closed. Do not run locked confirmation. Do not merge B.",
   "failures": [
     "A and B first appeared as RUNNING with no branch. Git evidence arrived later. Do not treat lifecycle RUNNING as an experiment."
   ]

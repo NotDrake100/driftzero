@@ -1,6 +1,6 @@
 # Accuracy campaign index
 
-Date: 2026-09-07. Coordinator checkpoint v7. This is a tracking document, not
+Date: 2026-09-07. Coordinator checkpoint v8. This is a tracking document, not
 an accuracy result. Machine-readable copy:
 [results/cursor_campaign/v1/manifest.json](../results/cursor_campaign/v1/manifest.json).
 Plan: [docs/15_CURSOR_ACCURACY_EXECUTION_PLAN.md](15_CURSOR_ACCURACY_EXECUTION_PLAN.md).
@@ -93,6 +93,13 @@ starts per trip. Those two changes are confounded. First-round numbers stay
 in `results/joint_motion_20260907/initial`. `docs/20_JOINT_SEQUENCE_EXPERIMENT.md`
 still describes round 1.
 
+Round 2 `raw_gyro_v2` (Actions `34158350064`) also rejected. Best median was
+`tcn_8` at 30.06% with p95 120.81%. The tail got worse than round 1. Those
+tables are not yet in git.
+
+Round 3 `polar_balanced_v3` is declared and running: polar speed/heading head
+plus inverse group-frequency loss. Those two changes are confounded.
+
 ## D checks
 
 ADR [017](https://github.com/NotDrake100/driftzero/blob/cursor/accuracy-evaluation-d676/docs/adr/017-evaluation-checks.md).
@@ -134,8 +141,9 @@ Route and vehicle identities are unavailable. Driver letter is prefix-only.
 
 ## Next justified work
 
-1. Wait for `raw_gyro_v2` development scores. Do not promote round 1. Pin
-   the exact frozen group IDs before merge. Do not open the holdout.
+1. Archive `raw_gyro_v2` tables in git. Wait for `polar_balanced_v3` scores.
+   Pin exact frozen group IDs. Do not open the holdout. Do not stack another
+   C round until the tail is reviewed.
 2. Keep D selection closed until an eligible C config exists.
 3. Do not merge PR 19 as a live map default.
 4. Owner field drives remain required for placement validation.

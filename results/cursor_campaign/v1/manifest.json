@@ -1,6 +1,6 @@
 {
   "campaign": "cursor-accuracy-below-10pct",
-  "version": 7,
+  "version": 8,
   "date_utc": "2026-09-07",
   "role": "F-coordinator",
   "status": "checkpoint",
@@ -244,7 +244,7 @@
       "real_data_run": {
         "branch": "codex/joint-motion-real-data",
         "pr": "https://github.com/NotDrake100/driftzero/pull/22",
-        "latest_commit": "bba1a9c69b7025acc625168db461927bee3d881a",
+        "latest_commit": "5699a7a17505ccc746f30f37236b6a8064ab2eb4",
         "author": "NotDrake100",
         "training_started": true,
         "measured_candidate": false,
@@ -260,12 +260,23 @@
         },
         "round2": {
           "variant": "raw_gyro_v2",
-          "status": "declared_running",
+          "status": "rejected",
+          "actions_run": 34158350064,
+          "archived_in_git": false,
           "changes": ["retain_weak_and_column_gyro", "twelve_starts_per_trip"],
           "output": "results/joint_sequence_raw",
+          "confounded": true,
+          "baseline_seed_gyro": {"median": 0.400650494429274, "p95": 0.5894975874481975, "fail10": 10},
+          "best_median": {"config": "tcn_8", "median": 0.30057255802640515, "p95": 1.2081495113816025, "fail10": 10}
+        },
+        "round3": {
+          "variant": "polar_balanced_v3",
+          "status": "declared_running",
+          "changes": ["polar_head", "group_balanced_loss"],
+          "output": "results/joint_sequence_polar",
           "confounded": true
         },
-        "notes": "Round 1 archived and matches Actions 34157730168. Round 2 is a new joint input/coverage experiment. Exact 24/10/1 IDs still not pinned. Do not merge as a candidate."
+        "notes": "Round 2 rejected with a worse tail. Not archived in git. Round 3 started before that archive. Exact 24/10/1 IDs still not pinned. Do not merge as a candidate."
       }
     },
     "D": {
@@ -311,8 +322,8 @@
     "No field recordings exist. Cloud agents cannot manufacture drives.",
     "This coordinator workspace has no ANDROID_HOME. Android app unit tests were not run here."
   ],
-  "last_completed_step": "F v7: confirmed PR 22 archived round-1 rejection and declared raw_gyro_v2. Group IDs still unpinned.",
-  "next_step": "Wait for raw_gyro_v2 development scores. Keep holdout closed. Do not run locked confirmation. Do not merge B.",
+  "last_completed_step": "F v8: recorded raw_gyro_v2 rejection from Actions 34158350064. polar_balanced_v3 is running.",
+  "next_step": "Archive round-2 tables in git. Wait for polar_balanced_v3 scores. Pin exact group IDs. Do not open holdout. Do not run locked confirmation.",
   "failures": [
     "A and B first appeared as RUNNING with no branch. Git evidence arrived later. Do not treat lifecycle RUNNING as an experiment."
   ]

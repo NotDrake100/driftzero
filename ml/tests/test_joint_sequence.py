@@ -101,3 +101,28 @@ class JointSequenceTest(unittest.TestCase):
         self.assertTrue(all(v == [0., 10.] for v in seq.base_velocity))
         raw[9_000_000_000] = (-999., 0., 0.)
         self.assertEqual(seq, build_sequence(data, 0, 3_000_000_001, raw))
+
+    @unittest.skipUnless(importlib.util.find_spec('torch'), 'optional PyTorch is unavailable')
+    def test_polar_head_can_stop_and_turn_at_high_seed_speed(self):
+        import math
+
+        import torch
+
+        from driftzero_ml.joint_network import JointNetwork
+
+        model = JointNetwork('mlp', head_mode='polar')
+        x = torch.zeros(1, 10, len(FEATURES))
+        x[..., 8] = 1.0
+        base = torch.zeros(1, 10, 2)
+        base[..., 1] = 25.0
+        dt = torch.full((1, 10), .1)
+        with torch.no_grad():
+            model.head.bias[0] = math.atanh(.5)
+            position, _ = model(x, base, dt)
+            torch.testing.assert_close(position[0, -1], torch.tensor([25., 0.]), atol=1e-4, rtol=1e-4)
+            model.head.bias[1] = math.atanh(-25/55)
+            stopped, _ = model(x, base, dt)
+            self.assertLess(float(stopped.abs().max()), 1e-4)
+            model.head.bias[1] = 10
+            capped, _ = model(x, base, dt)
+            self.assertLessEqual(float(torch.linalg.vector_norm(capped[0, -1])), 55.001)

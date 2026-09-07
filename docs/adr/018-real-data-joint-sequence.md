@@ -68,3 +68,21 @@ width, losses and development gate. This is a joint input/coverage experiment;
 any gain cannot be attributed to one of these changes alone. The frozen train,
 development and closed holdout roles remain unchanged. Record it as raw_gyro_v2
 in results/joint_sequence_raw. No locked confirmation or Android change is implied.
+
+## Third declared round: represent stops and sharp turns
+
+The ±10 m/s Cartesian residual cannot stop a 25 m/s straight-motion prior or
+rotate its velocity through 90 degrees. This is a model-class restriction, not
+an empirical accuracy claim. Add an explicit polar head: heading correction
+π*tanh(output), speed clamp(norm(base)+55*tanh(output), 0, 55). At zero output the
+physics prior is preserved. Store head_mode with every checkpoint so older
+Cartesian weights cannot be silently interpreted as polar outputs. Tests force a
+25 m/s prior through a 90-degree turn, full stop and speed saturation.
+
+Use the raw-gyro inputs and twelve-start schedule from round two. Average label
+loss within each window, and weight windows by inverse training session-group
+frequency. Dense GNSS streams and multiple sibling trips must not dominate the
+objective merely by having more labels/windows. Keep seed, epoch budget and all
+evaluation gates unchanged. This jointly changes head capacity and weighting;
+report it as polar_balanced_v3, without attributing a gain to only one change.
+All rounds' measured outputs remain separate. No holdout labels are opened.

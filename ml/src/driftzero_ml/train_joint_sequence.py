@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import random
+from collections import Counter
 from pathlib import Path
 from statistics import median
 
@@ -163,7 +164,7 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repo', type=Path, default=Path.cwd())
-    parser.add_argument('--out', type=Path, default=Path('results/joint_sequence_raw'))
+    parser.add_argument('--out', type=Path, default=Path('results/joint_sequence_polar'))
     args = parser.parse_args()
     repo, out = args.repo.resolve(), args.repo.resolve()/args.out
     split_path = repo/'results/cursor_diagnostics/split_manifest.json'
@@ -174,7 +175,7 @@ def main() -> int:
     random.seed(SEED)
     torch.use_deterministic_algorithms(True)
     write_json(out/'preregistration.json', {'seed': SEED, 'architectures': ARCHITECTURES, 'epochs': EPOCHS,
-               'batch_size': 8, 'learning_rate': .001, 'training_window_s': 90, 'starts': START_FRACTIONS, 'variant': 'raw_gyro_v2',
+               'batch_size': 8, 'learning_rate': .001, 'training_window_s': 90, 'starts': START_FRACTIONS, 'variant': 'polar_balanced_v3', 'head_mode': 'polar', 'loss_weighting': 'equal session groups and per-window labels',
                'checkpoint_every': 4, 'selection': 'complete, zero fallback, median 10% relative gain, p95 and fail10 no worse',
                'split_sha256': hashlib.sha256(split_path.read_bytes()).hexdigest(),
                'torch': torch.__version__, 'fresh_holdout_open': False, 'phone_changed': False})
@@ -191,10 +192,11 @@ def main() -> int:
                    for trip in sorted({r['trip_id'] for r in baseline['per_interval']})}
     candidates = {}
     candidates['seed_gyro'] = evaluate(None, base_dir, baseline, out/'seed_gyro.json', raw_by_trip)
+    group_counts = Counter(session_group_id(s['trip_id']) for s in samples)
     all_features = torch.tensor([f for s in samples for f in s['features']])
     for kind in ARCHITECTURES:
         torch.manual_seed(SEED)
-        model = JointNetwork(kind)
+        model = JointNetwork(kind, head_mode='polar')
         model.mean.copy_(all_features.mean(0))
         model.scale.copy_(all_features.std(0).clamp_min(.1))
         optimizer = torch.optim.Adam(model.parameters(), lr=.001)
@@ -221,7 +223,9 @@ def main() -> int:
                 scale = (torch.linalg.vector_norm(target, dim=-1)*.1).clamp_min(10)
                 robust = F.smooth_l1_loss(pred/scale.unsqueeze(-1), target/scale.unsqueeze(-1), reduction='none').sum(-1)
                 nll = .5*(error/sigma).square()+2*torch.log(sigma)
-                loss = ((robust+.01*nll)*mask).sum()/mask.sum().clamp_min(1)
+                per_window = ((robust+.01*nll)*mask).sum(-1)/mask.sum(-1).clamp_min(1)
+                weights = torch.tensor([len(samples)/(len(group_counts)*group_counts[session_group_id(s['trip_id'])]) for s in batch])
+                loss = (per_window*weights).mean()
                 optimizer.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.)
@@ -230,7 +234,7 @@ def main() -> int:
             print(json.dumps({'architecture': kind, 'epoch': epoch, 'loss': sum(losses)/len(losses)}), flush=True)
             if epoch % 4 == 0:
                 name = f'{kind}_{epoch}'
-                torch.save({'kind': kind, 'state_dict': model.state_dict()}, out/f'{name}.pt')
+                torch.save({'kind': kind, 'head_mode': model.head_mode, 'state_dict': model.state_dict()}, out/f'{name}.pt')
                 candidates[name] = evaluate(model, base_dir, baseline, out/f'{name}.json', raw_by_trip)
                 print(json.dumps({'candidate': name, **candidates[name]['summary']}), flush=True)
     accepted = [name for name, result in candidates.items() if eligible(result, baseline)]

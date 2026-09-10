@@ -1,0 +1,100 @@
+{
+  "selected": null,
+  "candidates": {
+    "seed_gyro": {
+      "count": 11,
+      "p50": 0.400650494429274,
+      "p95": 0.5894975874481975,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "mlp_4": {
+      "count": 11,
+      "p50": 0.3890635748323065,
+      "p95": 0.8162005988669057,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "mlp_8": {
+      "count": 11,
+      "p50": 0.3876925477813372,
+      "p95": 0.9790864990710569,
+      "fail10": 11,
+      "fallback_count": 0
+    },
+    "mlp_12": {
+      "count": 11,
+      "p50": 0.35125797144064175,
+      "p95": 1.0839497667817808,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "mlp_16": {
+      "count": 11,
+      "p50": 0.32796527673798453,
+      "p95": 1.1073694268662644,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "tcn_4": {
+      "count": 11,
+      "p50": 0.38064253524637215,
+      "p95": 1.1090067477313696,
+      "fail10": 11,
+      "fallback_count": 0
+    },
+    "tcn_8": {
+      "count": 11,
+      "p50": 0.30057255802640515,
+      "p95": 1.2081495113816025,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "tcn_12": {
+      "count": 11,
+      "p50": 0.3184366707766918,
+      "p95": 1.2630829552054073,
+      "fail10": 11,
+      "fallback_count": 0
+    },
+    "tcn_16": {
+      "count": 11,
+      "p50": 0.34913511880158143,
+      "p95": 1.1498455958011469,
+      "fail10": 11,
+      "fallback_count": 0
+    },
+    "gru_4": {
+      "count": 11,
+      "p50": 0.41192387814347464,
+      "p95": 0.9929506889886359,
+      "fail10": 11,
+      "fallback_count": 0
+    },
+    "gru_8": {
+      "count": 11,
+      "p50": 0.3697631451801155,
+      "p95": 1.0718283596847367,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "gru_12": {
+      "count": 11,
+      "p50": 0.3858314478716364,
+      "p95": 1.1130632148987916,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "gru_16": {
+      "count": 11,
+      "p50": 0.3325823849421504,
+      "p95": 1.0894769599393275,
+      "fail10": 9,
+      "fallback_count": 0
+    }
+  },
+  "locked_confirmation": false,
+  "fresh_holdout_open": false,
+  "status": "rejected",
+  "note": "Selection is frozen before any locked candidate confirmation; no phone rollout."
+}

@@ -32,7 +32,7 @@ class AccuracyCampaignTest(unittest.TestCase):
             self.assertNotIn("S-Vtb3", hold)
             self.assertTrue(freeze.get("c_may_train"))
             self.assertFalse(freeze.get("holdout_open", False))
-        self.assertGreaterEqual(payload["version"], 13)
+        self.assertGreaterEqual(payload["version"], 14)
         self.assertEqual(
             payload["pins"]["campaign_base_commit"],
             "b80a2aa25ae94ae62d92a373d264ff3f45efc2e8",
@@ -54,6 +54,9 @@ class AccuracyCampaignTest(unittest.TestCase):
         self.assertFalse(learned["integrated_run"]["measured_candidate"])
         self.assertFalse(learned["integrated_run"]["fresh_holdout_open"])
         self.assertIsNone(learned["integrated_run"]["selected"])
+        self.assertTrue(learned["integrated_run"]["owner_archive"]["selection_match_verified"])
+        self.assertFalse(learned["integrated_run"]["owner_archive"]["estimator_changed"])
+        self.assertFalse(learned["integrated_run"]["owner_archive"]["measured_candidate"])
         verified = json.loads(
             (ROOT / "results" / "cursor_campaign" / "v1" / "long_outage_v4" / "verified_summary.json").read_text()
         )

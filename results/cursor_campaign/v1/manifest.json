@@ -1,6 +1,6 @@
 {
   "campaign": "cursor-accuracy-below-10pct",
-  "version": 13,
+  "version": 14,
   "date_utc": "2026-09-10",
   "role": "F-coordinator",
   "status": "checkpoint",
@@ -10,7 +10,7 @@
     "median_target_passed": false,
     "all_interval_target_passed": false,
     "field_placements_tested": false,
-    "notes": "Diagnostics, capture logger, and C research trainer are on main. C rounds 1-5 rejected. That is not a 10% pass. B overlay not merged. D selection blocked. No field drive."
+    "notes": "Diagnostics, capture logger, and C research trainer are on main. C rounds 1-5 rejected and archived on PR 23. That is not a 10% pass. B overlay not merged. D selection blocked. No field drive."
   },
   "pins": {
     "campaign_base_commit": "b80a2aa25ae94ae62d92a373d264ff3f45efc2e8",
@@ -354,7 +354,16 @@
         "baseline_seed_gyro": {"median": 0.400650494429274, "p95": 0.5894975874481975, "fail10": 10},
         "best_median": {"config": "mlp_16", "median": 0.38306945571717316, "p95": 1.007756429967717, "fail10": 11},
         "selected": null,
-        "notes": "mlp_16 failed the relative median gate and p95. tcn_32 reached fail10 9 and still failed median and p95. Combined head and input change. Do not open holdout."
+        "notes": "mlp_16 failed the relative median gate and p95. tcn_32 reached fail10 9 and still failed median and p95. Combined head and input change. Do not open holdout.",
+        "owner_archive": {
+          "commit": "c2cdf412d88913842be539cff83d568e1b17ebba",
+          "path": "results/long_motion_20260910",
+          "report": "docs/21_LONG_OUTAGE_EXPERIMENT.md",
+          "estimator_changed": false,
+          "selection_match_verified": true,
+          "draft": true,
+          "measured_candidate": false
+        }
       }
     },
     "D": {
@@ -400,8 +409,8 @@
     "No field recordings exist. Cloud agents cannot manufacture drives.",
     "This coordinator workspace has no ANDROID_HOME. Android app unit tests were not run here."
   ],
-  "last_completed_step": "F v13: verified integrated v5 rejection from Actions 34472740580. No eligible C candidate. Selection still blocked.",
-  "next_step": "Do not start another combined C round. Keep holdout closed. Do not run locked confirmation. Do not merge PR 19 or PR 23 as a live default.",
+  "last_completed_step": "F v14: PR 23 archive commit c2cdf41 matches verified round 4 and 5 rejections. Still not a candidate. Selection blocked.",
+  "next_step": "Do not start another combined C round. Keep holdout closed. Do not merge PR 19 or PR 23 as a live default. PR 23 may land later as research with negative numbers.",
   "failures": [
     "A and B first appeared as RUNNING with no branch. Git evidence arrived later. Do not treat lifecycle RUNNING as an experiment."
   ]

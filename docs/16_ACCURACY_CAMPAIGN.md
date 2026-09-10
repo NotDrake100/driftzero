@@ -1,6 +1,6 @@
 # Accuracy campaign index
 
-Date: 2026-09-10. Coordinator checkpoint v13. This is a tracking document, not
+Date: 2026-09-10. Coordinator checkpoint v14. This is a tracking document, not
 an accuracy result. Machine-readable copy:
 [results/cursor_campaign/v1/manifest.json](../results/cursor_campaign/v1/manifest.json).
 Plan: [docs/15_CURSOR_ACCURACY_EXECUTION_PLAN.md](15_CURSOR_ACCURACY_EXECUTION_PLAN.md).
@@ -24,7 +24,7 @@ Do not describe the 48.83% locked median as a fresh independent validation.
 |---|---|---|---|---|
 | A diagnostics | Merged | `cursor/accuracy-diagnostics-9aba` | [17](https://github.com/NotDrake100/driftzero/pull/17) | Score-only. Locked 35 reproduced. Split frozen. |
 | B road reliability | Closed rejection | `cursor/road-reliability-8d5b` | [19](https://github.com/NotDrake100/driftzero/pull/19) | Relative gate failed. Overlay not enabled. Not merged. |
-| C learned motion | Rounds 1-5 rejected | `codex/long-outage-motion` | [23](https://github.com/NotDrake100/driftzero/pull/23) | Long-horizon polar and integrated head rejected. Not a candidate. Holdout closed. |
+| C learned motion | Rounds 1-5 rejected, archived | `codex/long-outage-motion` | [23](https://github.com/NotDrake100/driftzero/pull/23) | Owner archive `c2cdf41` matches verified scores. Not a candidate. Draft. |
 | D evaluation | Checks prepared | `cursor/accuracy-evaluation-d676` | [21](https://github.com/NotDrake100/driftzero/pull/21) | Parity and leakage only. Selection blocked. |
 | E capture audit | Logger merged | `cursor/phone-validation-d676` | [18](https://github.com/NotDrake100/driftzero/pull/18) | 0 field drives. Placement validation pending. |
 
@@ -99,14 +99,12 @@ failed p95 (90.58% vs 58.95%). All twelve trained checkpoints rejected.
 The 180 s horizon did not fix the tail.
 
 Owner [PR 23](https://github.com/NotDrake100/driftzero/pull/23) HEAD
-`68beb4c` ran the integrated-heading follow-up on that frozen cache.
-Actions [34472740580](https://github.com/NotDrake100/driftzero/actions/runs/34472740580).
-Copied selection: `results/cursor_campaign/v1/integrated_v5/`. `selected`
-is null. Cache SHA matched. `holdout_read` false. `projected_only` true.
-Best median `mlp_16` 38.31% failed the relative median gate (threshold
-36.06%) and failed p95 (100.78% vs 58.95%). `tcn_32` reached 2/11 below
-10% and still failed median and p95. Combined head and input change, not
-an ablation. Do not merge PR 23 as a live default.
+`c2cdf41` archives both follow-ups under `results/long_motion_20260910/`
+plus [docs/21_LONG_OUTAGE_EXPERIMENT.md](https://github.com/NotDrake100/driftzero/blob/codex/long-outage-motion/docs/21_LONG_OUTAGE_EXPERIMENT.md).
+That commit does not change the estimator. Its `selection.json` files match
+the coordinator copies byte for byte. A cached-holdout rejection test was
+added. The PR remains draft. Research may land with these negative numbers.
+Do not merge it as a live default.
 
 Do not run locked confirmation. Polar `gru_16` remains the best C median
 and is not a candidate. A later C round needs an isolated tail
@@ -161,7 +159,8 @@ Route and vehicle identities are unavailable. Driver letter is prefix-only.
 1. Do not start another combined C round. A later attempt needs an isolated
    tail hypothesis. Keep the holdout closed.
 2. Keep D selection closed until an eligible C config exists.
-3. Do not merge PR 19 or PR 23 as a live default.
+3. Do not merge PR 19 or PR 23 as a live default. PR 23 may land later as
+   research with these negative numbers, the same way PR 22 did.
 4. Owner field drives remain required for placement validation.
 5. Pin exact frozen group IDs on the trainer remains a follow-up.
 
@@ -169,5 +168,6 @@ Route and vehicle identities are unavailable. Driver letter is prefix-only.
 
 Resume from this file and `results/cursor_campaign/v1/manifest.json`. A, the
 E logger, and the C research trainer are on main. B is closed and not merged.
-C rounds 1-5 are rejected. Do not restart A's diagnostic run. Do not treat
-polar `gru_16`, long-horizon `gru_8`, or integrated `mlp_16` as a candidate.
+C rounds 1-5 are rejected and archived on PR 23. Do not restart A's
+diagnostic run. Do not treat polar `gru_16`, long-horizon `gru_8`, or
+integrated `mlp_16` as a candidate.

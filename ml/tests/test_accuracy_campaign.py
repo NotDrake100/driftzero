@@ -32,19 +32,22 @@ class AccuracyCampaignTest(unittest.TestCase):
             self.assertNotIn("S-Vtb3", hold)
             self.assertTrue(freeze.get("c_may_train"))
             self.assertFalse(freeze.get("holdout_open", False))
-        self.assertGreaterEqual(payload["version"], 10)
+        self.assertGreaterEqual(payload["version"], 11)
         self.assertEqual(
             payload["pins"]["campaign_base_commit"],
             "b80a2aa25ae94ae62d92a373d264ff3f45efc2e8",
         )
         learned = payload["tasks"]["C"]
-        self.assertEqual(learned["status"], "merged_research_rejection")
+        self.assertEqual(learned["status"], "round4_measurement_pending")
         self.assertFalse(learned["holdout_open"])
         self.assertFalse(learned["real_data_run"]["measured_candidate"])
         self.assertEqual(
             learned["real_data_run"]["merged_commit"],
             "b80a2aa25ae94ae62d92a373d264ff3f45efc2e8",
         )
+        self.assertFalse(learned["long_outage_run"]["measured_candidate"])
+        self.assertFalse(learned["long_outage_run"]["fresh_holdout_open"])
+        self.assertFalse(learned["long_outage_run"]["locked_confirmation"])
         self.assertFalse(payload["tasks"]["D"]["selection_open"])
         self.assertFalse(payload["tasks"]["D"]["locked_confirmation_open"])
         self.assertFalse(payload["tasks"]["D"]["holdout_open"])

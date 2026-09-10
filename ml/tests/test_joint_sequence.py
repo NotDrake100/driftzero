@@ -78,14 +78,15 @@ class JointSequenceTest(unittest.TestCase):
         from driftzero_ml.joint_network import JointNetwork
 
         torch.set_num_threads(1)
-        for kind in ('mlp', 'tcn', 'gru'):
-            model = JointNetwork(kind)
-            x, base, dt = torch.randn(2, 35, len(FEATURES)), torch.randn(2, 35, 2), torch.full((2, 35), .1)
+        for kind in ('mlp', 'tcn', 'gru', 'tcn_long'):
+            model = JointNetwork(kind, head_mode='polar')
+            length, prefix = (1536, 900) if kind == 'tcn_long' else (35, 20)
+            x, base, dt = torch.randn(2, length, len(FEATURES)), torch.randn(2, length, 2), torch.full((2, length), .1)
             # Nonzero heads ensure test covers the learned path, not only zero-init fallback.
             torch.nn.init.normal_(model.head.weight, std=.01)
             full, sigma = model(x, base, dt)
-            short, _ = model(x[:, :20], base[:, :20], dt[:, :20])
-            torch.testing.assert_close(full[:, :20], short, atol=1e-5, rtol=1e-5)
+            short, _ = model(x[:, :prefix], base[:, :prefix], dt[:, :prefix])
+            torch.testing.assert_close(full[:, :prefix], short, atol=1e-5, rtol=1e-5)
             (full.square().mean()+sigma.mean()).backward()
             self.assertTrue(all(p.grad is not None for p in model.parameters()))
 
@@ -126,3 +127,74 @@ class JointSequenceTest(unittest.TestCase):
             model.head.bias[1] = 10
             capped, _ = model(x, base, dt)
             self.assertLessEqual(float(torch.linalg.vector_norm(capped[0, -1])), 55.001)
+
+    @unittest.skipUnless(importlib.util.find_spec('torch'), 'optional PyTorch is unavailable')
+    def test_increment_loss_ignores_unlabelled_positions_and_padding(self):
+        import torch
+
+        from driftzero_ml.joint_network import supervised_motion_loss
+
+        pred = torch.tensor([[[0., 2.], [0., 4.], [0., 6.], [0., 8.]]], requires_grad=True)
+        target = pred.detach().clone()
+        mask, dt = torch.tensor([[0., 1., 0., 1.]]), torch.ones(1, 4)
+        sigma = torch.full((1, 4), 5.)
+        first = supervised_motion_loss(pred, sigma, target, mask, dt, 1.)
+        target[:, 0] = 999
+        target[:, 2] = -999
+        torch.testing.assert_close(first, supervised_motion_loss(pred, sigma, target, mask, dt, 1.))
+        wrong = pred.detach().clone()
+        wrong[:, 1, 0] = 3
+        wrong.requires_grad_()
+        loss = supervised_motion_loss(wrong, sigma, target, mask, dt, 1.)
+        self.assertGreater(float(loss), float(first))
+        loss.sum().backward()
+        self.assertTrue(torch.isfinite(wrong.grad).all())
+        def padded(x, value):
+            return torch.cat((x, torch.full_like(x, value)), dim=1)
+        torch.testing.assert_close(first, supervised_motion_loss(padded(pred, 0), padded(sigma, 5),
+                                   padded(target, 0), padded(mask, 0), padded(dt, 0), 1.))
+
+    @unittest.skipUnless(importlib.util.find_spec('torch'), 'optional PyTorch is unavailable')
+    def test_integrated_speed_retains_gradient_and_heading_is_causal(self):
+        import torch
+
+        from driftzero_ml.joint_network import JointNetwork
+
+        model = JointNetwork('mlp', head_mode='integrated')
+        x = torch.zeros(1, 100, len(FEATURES))
+        x[..., 8] = 1
+        base = torch.zeros(1, 100, 2)
+        base[..., 1] = 25
+        dt = torch.full((1, 100), .1)
+        with torch.no_grad():
+            model.head.bias[1] = -3
+            model.head.bias[0] = .5
+        full, _ = model(x, base, dt)
+        short, _ = model(x[:, :50], base[:, :50], dt[:, :50])
+        torch.testing.assert_close(full[:, :50], short)
+        (-full.square().sum()).backward()
+        self.assertGreater(abs(float(model.head.bias.grad[1])), 0)
+        velocity = full.diff(dim=1)/.1
+        self.assertTrue((torch.linalg.vector_norm(velocity, dim=-1) < 55).all())
+
+    @unittest.skipUnless(importlib.util.find_spec('torch'), 'optional PyTorch is unavailable')
+    def test_cached_holdout_sample_is_rejected_before_training(self):
+        import tempfile
+        from unittest.mock import patch
+
+        import torch
+
+        from driftzero_ml.train_joint_sequence import main
+
+        root = Path(__file__).resolve().parents[2]
+        split = json.loads((root/'results/cursor_diagnostics/split_manifest.json').read_text())
+        with tempfile.TemporaryDirectory() as temporary:
+            cache = Path(temporary)/'cache'
+            cache.mkdir()
+            (cache/'training_manifest.json').write_text(json.dumps({'split': split}))
+            (cache/'preregistration.json').write_text(json.dumps({'training_window_s': 180}))
+            torch.save([{'trip_id': split['fresh_holdout_session_groups'][0]}], cache/'training_samples.pt')
+            argv = ['train', '--repo', str(root), '--out', str(Path(temporary)/'out'),
+                    '--cached-run', str(cache), '--projected-only', '--window-s', '180']
+            with patch('sys.argv', argv), self.assertRaisesRegex(ValueError, 'non-training group'):
+                main()

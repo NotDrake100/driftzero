@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import random
+import shutil
 from collections import Counter
 from pathlib import Path
 from statistics import median
@@ -44,7 +45,7 @@ def write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2, allow_nan=False)+'\n')
 
 
-def training_samples(repo: Path, split: dict, out: Path) -> list[dict]:
+def training_samples(repo: Path, split: dict, out: Path, window_s: int = 90) -> list[dict]:
     allowed = set(split['train_session_groups'])
     samples, audit = [], []
     paths = screening_csv_paths(repo/'data/raw/io_vnbd')
@@ -68,7 +69,7 @@ def training_samples(repo: Path, split: dict, out: Path) -> list[dict]:
             for start in starts:
                 try:
                     _, frames = export_sensor_frames(rows, mask_start_ns=start)
-                    seq = build_sequence(frames, start, start+90_000_000_001, raw_gyro_samples(rows))
+                    seq = build_sequence(frames, start, start+window_s*1_000_000_000+1, raw_gyro_samples(rows))
                     truth = {f['timestamp_ns']: f['payload'] for f in frames if f['kind'] == 'gnss_fix'}
                     labels, mask = [], []
                     for stamp in seq.stamps:
@@ -160,12 +161,26 @@ def main() -> int:
     import torch
     from torch.nn import functional as F
 
-    from driftzero_ml.joint_network import JointNetwork
+    from driftzero_ml.joint_network import JointNetwork, supervised_motion_loss
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repo', type=Path, default=Path.cwd())
     parser.add_argument('--out', type=Path, default=Path('results/joint_sequence_polar'))
+    parser.add_argument('--window-s', type=int, default=90)
+    parser.add_argument('--epochs', type=int, default=EPOCHS)
+    parser.add_argument('--checkpoint-every', type=int, default=4)
+    parser.add_argument('--architectures', nargs='+', choices=(*ARCHITECTURES, 'tcn_long'), default=ARCHITECTURES)
+    parser.add_argument('--increment-weight', type=float, default=0.0)
+    parser.add_argument('--tail-weight', type=float, default=0.0)
+    parser.add_argument('--cached-run', type=Path)
+    parser.add_argument('--projected-only', action='store_true')
+    parser.add_argument('--head-mode', choices=('polar', 'integrated'), default='polar')
     args = parser.parse_args()
+    if args.cached_run and not args.projected_only:
+        parser.error('cached replay requires explicit projected-only inputs')
+    if not (1 <= args.window_s <= 300 and 1 <= args.epochs <= 128 and 1 <= args.checkpoint_every <= args.epochs
+            and 0 <= args.increment_weight <= 10 and 0 <= args.tail_weight <= 1):
+        parser.error('invalid bounded experiment parameters')
     repo, out = args.repo.resolve(), args.repo.resolve()/args.out
     split_path = repo/'results/cursor_diagnostics/split_manifest.json'
     split = json.loads(split_path.read_text())
@@ -174,34 +189,58 @@ def main() -> int:
     torch.manual_seed(SEED)
     random.seed(SEED)
     torch.use_deterministic_algorithms(True)
-    write_json(out/'preregistration.json', {'seed': SEED, 'architectures': ARCHITECTURES, 'epochs': EPOCHS,
-               'batch_size': 8, 'learning_rate': .001, 'training_window_s': 90, 'starts': START_FRACTIONS, 'variant': 'polar_balanced_v3', 'head_mode': 'polar', 'loss_weighting': 'equal session groups and per-window labels',
-               'checkpoint_every': 4, 'selection': 'complete, zero fallback, median 10% relative gain, p95 and fail10 no worse',
+    write_json(out/'preregistration.json', {'seed': SEED, 'architectures': args.architectures, 'epochs': args.epochs,
+               'batch_size': 8, 'learning_rate': .001, 'training_window_s': args.window_s, 'starts': START_FRACTIONS, 'variant': 'polar_configurable_v4', 'head_mode': args.head_mode, 'projected_only': args.projected_only, 'loss_weighting': 'equal session groups and per-window labels',
+               'increment_weight': args.increment_weight, 'tail_weight': args.tail_weight, 'checkpoint_every': args.checkpoint_every, 'selection': 'complete, zero fallback, median 10% relative gain, p95 and fail10 no worse',
                'split_sha256': hashlib.sha256(split_path.read_bytes()).hexdigest(),
                'torch': torch.__version__, 'fresh_holdout_open': False, 'phone_changed': False})
-    samples = training_samples(repo, split, out)
-    # Save reproducible input tensors for this experiment, not hidden holdout data.
-    torch.save(samples, out/'training_samples.pt')
-    ids = json.loads((repo/'results/accuracy_v3_20260906/development/manifest.json').read_text())['interval_ids']
     base_dir = out/'baseline'
-    baseline = run(repo, base_dir, system='latch_sparse_reseed', reexport=True, rerun=True,
-                   coast_mode='yaw_speed_hold', extra_replay_args=CANDIDATES['latch_sparse_reseed'],
-                   skip_sensitivity=True, development_interval_ids=ids)
-    tables = {p.stem: p for p in screening_csv_paths(repo/'data/raw/io_vnbd')}
-    raw_by_trip = {trip: raw_gyro_samples(load_smartphone_csv(tables[trip]))
-                   for trip in sorted({r['trip_id'] for r in baseline['per_interval']})}
+    if args.cached_run:
+        cache = args.cached_run.resolve()
+        manifest = json.loads((cache/'training_manifest.json').read_text())
+        prereg = json.loads((cache/'preregistration.json').read_text())
+        if manifest['split'] != split or prereg['training_window_s'] != args.window_s:
+            raise ValueError('cached split or training horizon differs')
+        samples = torch.load(cache/'training_samples.pt', weights_only=True)
+        if any(session_group_id(s['trip_id']) not in split['train_session_groups'] for s in samples):
+            raise ValueError('cache contains a non-training group')
+        manifest['cache_sample_sha256'] = hashlib.sha256((cache/'training_samples.pt').read_bytes()).hexdigest()
+        manifest['cache_code_commit'] = (cache/'code_commit.txt').read_text().strip()
+        manifest['projected_only'] = True
+        write_json(out/'training_manifest.json', manifest)
+        shutil.copytree(cache/'baseline', base_dir, dirs_exist_ok=True)
+        baseline = json.loads((base_dir/'metrics_latch_sparse_reseed.json').read_text())
+        raw_by_trip = {r['trip_id']: {} for r in baseline['per_interval']}
+    else:
+        samples = training_samples(repo, split, out, args.window_s)
+        ids = json.loads((repo/'results/accuracy_v3_20260906/development/manifest.json').read_text())['interval_ids']
+        baseline = run(repo, base_dir, system='latch_sparse_reseed', reexport=True, rerun=True,
+                       coast_mode='yaw_speed_hold', extra_replay_args=CANDIDATES['latch_sparse_reseed'],
+                       skip_sensitivity=True, development_interval_ids=ids)
+        tables = {p.stem: p for p in screening_csv_paths(repo/'data/raw/io_vnbd')}
+        raw_by_trip = {trip: raw_gyro_samples(load_smartphone_csv(tables[trip]))
+                       for trip in sorted({r['trip_id'] for r in baseline['per_interval']})}
+    expected_ids = json.loads((repo/'results/accuracy_v3_20260906/development/manifest.json').read_text())['interval_ids']
+    actual_ids = [r['interval_id'] for r in baseline['per_interval']]
+    if len(actual_ids) != len(set(actual_ids)) or set(actual_ids) != set(expected_ids):
+        raise ValueError('baseline differs from frozen development intervals')
+    if args.projected_only:
+        for sample in samples:
+            sample['features'] = [vector[:12]+[0., 0., 0., 0.] for vector in sample['features']]
+        raw_by_trip = {trip: {} for trip in raw_by_trip}
+    torch.save(samples, out/'training_samples.pt')
     candidates = {}
     candidates['seed_gyro'] = evaluate(None, base_dir, baseline, out/'seed_gyro.json', raw_by_trip)
     group_counts = Counter(session_group_id(s['trip_id']) for s in samples)
     all_features = torch.tensor([f for s in samples for f in s['features']])
-    for kind in ARCHITECTURES:
+    for kind in args.architectures:
         torch.manual_seed(SEED)
-        model = JointNetwork(kind, head_mode='polar')
+        model = JointNetwork(kind, head_mode=args.head_mode)
         model.mean.copy_(all_features.mean(0))
         model.scale.copy_(all_features.std(0).clamp_min(.1))
         optimizer = torch.optim.Adam(model.parameters(), lr=.001)
         print(json.dumps({'architecture': kind, 'parameters': sum(p.numel() for p in model.parameters())}), flush=True)
-        for epoch in range(1, EPOCHS+1):
+        for epoch in range(1, args.epochs+1):
             model.train()
             order = list(range(len(samples)))
             random.Random(SEED+epoch).shuffle(order)
@@ -218,21 +257,18 @@ def main() -> int:
                 features, base, dt = padded('features', 12), padded('base', 2), padded('dt')
                 target, mask = padded('target', 2), padded('mask')
                 pred, sigma = model(features, base, dt)
-                error = torch.linalg.vector_norm(pred-target, dim=-1)
-                # Relative position loss plus heteroscedastic position NLL.
-                scale = (torch.linalg.vector_norm(target, dim=-1)*.1).clamp_min(10)
-                robust = F.smooth_l1_loss(pred/scale.unsqueeze(-1), target/scale.unsqueeze(-1), reduction='none').sum(-1)
-                nll = .5*(error/sigma).square()+2*torch.log(sigma)
-                per_window = ((robust+.01*nll)*mask).sum(-1)/mask.sum(-1).clamp_min(1)
+                per_window = supervised_motion_loss(pred, sigma, target, mask, dt, args.increment_weight)
                 weights = torch.tensor([len(samples)/(len(group_counts)*group_counts[session_group_id(s['trip_id'])]) for s in batch])
-                loss = (per_window*weights).mean()
+                weighted = per_window*weights
+                tail = weighted.topk(max(1, math.ceil(len(weighted)/4))).values.mean()
+                loss = (1-args.tail_weight)*weighted.mean()+args.tail_weight*tail
                 optimizer.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.)
                 optimizer.step()
                 losses.append(float(loss.detach()))
             print(json.dumps({'architecture': kind, 'epoch': epoch, 'loss': sum(losses)/len(losses)}), flush=True)
-            if epoch % 4 == 0:
+            if epoch % args.checkpoint_every == 0 or epoch == args.epochs:
                 name = f'{kind}_{epoch}'
                 torch.save({'kind': kind, 'head_mode': model.head_mode, 'state_dict': model.state_dict()}, out/f'{name}.pt')
                 candidates[name] = evaluate(model, base_dir, baseline, out/f'{name}.json', raw_by_trip)

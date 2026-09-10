@@ -1,0 +1,36 @@
+{
+  "seed": 26168,
+  "architectures": [
+    "gru",
+    "tcn_long"
+  ],
+  "epochs": 48,
+  "batch_size": 8,
+  "learning_rate": 0.001,
+  "training_window_s": 180,
+  "starts": [
+    0.07142857142857142,
+    0.14285714285714285,
+    0.21428571428571427,
+    0.2857142857142857,
+    0.35714285714285715,
+    0.42857142857142855,
+    0.5,
+    0.5714285714285714,
+    0.6428571428571429,
+    0.7142857142857143,
+    0.7857142857142857,
+    0.8571428571428571
+  ],
+  "variant": "polar_configurable_v4",
+  "head_mode": "polar",
+  "loss_weighting": "equal session groups and per-window labels",
+  "increment_weight": 1.0,
+  "tail_weight": 0.5,
+  "checkpoint_every": 8,
+  "selection": "complete, zero fallback, median 10% relative gain, p95 and fail10 no worse",
+  "split_sha256": "fd4e08756399ceb52db1e268eeffb520b13cc52da1ba89867f72e9cb1be4ade0",
+  "torch": "2.6.0+cpu",
+  "fresh_holdout_open": false,
+  "phone_changed": false
+}

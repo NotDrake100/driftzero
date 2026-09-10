@@ -77,3 +77,8 @@ SIH-13 / SIH-23: [ADR 018](adr/018-real-data-joint-sequence.md) and the
 GRU training on frozen train groups, with training provenance, actual gradient
 and prefix-invariance tests, per-checkpoint development evidence and a strict
 no-regression gate. Research scores are not Android or mountless field accuracy.
+
+
+SIH-13 / SIH-23: [ADR 019](adr/019-long-outage-motion.md) extends the neural
+research experiment to long outages with a longer-memory causal TCN, training-only
+motion increments and tail-focused loss. See the [measured report](21_LONG_OUTAGE_EXPERIMENT.md).

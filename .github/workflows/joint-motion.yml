@@ -2,10 +2,11 @@ name: Real-data joint motion training
 on:
   workflow_dispatch:
   push:
-    branches: [codex/joint-motion-real-data]
+    branches: [codex/joint-motion-real-data, codex/long-outage-motion]
     paths: [.github/workflows/joint-motion.yml, ml/src/driftzero_ml/joint_sequence.py, ml/src/driftzero_ml/joint_network.py, ml/src/driftzero_ml/train_joint_sequence.py]
 permissions:
   contents: read
+  actions: read
 jobs:
   screening:
     runs-on: ubuntu-latest
@@ -21,38 +22,29 @@ jobs:
         env:
           PYTHONPATH: ml/src
         run: python -m unittest discover -s ml/tests -p test_joint_sequence.py -v
-      - uses: actions/setup-java@v4
+      - name: Download frozen training and development replay cache
+        uses: actions/download-artifact@v4
         with:
-          distribution: temurin
-          java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
-      - name: Build replay
-        run: ./gradlew :navigation-core:installDist --no-daemon
-      - uses: actions/checkout@v4
-        with:
-          repository: onyekpeu/IO-VNBD
-          ref: 118939602e3422d47b8ab0807b623751c3ac135b
-          path: data/raw/io_vnbd
-          lfs: false
-          persist-credentials: false
-      - name: Materialize pinned smartphone data only
-        working-directory: data/raw/io_vnbd
-        run: git lfs pull --include='**/Categorised IOVNB Dataset/**/S-*.csv'
+          name: joint-motion-evidence
+          run-id: 34470745169
+          github-token: ${{ github.token }}
+          path: research-cache/long
+      - name: Verify frozen training cache
+        run: echo "89bd4da16dad62a5c6f58e9c0f97f2027888a1b9289a2891194f72bf79de2aa7  research-cache/long/training_samples.pt" | sha256sum --check
       - name: Record provenance
         run: |
-          mkdir -p results/joint_sequence_polar
-          git rev-parse HEAD > results/joint_sequence_polar/code_commit.txt
-          git -C data/raw/io_vnbd rev-parse HEAD > results/joint_sequence_polar/data_commit.txt
-          git -C data/raw/io_vnbd lfs ls-files --long > results/joint_sequence_polar/lfs_objects.txt
-          python --version > results/joint_sequence_polar/runtime.txt
-          java -version 2>> results/joint_sequence_polar/runtime.txt
+          mkdir -p results/joint_sequence_integrated
+          git rev-parse HEAD > results/joint_sequence_integrated/code_commit.txt
+          cp research-cache/long/data_commit.txt results/joint_sequence_integrated/data_commit.txt
+          cp research-cache/long/lfs_objects.txt results/joint_sequence_integrated/lfs_objects.txt
+          python --version > results/joint_sequence_integrated/runtime.txt
       - name: Train and score development checkpoints
         env:
           PYTHONPATH: ml/src
-        run: python -m driftzero_ml.train_joint_sequence
+        run: python -m driftzero_ml.train_joint_sequence --out results/joint_sequence_integrated --window-s 180 --epochs 32 --checkpoint-every 8 --architectures mlp tcn --increment-weight 1 --tail-weight 0.5 --cached-run research-cache/long --projected-only --head-mode integrated
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: joint-motion-evidence
           retention-days: 30
-          path: results/joint_sequence_polar/
+          path: results/joint_sequence_integrated/

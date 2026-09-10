@@ -32,13 +32,13 @@ class AccuracyCampaignTest(unittest.TestCase):
             self.assertNotIn("S-Vtb3", hold)
             self.assertTrue(freeze.get("c_may_train"))
             self.assertFalse(freeze.get("holdout_open", False))
-        self.assertGreaterEqual(payload["version"], 14)
+        self.assertGreaterEqual(payload["version"], 15)
         self.assertEqual(
             payload["pins"]["campaign_base_commit"],
-            "b80a2aa25ae94ae62d92a373d264ff3f45efc2e8",
+            "60c280d5dd1eaf1b98ae1614a360bbf936f67953",
         )
         learned = payload["tasks"]["C"]
-        self.assertEqual(learned["status"], "rounds_1_to_5_rejected")
+        self.assertEqual(learned["status"], "merged_research_rejection")
         self.assertFalse(learned["holdout_open"])
         self.assertFalse(learned["real_data_run"]["measured_candidate"])
         self.assertEqual(
@@ -57,6 +57,19 @@ class AccuracyCampaignTest(unittest.TestCase):
         self.assertTrue(learned["integrated_run"]["owner_archive"]["selection_match_verified"])
         self.assertFalse(learned["integrated_run"]["owner_archive"]["estimator_changed"])
         self.assertFalse(learned["integrated_run"]["owner_archive"]["measured_candidate"])
+        self.assertFalse(learned["integrated_run"]["owner_archive"]["draft"])
+        self.assertEqual(
+            learned["integrated_run"]["owner_archive"]["merged_commit"],
+            "60c280d5dd1eaf1b98ae1614a360bbf936f67953",
+        )
+        self.assertEqual(
+            json.loads((ROOT / "results" / "long_motion_20260910" / "horizon" / "selection.json").read_text()),
+            json.loads((ROOT / "results" / "cursor_campaign" / "v1" / "long_outage_v4" / "selection.json").read_text()),
+        )
+        self.assertEqual(
+            json.loads((ROOT / "results" / "long_motion_20260910" / "integrated" / "selection.json").read_text()),
+            json.loads((ROOT / "results" / "cursor_campaign" / "v1" / "integrated_v5" / "selection.json").read_text()),
+        )
         verified = json.loads(
             (ROOT / "results" / "cursor_campaign" / "v1" / "long_outage_v4" / "verified_summary.json").read_text()
         )

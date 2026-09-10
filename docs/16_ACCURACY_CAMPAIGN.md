@@ -1,6 +1,6 @@
 # Accuracy campaign index
 
-Date: 2026-09-10. Coordinator checkpoint v14. This is a tracking document, not
+Date: 2026-09-10. Coordinator checkpoint v15. This is a tracking document, not
 an accuracy result. Machine-readable copy:
 [results/cursor_campaign/v1/manifest.json](../results/cursor_campaign/v1/manifest.json).
 Plan: [docs/15_CURSOR_ACCURACY_EXECUTION_PLAN.md](15_CURSOR_ACCURACY_EXECUTION_PLAN.md).
@@ -10,7 +10,7 @@ Coordination ADR: [015](adr/015-accuracy-campaign.md).
 
 | Status | Value | Evidence |
 |---|---|---|
-| Code merged | Partial | Diagnostics, capture logger, and C research trainer are on main. B overlay is not. No live candidate. |
+| Code merged | Partial | Diagnostics, capture logger, C trainer, and C long-outage research are on main. B overlay is not. No live candidate. |
 | Experiment completed | Partial | A done. B rejected. C rounds 1-5 rejected. No candidate. |
 | Median target passed | No | Reproduced locked median 48.83% |
 | All-interval target passed | No | `accuracy_gate` failed. 6/35 below 10% |
@@ -24,7 +24,7 @@ Do not describe the 48.83% locked median as a fresh independent validation.
 |---|---|---|---|---|
 | A diagnostics | Merged | `cursor/accuracy-diagnostics-9aba` | [17](https://github.com/NotDrake100/driftzero/pull/17) | Score-only. Locked 35 reproduced. Split frozen. |
 | B road reliability | Closed rejection | `cursor/road-reliability-8d5b` | [19](https://github.com/NotDrake100/driftzero/pull/19) | Relative gate failed. Overlay not enabled. Not merged. |
-| C learned motion | Rounds 1-5 rejected, archived | `codex/long-outage-motion` | [23](https://github.com/NotDrake100/driftzero/pull/23) | Owner archive `c2cdf41` matches verified scores. Not a candidate. Draft. |
+| C learned motion | Merged research rejection | `codex/long-outage-motion` | [23](https://github.com/NotDrake100/driftzero/pull/23) | Merged at `60c280d`. Negative numbers. Not a candidate. Holdout closed. |
 | D evaluation | Checks prepared | `cursor/accuracy-evaluation-d676` | [21](https://github.com/NotDrake100/driftzero/pull/21) | Parity and leakage only. Selection blocked. |
 | E capture audit | Logger merged | `cursor/phone-validation-d676` | [18](https://github.com/NotDrake100/driftzero/pull/18) | 0 field drives. Placement validation pending. |
 
@@ -75,7 +75,8 @@ enabled on main. Do not start another map-only pass without a new hypothesis.
 ## C status
 
 PR 20 remains the coordinator preregistration (ADR 016). Owner PR 22
-merged to main at `b80a2aa` as research. Android defaults were not changed.
+merged to main at `b80a2aa` as research. Owner PR 23 merged to main at
+`60c280d` as research. Android defaults were not changed.
 Rounds 1-5 rejected. Locked confirmation off. Holdout closed.
 
 Development 11, physics `seed_gyro` 40.07% / 58.95% / 1/11 below 0.10.
@@ -98,13 +99,12 @@ failed p95 (90.58% vs 58.95%). All twelve trained checkpoints rejected.
 `89bd4da16dad62a5c6f58e9c0f97f2027888a1b9289a2891194f72bf79de2aa7`.
 The 180 s horizon did not fix the tail.
 
-Owner [PR 23](https://github.com/NotDrake100/driftzero/pull/23) HEAD
-`c2cdf41` archives both follow-ups under `results/long_motion_20260910/`
-plus [docs/21_LONG_OUTAGE_EXPERIMENT.md](https://github.com/NotDrake100/driftzero/blob/codex/long-outage-motion/docs/21_LONG_OUTAGE_EXPERIMENT.md).
-That commit does not change the estimator. Its `selection.json` files match
-the coordinator copies byte for byte. A cached-holdout rejection test was
-added. The PR remains draft. Research may land with these negative numbers.
-Do not merge it as a live default.
+Owner [PR 23](https://github.com/NotDrake100/driftzero/pull/23) merged to
+main at `60c280d`. Archive: `results/long_motion_20260910/`. Report:
+[docs/21_LONG_OUTAGE_EXPERIMENT.md](21_LONG_OUTAGE_EXPERIMENT.md).
+The merge does not change Android defaults. Its `selection.json` files
+match the coordinator copies byte for byte. Do not treat the merge as a
+candidate or a 10% pass.
 
 Do not run locked confirmation. Polar `gru_16` remains the best C median
 and is not a candidate. A later C round needs an isolated tail
@@ -159,15 +159,15 @@ Route and vehicle identities are unavailable. Driver letter is prefix-only.
 1. Do not start another combined C round. A later attempt needs an isolated
    tail hypothesis. Keep the holdout closed.
 2. Keep D selection closed until an eligible C config exists.
-3. Do not merge PR 19 or PR 23 as a live default. PR 23 may land later as
-   research with these negative numbers, the same way PR 22 did.
+3. Do not merge PR 19 as a live map default. Do not enable PR 23 weights
+   on the phone path.
 4. Owner field drives remain required for placement validation.
 5. Pin exact frozen group IDs on the trainer remains a follow-up.
 
 ## Resume
 
 Resume from this file and `results/cursor_campaign/v1/manifest.json`. A, the
-E logger, and the C research trainer are on main. B is closed and not merged.
-C rounds 1-5 are rejected and archived on PR 23. Do not restart A's
-diagnostic run. Do not treat polar `gru_16`, long-horizon `gru_8`, or
-integrated `mlp_16` as a candidate.
+E logger, and C research through PR 23 are on main. B is closed and not
+merged. C rounds 1-5 are rejected. Do not restart A's diagnostic run. Do
+not treat polar `gru_16`, long-horizon `gru_8`, or integrated `mlp_16` as
+a candidate.

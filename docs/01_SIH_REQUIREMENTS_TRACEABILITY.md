@@ -68,3 +68,12 @@ correctness results, not a new IO-VNBD score. The 10% drift objective remains op
 SIH-19 / SIH-23: [ADR 014](adr/014-real-map-research.md) adds a real OSM road-particle
 research experiment with fixed development selection, causal fallback, snapshot
 provenance and unchanged truth gates. It does not change live Android estimation.
+
+
+### 2026-09-07 real-data joint-motion milestone
+
+SIH-13 / SIH-23: [ADR 018](adr/018-real-data-joint-sequence.md) and the
+[joint-motion report](20_JOINT_SEQUENCE_EXPERIMENT.md) add executable MLP, TCN and
+GRU training on frozen train groups, with training provenance, actual gradient
+and prefix-invariance tests, per-checkpoint development evidence and a strict
+no-regression gate. Research scores are not Android or mountless field accuracy.

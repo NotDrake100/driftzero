@@ -2,6 +2,8 @@
 
 [Cursor accuracy execution plan and agent prompts](docs/15_CURSOR_ACCURACY_EXECUTION_PLAN.md)
 
+[Long-outage and integrated-motion follow-ups](docs/21_LONG_OUTAGE_EXPERIMENT.md): both completed and rejected by the unchanged accuracy gate.
+
 [Real-data neural training and measured results](docs/20_JOINT_SEQUENCE_EXPERIMENT.md): MLP, causal TCN and GRU experiments now run on frozen training groups. The below-10% target remains open; rejected checkpoints are not deployed.
 
 

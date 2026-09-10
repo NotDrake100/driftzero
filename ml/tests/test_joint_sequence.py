@@ -176,3 +176,25 @@ class JointSequenceTest(unittest.TestCase):
         self.assertGreater(abs(float(model.head.bias.grad[1])), 0)
         velocity = full.diff(dim=1)/.1
         self.assertTrue((torch.linalg.vector_norm(velocity, dim=-1) < 55).all())
+
+    @unittest.skipUnless(importlib.util.find_spec('torch'), 'optional PyTorch is unavailable')
+    def test_cached_holdout_sample_is_rejected_before_training(self):
+        import tempfile
+        from unittest.mock import patch
+
+        import torch
+
+        from driftzero_ml.train_joint_sequence import main
+
+        root = Path(__file__).resolve().parents[2]
+        split = json.loads((root/'results/cursor_diagnostics/split_manifest.json').read_text())
+        with tempfile.TemporaryDirectory() as temporary:
+            cache = Path(temporary)/'cache'
+            cache.mkdir()
+            (cache/'training_manifest.json').write_text(json.dumps({'split': split}))
+            (cache/'preregistration.json').write_text(json.dumps({'training_window_s': 180}))
+            torch.save([{'trip_id': split['fresh_holdout_session_groups'][0]}], cache/'training_samples.pt')
+            argv = ['train', '--repo', str(root), '--out', str(Path(temporary)/'out'),
+                    '--cached-run', str(cache), '--projected-only', '--window-s', '180']
+            with patch('sys.argv', argv), self.assertRaisesRegex(ValueError, 'non-training group'):
+                main()

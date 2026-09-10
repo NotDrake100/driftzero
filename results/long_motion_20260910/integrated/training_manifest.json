@@ -1,0 +1,2195 @@
+{
+  "split": {
+    "label": "DIAGNOSTIC_ONLY",
+    "diagnostic_only": true,
+    "seed": "26168",
+    "holdout_fraction": 0.3,
+    "metadata_limits": "Route and vehicle identities are unavailable in published IO-VNBD stems. Driver letter is only the prefix mapping in ml/src/driftzero_ml/io_vnbd/splits.py (S-S=A, S-M=B, S-Y=D, S-V=E).",
+    "locked_interval_ids": [
+      "S-S1:d1000",
+      "S-S1:mid",
+      "S-S3a:d1000",
+      "S-S3b:d1000",
+      "S-S3b:mid",
+      "S-S3c:mid",
+      "S-Vfa01:mid",
+      "S-Vta12:mid",
+      "S-Vta15:mid",
+      "S-Vta17:d1000",
+      "S-Vta17:mid",
+      "S-Vta1a:d1000",
+      "S-Vta1a:d50",
+      "S-Vta1a:mid",
+      "S-Vta1b:d50",
+      "S-Vta1b:mid",
+      "S-Vta20:mid",
+      "S-Vta22:d1000",
+      "S-Vta22:mid",
+      "S-Vta24:mid",
+      "S-Vta25:mid",
+      "S-Vta2:d1000",
+      "S-Vta2:d50",
+      "S-Vta2:mid",
+      "S-Vtb1:mid",
+      "S-Vtb6:mid",
+      "S-Vtb8:mid",
+      "S-Vtb9:mid",
+      "S-Vw16a:d1000",
+      "S-Vw16a:mid",
+      "S-Vw16b:d1000",
+      "S-Vw16b:mid",
+      "S-Vw5:mid",
+      "S-Y1:d1000",
+      "S-Y1:mid"
+    ],
+    "locked_session_groups": [
+      "S-S1",
+      "S-S3",
+      "S-Vfa01",
+      "S-Vta1",
+      "S-Vta12",
+      "S-Vta15",
+      "S-Vta17",
+      "S-Vta2",
+      "S-Vta20",
+      "S-Vta22",
+      "S-Vta24",
+      "S-Vta25",
+      "S-Vtb1",
+      "S-Vtb6",
+      "S-Vtb8",
+      "S-Vtb9",
+      "S-Vw16",
+      "S-Vw5",
+      "S-Y1"
+    ],
+    "development_session_groups": [
+      "S-S4",
+      "S-Vta11",
+      "S-Vta13",
+      "S-Vta29",
+      "S-Vta5",
+      "S-Vta6",
+      "S-Vta8",
+      "S-Vtb2",
+      "S-Vtb7",
+      "S-Vw12",
+      "S-Vw17",
+      "S-Vw3"
+    ],
+    "excluded_session_groups": [
+      "S-Vtb3"
+    ],
+    "train_session_groups": [
+      "S-M",
+      "S-S2",
+      "S-Vfa02",
+      "S-Vta10",
+      "S-Vta16",
+      "S-Vta21",
+      "S-Vta23",
+      "S-Vta26",
+      "S-Vta28",
+      "S-Vta3",
+      "S-Vta7",
+      "S-Vta9",
+      "S-Vtb10",
+      "S-Vtb12",
+      "S-Vw11",
+      "S-Vw13",
+      "S-Vw14",
+      "S-Vw15",
+      "S-Vw2",
+      "S-Vw4",
+      "S-Vw6",
+      "S-Vw7",
+      "S-Vw8",
+      "S-Vw9"
+    ],
+    "fresh_holdout_session_groups": [
+      "S-Vw10",
+      "S-Vta19",
+      "S-Vtb5",
+      "S-Vta30",
+      "S-Vw1",
+      "S-Vtb4",
+      "S-Vtb11",
+      "S-Vta4",
+      "S-Vta14",
+      "S-Vta27"
+    ],
+    "previously_exposed_session_groups": [
+      "S-S1",
+      "S-S3",
+      "S-S4",
+      "S-Vfa01",
+      "S-Vta1",
+      "S-Vta11",
+      "S-Vta12",
+      "S-Vta13",
+      "S-Vta15",
+      "S-Vta17",
+      "S-Vta2",
+      "S-Vta20",
+      "S-Vta22",
+      "S-Vta24",
+      "S-Vta25",
+      "S-Vta29",
+      "S-Vta5",
+      "S-Vta6",
+      "S-Vta8",
+      "S-Vtb1",
+      "S-Vtb2",
+      "S-Vtb6",
+      "S-Vtb7",
+      "S-Vtb8",
+      "S-Vtb9",
+      "S-Vw12",
+      "S-Vw16",
+      "S-Vw17",
+      "S-Vw3",
+      "S-Vw5",
+      "S-Y1"
+    ],
+    "notes": [
+      "Locked session siblings are excluded from training and selection.",
+      "Development groups were used for ADR 013/014. They are not fresh.",
+      "Fresh holdout groups were reserved by SHA-256 order before outcomes.",
+      "S-Vtb3 is excluded because the speed column matches neither unit.",
+      "Unsynchronised S-A*/S-T* trees are outside this screening manifest."
+    ],
+    "assignments": [
+      {
+        "trip_id": "S-M",
+        "session_group_id": "S-M",
+        "driver_letter": "B",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-S1",
+        "session_group_id": "S-S1",
+        "driver_letter": "A",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-S2",
+        "session_group_id": "S-S2",
+        "driver_letter": "A",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-S3a",
+        "session_group_id": "S-S3",
+        "driver_letter": "A",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-S3b",
+        "session_group_id": "S-S3",
+        "driver_letter": "A",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-S3c",
+        "session_group_id": "S-S3",
+        "driver_letter": "A",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-S4",
+        "session_group_id": "S-S4",
+        "driver_letter": "A",
+        "role": "development",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vfa01",
+        "session_group_id": "S-Vfa01",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vfa02",
+        "session_group_id": "S-Vfa02",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta1a",
+        "session_group_id": "S-Vta1",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta1b",
+        "session_group_id": "S-Vta1",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta2",
+        "session_group_id": "S-Vta2",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta3",
+        "session_group_id": "S-Vta3",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta4",
+        "session_group_id": "S-Vta4",
+        "driver_letter": "E",
+        "role": "fresh_holdout",
+        "previously_exposed": false,
+        "fresh": true
+      },
+      {
+        "trip_id": "S-Vta5",
+        "session_group_id": "S-Vta5",
+        "driver_letter": "E",
+        "role": "development",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta6",
+        "session_group_id": "S-Vta6",
+        "driver_letter": "E",
+        "role": "development",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta7",
+        "session_group_id": "S-Vta7",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta8",
+        "session_group_id": "S-Vta8",
+        "driver_letter": "E",
+        "role": "development",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta9",
+        "session_group_id": "S-Vta9",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta10",
+        "session_group_id": "S-Vta10",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta11",
+        "session_group_id": "S-Vta11",
+        "driver_letter": "E",
+        "role": "development",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta12",
+        "session_group_id": "S-Vta12",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta13",
+        "session_group_id": "S-Vta13",
+        "driver_letter": "E",
+        "role": "development",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta14",
+        "session_group_id": "S-Vta14",
+        "driver_letter": "E",
+        "role": "fresh_holdout",
+        "previously_exposed": false,
+        "fresh": true
+      },
+      {
+        "trip_id": "S-Vta15",
+        "session_group_id": "S-Vta15",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta16",
+        "session_group_id": "S-Vta16",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta17",
+        "session_group_id": "S-Vta17",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta19",
+        "session_group_id": "S-Vta19",
+        "driver_letter": "E",
+        "role": "fresh_holdout",
+        "previously_exposed": false,
+        "fresh": true
+      },
+      {
+        "trip_id": "S-Vta20",
+        "session_group_id": "S-Vta20",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta21",
+        "session_group_id": "S-Vta21",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta22",
+        "session_group_id": "S-Vta22",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta23",
+        "session_group_id": "S-Vta23",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta24",
+        "session_group_id": "S-Vta24",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta25",
+        "session_group_id": "S-Vta25",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta26",
+        "session_group_id": "S-Vta26",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta27",
+        "session_group_id": "S-Vta27",
+        "driver_letter": "E",
+        "role": "fresh_holdout",
+        "previously_exposed": false,
+        "fresh": true
+      },
+      {
+        "trip_id": "S-Vta28",
+        "session_group_id": "S-Vta28",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta29",
+        "session_group_id": "S-Vta29",
+        "driver_letter": "E",
+        "role": "development",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vta30",
+        "session_group_id": "S-Vta30",
+        "driver_letter": "E",
+        "role": "fresh_holdout",
+        "previously_exposed": false,
+        "fresh": true
+      },
+      {
+        "trip_id": "S-Vtb1",
+        "session_group_id": "S-Vtb1",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vtb2",
+        "session_group_id": "S-Vtb2",
+        "driver_letter": "E",
+        "role": "development",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vtb3",
+        "session_group_id": "S-Vtb3",
+        "driver_letter": "E",
+        "role": "excluded",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vtb4",
+        "session_group_id": "S-Vtb4",
+        "driver_letter": "E",
+        "role": "fresh_holdout",
+        "previously_exposed": false,
+        "fresh": true
+      },
+      {
+        "trip_id": "S-Vtb5",
+        "session_group_id": "S-Vtb5",
+        "driver_letter": "E",
+        "role": "fresh_holdout",
+        "previously_exposed": false,
+        "fresh": true
+      },
+      {
+        "trip_id": "S-Vtb6",
+        "session_group_id": "S-Vtb6",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vtb7",
+        "session_group_id": "S-Vtb7",
+        "driver_letter": "E",
+        "role": "development",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vtb8",
+        "session_group_id": "S-Vtb8",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vtb9",
+        "session_group_id": "S-Vtb9",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vtb10",
+        "session_group_id": "S-Vtb10",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vtb11",
+        "session_group_id": "S-Vtb11",
+        "driver_letter": "E",
+        "role": "fresh_holdout",
+        "previously_exposed": false,
+        "fresh": true
+      },
+      {
+        "trip_id": "S-Vtb12",
+        "session_group_id": "S-Vtb12",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw1",
+        "session_group_id": "S-Vw1",
+        "driver_letter": "E",
+        "role": "fresh_holdout",
+        "previously_exposed": false,
+        "fresh": true
+      },
+      {
+        "trip_id": "S-Vw2",
+        "session_group_id": "S-Vw2",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw3",
+        "session_group_id": "S-Vw3",
+        "driver_letter": "E",
+        "role": "development",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw4",
+        "session_group_id": "S-Vw4",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw5",
+        "session_group_id": "S-Vw5",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw6",
+        "session_group_id": "S-Vw6",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw7",
+        "session_group_id": "S-Vw7",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw8",
+        "session_group_id": "S-Vw8",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw9",
+        "session_group_id": "S-Vw9",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw10",
+        "session_group_id": "S-Vw10",
+        "driver_letter": "E",
+        "role": "fresh_holdout",
+        "previously_exposed": false,
+        "fresh": true
+      },
+      {
+        "trip_id": "S-Vw11",
+        "session_group_id": "S-Vw11",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw12",
+        "session_group_id": "S-Vw12",
+        "driver_letter": "E",
+        "role": "development",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw13",
+        "session_group_id": "S-Vw13",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw14a",
+        "session_group_id": "S-Vw14",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw14b",
+        "session_group_id": "S-Vw14",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw14c",
+        "session_group_id": "S-Vw14",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw15",
+        "session_group_id": "S-Vw15",
+        "driver_letter": "E",
+        "role": "train",
+        "previously_exposed": false,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw16a",
+        "session_group_id": "S-Vw16",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw16b",
+        "session_group_id": "S-Vw16",
+        "driver_letter": "E",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Vw17",
+        "session_group_id": "S-Vw17",
+        "driver_letter": "E",
+        "role": "development",
+        "previously_exposed": true,
+        "fresh": false
+      },
+      {
+        "trip_id": "S-Y1",
+        "session_group_id": "S-Y1",
+        "driver_letter": "D",
+        "role": "locked_confirmation",
+        "previously_exposed": true,
+        "fresh": false
+      }
+    ]
+  },
+  "sources": [
+    {
+      "trip_id": "S-M",
+      "group": "S-M",
+      "sha256": "26a1ee080da4db98e175e15d6fec631e6f8c285c13817d9d74ecc90ed280d103",
+      "windows": [
+        {
+          "start_ns": 722127000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 1458128000000,
+          "samples": 1800,
+          "labels": 18
+        },
+        {
+          "start_ns": 2216127000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 2918127000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 3750128000000,
+          "samples": 1800,
+          "labels": 19
+        },
+        {
+          "start_ns": 4682376000000,
+          "samples": 1800,
+          "labels": 20
+        }
+      ],
+      "excluded_windows": [
+        {
+          "start_ns": 198311000000,
+          "reason": "research sequence requires a fresh fix exactly at mask start"
+        },
+        {
+          "start_ns": 923311000000,
+          "reason": "research sequence requires a fresh fix exactly at mask start"
+        },
+        {
+          "start_ns": 1665275000000,
+          "reason": "research sequence requires a fresh fix exactly at mask start"
+        },
+        {
+          "start_ns": 2424375000000,
+          "reason": "research sequence requires a fresh fix exactly at mask start"
+        },
+        {
+          "start_ns": 3233276000000,
+          "reason": "research sequence requires a fresh fix exactly at mask start"
+        },
+        {
+          "start_ns": 3976276000000,
+          "reason": "research sequence requires a fresh fix exactly at mask start"
+        }
+      ]
+    },
+    {
+      "trip_id": "S-S2",
+      "group": "S-S2",
+      "sha256": "8f48d68ef4ab225c8381af6fb8ec0f36fe6f6048977eeebecc74cfec50d13cb8",
+      "windows": [
+        {
+          "start_ns": 620710000000,
+          "samples": 1800,
+          "labels": 18
+        },
+        {
+          "start_ns": 1333710000000,
+          "samples": 1800,
+          "labels": 19
+        },
+        {
+          "start_ns": 1960710000000,
+          "samples": 1800,
+          "labels": 19
+        },
+        {
+          "start_ns": 2594710000000,
+          "samples": 1800,
+          "labels": 9
+        },
+        {
+          "start_ns": 3436710000000,
+          "samples": 1800,
+          "labels": 18
+        },
+        {
+          "start_ns": 4154710000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 4774710000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 5382710000000,
+          "samples": 1800,
+          "labels": 19
+        },
+        {
+          "start_ns": 6024711000000,
+          "samples": 1800,
+          "labels": 19
+        },
+        {
+          "start_ns": 6641710000000,
+          "samples": 1800,
+          "labels": 18
+        },
+        {
+          "start_ns": 7359810000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 7983709000000,
+          "samples": 1799,
+          "labels": 19
+        }
+      ],
+      "excluded_windows": []
+    },
+    {
+      "trip_id": "S-Vfa02",
+      "group": "S-Vfa02",
+      "sha256": "ec666af90866254a55578f4e9371860b64602cad0694b02defcc56eec5d85a44",
+      "windows": [
+        {
+          "start_ns": 485539000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 962539000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1448538000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1925538000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 2402539000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 2888539000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 3365539000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 3842538000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 4327538000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 4804538000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 5281539000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 5767538000000,
+          "samples": 1799,
+          "labels": 18
+        }
+      ],
+      "excluded_windows": []
+    },
+    {
+      "trip_id": "S-Vta10",
+      "group": "S-Vta10",
+      "sha256": "212ba000dbad28b3375cb0e6a3b205a0415be2f3248ecff35e0c3db0089cf0a7",
+      "windows": [
+        {
+          "start_ns": 965512000000,
+          "samples": 1411,
+          "labels": 15
+        },
+        {
+          "start_ns": 974512000000,
+          "samples": 1321,
+          "labels": 14
+        },
+        {
+          "start_ns": 983511000000,
+          "samples": 1231,
+          "labels": 13
+        },
+        {
+          "start_ns": 992512000000,
+          "samples": 1141,
+          "labels": 12
+        },
+        {
+          "start_ns": 1010512000000,
+          "samples": 961,
+          "labels": 10
+        },
+        {
+          "start_ns": 1019513000000,
+          "samples": 871,
+          "labels": 9
+        },
+        {
+          "start_ns": 1028511000000,
+          "samples": 781,
+          "labels": 8
+        },
+        {
+          "start_ns": 1037512000000,
+          "samples": 691,
+          "labels": 7
+        },
+        {
+          "start_ns": 1046513000000,
+          "samples": 601,
+          "labels": 6
+        },
+        {
+          "start_ns": 1064512000000,
+          "samples": 421,
+          "labels": 4
+        },
+        {
+          "start_ns": 1073512000000,
+          "samples": 331,
+          "labels": 3
+        }
+      ],
+      "excluded_windows": [
+        {
+          "start_ns": 1082513000000,
+          "reason": "fewer than three supervised fixes"
+        }
+      ]
+    },
+    {
+      "trip_id": "S-Vta16",
+      "group": "S-Vta16",
+      "sha256": "efef0aa0fae9e4cc0a40a85335a013fccb96797175819d46d97dfb13a854ce02",
+      "windows": [
+        {
+          "start_ns": 1757512000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1838512000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 1919513000000,
+          "samples": 1800,
+          "labels": 16
+        },
+        {
+          "start_ns": 1995512000000,
+          "samples": 1800,
+          "labels": 17
+        },
+        {
+          "start_ns": 2101512000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 2182512000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 2263512000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 2335512000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 2416512000000,
+          "samples": 1800,
+          "labels": 18
+        },
+        {
+          "start_ns": 2497513000000,
+          "samples": 1800,
+          "labels": 18
+        },
+        {
+          "start_ns": 2579512000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 2660512000000,
+          "samples": 1597,
+          "labels": 17
+        }
+      ],
+      "excluded_windows": []
+    },
+    {
+      "trip_id": "S-Vta21",
+      "group": "S-Vta21",
+      "sha256": "f22951b5bc4fed96a34f9affcb7c1c7118a4461ba8f3c22d910398a5f44d248c",
+      "windows": [
+        {
+          "start_ns": 310514000000,
+          "samples": 1800,
+          "labels": 19
+        },
+        {
+          "start_ns": 328515000000,
+          "samples": 1800,
+          "labels": 19
+        },
+        {
+          "start_ns": 346514000000,
+          "samples": 1716,
+          "labels": 18
+        },
+        {
+          "start_ns": 355514000000,
+          "samples": 1626,
+          "labels": 17
+        },
+        {
+          "start_ns": 373514000000,
+          "samples": 1446,
+          "labels": 15
+        },
+        {
+          "start_ns": 391514000000,
+          "samples": 1266,
+          "labels": 13
+        },
+        {
+          "start_ns": 415514000000,
+          "samples": 1026,
+          "labels": 11
+        },
+        {
+          "start_ns": 424514000000,
+          "samples": 936,
+          "labels": 10
+        },
+        {
+          "start_ns": 442514000000,
+          "samples": 756,
+          "labels": 8
+        },
+        {
+          "start_ns": 460514000000,
+          "samples": 576,
+          "labels": 6
+        },
+        {
+          "start_ns": 469514000000,
+          "samples": 486,
+          "labels": 5
+        },
+        {
+          "start_ns": 487514000000,
+          "samples": 306,
+          "labels": 3
+        }
+      ],
+      "excluded_windows": []
+    },
+    {
+      "trip_id": "S-Vta23",
+      "group": "S-Vta23",
+      "sha256": "c5f9f4161bd33ec880d4cabab48189a02db647f86315860dd21bb48f5764cd75",
+      "windows": [
+        {
+          "start_ns": 678315000000,
+          "samples": 1109,
+          "labels": 12
+        },
+        {
+          "start_ns": 685515000000,
+          "samples": 1037,
+          "labels": 11
+        },
+        {
+          "start_ns": 694515000000,
+          "samples": 947,
+          "labels": 10
+        },
+        {
+          "start_ns": 703514000000,
+          "samples": 857,
+          "labels": 9
+        },
+        {
+          "start_ns": 712514000000,
+          "samples": 767,
+          "labels": 8
+        },
+        {
+          "start_ns": 721514000000,
+          "samples": 677,
+          "labels": 7
+        },
+        {
+          "start_ns": 730514000000,
+          "samples": 587,
+          "labels": 6
+        },
+        {
+          "start_ns": 739514000000,
+          "samples": 497,
+          "labels": 5
+        },
+        {
+          "start_ns": 748515000000,
+          "samples": 407,
+          "labels": 4
+        },
+        {
+          "start_ns": 757514000000,
+          "samples": 317,
+          "labels": 3
+        }
+      ],
+      "excluded_windows": [
+        {
+          "start_ns": 766514000000,
+          "reason": "fewer than three supervised fixes"
+        },
+        {
+          "start_ns": 775514000000,
+          "reason": "fewer than three supervised fixes"
+        }
+      ]
+    },
+    {
+      "trip_id": "S-Vta26",
+      "group": "S-Vta26",
+      "sha256": "d2d0de4a8ff2793825af978523c888e3579c788c98db13542b19f429288bf4d9",
+      "windows": [
+        {
+          "start_ns": 994514000000,
+          "samples": 1800,
+          "labels": 13
+        },
+        {
+          "start_ns": 1003514000000,
+          "samples": 1771,
+          "labels": 13
+        },
+        {
+          "start_ns": 1012514000000,
+          "samples": 1681,
+          "labels": 12
+        },
+        {
+          "start_ns": 1021514000000,
+          "samples": 1591,
+          "labels": 11
+        },
+        {
+          "start_ns": 1030514000000,
+          "samples": 1501,
+          "labels": 10
+        },
+        {
+          "start_ns": 1039515000000,
+          "samples": 1411,
+          "labels": 9
+        },
+        {
+          "start_ns": 1057514000000,
+          "samples": 1231,
+          "labels": 7
+        },
+        {
+          "start_ns": 1066516000000,
+          "samples": 1141,
+          "labels": 6
+        },
+        {
+          "start_ns": 1128515000000,
+          "samples": 521,
+          "labels": 5
+        },
+        {
+          "start_ns": 1137515000000,
+          "samples": 431,
+          "labels": 4
+        },
+        {
+          "start_ns": 1151515000000,
+          "samples": 291,
+          "labels": 3
+        }
+      ],
+      "excluded_windows": [
+        {
+          "start_ns": 1160514000000,
+          "reason": "fewer than three supervised fixes"
+        }
+      ]
+    },
+    {
+      "trip_id": "S-Vta28",
+      "group": "S-Vta28",
+      "sha256": "30bece8d988e898902ad4e77d090ea33c80486222293104f78d42bd8611e03fa",
+      "windows": [
+        {
+          "start_ns": 1498515000000,
+          "samples": 1800,
+          "labels": 17
+        },
+        {
+          "start_ns": 1525514000000,
+          "samples": 1800,
+          "labels": 17
+        },
+        {
+          "start_ns": 1552514000000,
+          "samples": 1799,
+          "labels": 17
+        },
+        {
+          "start_ns": 1602514000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1629514000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1656514000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1683514000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1710514000000,
+          "samples": 1799,
+          "labels": 18
+        },
+        {
+          "start_ns": 1737514000000,
+          "samples": 1566,
+          "labels": 15
+        },
+        {
+          "start_ns": 1764514000000,
+          "samples": 1296,
+          "labels": 12
+        },
+        {
+          "start_ns": 1791514000000,
+          "samples": 1026,
+          "labels": 9
+        },
+        {
+          "start_ns": 1818514000000,
+          "samples": 756,
+          "labels": 6
+        }
+      ],
+      "excluded_windows": []
+    },
+    {
+      "trip_id": "S-Vta3",
+      "group": "S-Vta3",
+      "sha256": "7c5479fc893131a8c4d75daf73c3b5ae25512a1e194a6ced50fa24633de0f215",
+      "windows": [
+        {
+          "start_ns": 12000000,
+          "samples": 644,
+          "labels": 4
+        },
+        {
+          "start_ns": 24512000000,
+          "samples": 399,
+          "labels": 3
+        }
+      ],
+      "excluded_windows": [
+        {
+          "start_ns": 33512000000,
+          "reason": "fewer than three supervised fixes"
+        },
+        {
+          "start_ns": 42512000000,
+          "reason": "fewer than three supervised fixes"
+        },
+        {
+          "start_ns": 51512000000,
+          "reason": "fewer than three supervised fixes"
+        }
+      ]
+    },
+    {
+      "trip_id": "S-Vta7",
+      "group": "S-Vta7",
+      "sha256": "eb6e66dbb3397aea7af0c93fe212e9ca0fc8310341083ce64652fe7842248acf",
+      "windows": [
+        {
+          "start_ns": 461412000000,
+          "samples": 839,
+          "labels": 9
+        },
+        {
+          "start_ns": 469512000000,
+          "samples": 758,
+          "labels": 8
+        },
+        {
+          "start_ns": 478512000000,
+          "samples": 668,
+          "labels": 7
+        },
+        {
+          "start_ns": 487512000000,
+          "samples": 578,
+          "labels": 6
+        },
+        {
+          "start_ns": 496512000000,
+          "samples": 488,
+          "labels": 5
+        },
+        {
+          "start_ns": 505512000000,
+          "samples": 398,
+          "labels": 4
+        },
+        {
+          "start_ns": 514512000000,
+          "samples": 308,
+          "labels": 3
+        }
+      ],
+      "excluded_windows": [
+        {
+          "start_ns": 523512000000,
+          "reason": "fewer than three supervised fixes"
+        },
+        {
+          "start_ns": 532512000000,
+          "reason": "fewer than three supervised fixes"
+        }
+      ]
+    },
+    {
+      "trip_id": "S-Vta9",
+      "group": "S-Vta9",
+      "sha256": "150b73335a4283e2aba5aa8c5320d32271bf20546005e7f5f60918d8381f5475",
+      "windows": [],
+      "excluded_windows": [
+        {
+          "start_ns": 929513000000,
+          "reason": "fewer than three supervised fixes"
+        },
+        {
+          "start_ns": 938512000000,
+          "reason": "fewer than three supervised fixes"
+        }
+      ]
+    },
+    {
+      "trip_id": "S-Vtb10",
+      "group": "S-Vtb10",
+      "sha256": "b81e128fd1594a0730f36d285c1c447d17a370e6637616e4017b44ff3c714742",
+      "windows": [],
+      "excluded_windows": [
+        {
+          "start_ns": 8176913000000,
+          "reason": "fewer than three supervised fixes"
+        },
+        {
+          "start_ns": 8178913000000,
+          "reason": "fewer than three supervised fixes"
+        },
+        {
+          "start_ns": 8187913000000,
+          "reason": "fewer than three supervised fixes"
+        }
+      ]
+    },
+    {
+      "trip_id": "S-Vtb12",
+      "group": "S-Vtb12",
+      "sha256": "00e8dc12482919e0cfc43218275390f295c3f3b75e34ebeef0ade8b4809a3f5a",
+      "windows": [
+        {
+          "start_ns": 8251013000000,
+          "samples": 446,
+          "labels": 4
+        },
+        {
+          "start_ns": 8259914000000,
+          "samples": 357,
+          "labels": 3
+        }
+      ],
+      "excluded_windows": [
+        {
+          "start_ns": 8268914000000,
+          "reason": "fewer than three supervised fixes"
+        },
+        {
+          "start_ns": 8277914000000,
+          "reason": "fewer than three supervised fixes"
+        },
+        {
+          "start_ns": 8286914000000,
+          "reason": "fewer than three supervised fixes"
+        }
+      ]
+    },
+    {
+      "trip_id": "S-Vw11",
+      "group": "S-Vw11",
+      "sha256": "b9dd70fc7282ba469fdf8835062286bb3cb53bbf4f6d3d2dff4d71c5b597a5c1",
+      "windows": [
+        {
+          "start_ns": 14037310000000,
+          "samples": 1800,
+          "labels": 15
+        },
+        {
+          "start_ns": 14073310000000,
+          "samples": 1800,
+          "labels": 15
+        },
+        {
+          "start_ns": 14140310000000,
+          "samples": 1800,
+          "labels": 19
+        },
+        {
+          "start_ns": 14176310000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 14203410000000,
+          "samples": 1800,
+          "labels": 18
+        },
+        {
+          "start_ns": 14239310000000,
+          "samples": 1800,
+          "labels": 18
+        },
+        {
+          "start_ns": 14266310000000,
+          "samples": 1800,
+          "labels": 18
+        },
+        {
+          "start_ns": 14302410000000,
+          "samples": 1800,
+          "labels": 18
+        },
+        {
+          "start_ns": 14329410000000,
+          "samples": 1733,
+          "labels": 17
+        },
+        {
+          "start_ns": 14365311000000,
+          "samples": 1374,
+          "labels": 13
+        },
+        {
+          "start_ns": 14404310000000,
+          "samples": 984,
+          "labels": 10
+        },
+        {
+          "start_ns": 14440310000000,
+          "samples": 624,
+          "labels": 6
+        }
+      ],
+      "excluded_windows": []
+    },
+    {
+      "trip_id": "S-Vw13",
+      "group": "S-Vw13",
+      "sha256": "8dbdb8d7c3c0790c66dc33bfffd3eb98d59010f849ef15bdf7097b67f23b8733",
+      "windows": [
+        {
+          "start_ns": 410000000,
+          "samples": 283,
+          "labels": 3
+        }
+      ],
+      "excluded_windows": [
+        {
+          "start_ns": 8409000000,
+          "reason": "fewer than three supervised fixes"
+        },
+        {
+          "start_ns": 17310000000,
+          "reason": "fewer than three supervised fixes"
+        },
+        {
+          "start_ns": 26309000000,
+          "reason": "fewer than three supervised fixes"
+        }
+      ]
+    },
+    {
+      "trip_id": "S-Vw14a",
+      "group": "S-Vw14",
+      "sha256": "de5b5da05baa7bedd0d9fa66c6faa908823ab731849c1dad0156d400252e4646",
+      "windows": [
+        {
+          "start_ns": 13007000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 40007000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 58008000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 85008000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 103008000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 130008000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 157008000000,
+          "samples": 1567,
+          "labels": 17
+        },
+        {
+          "start_ns": 175007000000,
+          "samples": 1387,
+          "labels": 15
+        },
+        {
+          "start_ns": 202008000000,
+          "samples": 1117,
+          "labels": 12
+        },
+        {
+          "start_ns": 220008000000,
+          "samples": 937,
+          "labels": 10
+        },
+        {
+          "start_ns": 247008000000,
+          "samples": 667,
+          "labels": 7
+        },
+        {
+          "start_ns": 265008000000,
+          "samples": 487,
+          "labels": 5
+        }
+      ],
+      "excluded_windows": []
+    },
+    {
+      "trip_id": "S-Vw14b",
+      "group": "S-Vw14",
+      "sha256": "5f13f8ede6117bb26ea26f977f19282415dc4064368b6ad3a502c8d3c1150b3f",
+      "windows": [
+        {
+          "start_ns": 445008000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 589008000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 723908000000,
+          "samples": 1800,
+          "labels": 19
+        },
+        {
+          "start_ns": 868008000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1012008000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1147008000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1291007000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 1435007000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 1569908000000,
+          "samples": 1800,
+          "labels": 19
+        },
+        {
+          "start_ns": 1714008000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1858008000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1993007000000,
+          "samples": 1799,
+          "labels": 19
+        }
+      ],
+      "excluded_windows": []
+    },
+    {
+      "trip_id": "S-Vw14c",
+      "group": "S-Vw14",
+      "sha256": "ce97c12ec0c9cff740dfe3a18e17aa0be0b8b7ec43bc53daa01b357dd6bf11d7",
+      "windows": [
+        {
+          "start_ns": 2371008000000,
+          "samples": 1800,
+          "labels": 15
+        },
+        {
+          "start_ns": 2498007000000,
+          "samples": 1799,
+          "labels": 18
+        },
+        {
+          "start_ns": 2613008000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 2712008000000,
+          "samples": 1800,
+          "labels": 18
+        },
+        {
+          "start_ns": 2820007000000,
+          "samples": 1800,
+          "labels": 18
+        },
+        {
+          "start_ns": 2937010000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 3036008000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 3135008000000,
+          "samples": 1800,
+          "labels": 17
+        },
+        {
+          "start_ns": 3234008000000,
+          "samples": 1800,
+          "labels": 14
+        },
+        {
+          "start_ns": 3394008000000,
+          "samples": 1800,
+          "labels": 17
+        },
+        {
+          "start_ns": 3493008000000,
+          "samples": 1799,
+          "labels": 16
+        },
+        {
+          "start_ns": 3623008000000,
+          "samples": 1800,
+          "labels": 18
+        }
+      ],
+      "excluded_windows": []
+    },
+    {
+      "trip_id": "S-Vw15",
+      "group": "S-Vw15",
+      "sha256": "7e440cc28168a538f694c07d24b374c75af7cce13cb108e342f5eb2ef5633728",
+      "windows": [],
+      "excluded_windows": [
+        {
+          "start_ns": 12000000,
+          "reason": "fewer than three supervised fixes"
+        }
+      ]
+    },
+    {
+      "trip_id": "S-Vw2",
+      "group": "S-Vw2",
+      "sha256": "c153268bf5f53e173934f50084c598d0c29ba93aad4a3b50b14a314d5402dbab",
+      "windows": [
+        {
+          "start_ns": 383311000000,
+          "samples": 1800,
+          "labels": 17
+        },
+        {
+          "start_ns": 836311000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1254311000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1614311000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1974410000000,
+          "samples": 1799,
+          "labels": 20
+        },
+        {
+          "start_ns": 2343311000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 2703211000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 3063311000000,
+          "samples": 1800,
+          "labels": 19
+        },
+        {
+          "start_ns": 3432310000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 3792311000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 4152410000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 4521411000000,
+          "samples": 1800,
+          "labels": 18
+        }
+      ],
+      "excluded_windows": []
+    },
+    {
+      "trip_id": "S-Vw4",
+      "group": "S-Vw4",
+      "sha256": "0d79ef3cd96f48b611e5da7dd14f4cb6ed0f1f747d247d26847918545440b9d3",
+      "windows": [
+        {
+          "start_ns": 1047510000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 1912311000000,
+          "samples": 1800,
+          "labels": 19
+        },
+        {
+          "start_ns": 2776310000000,
+          "samples": 1800,
+          "labels": 19
+        },
+        {
+          "start_ns": 3631309000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 4495311000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 5359410000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 6223310000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 7078309000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 7962309000000,
+          "samples": 1799,
+          "labels": 19
+        },
+        {
+          "start_ns": 8856310000000,
+          "samples": 1799,
+          "labels": 16
+        },
+        {
+          "start_ns": 9781310000000,
+          "samples": 1800,
+          "labels": 20
+        },
+        {
+          "start_ns": 10645410000000,
+          "samples": 1800,
+          "labels": 20
+        }
+      ],
+      "excluded_windows": []
+    },
+    {
+      "trip_id": "S-Vw6",
+      "group": "S-Vw6",
+      "sha256": "9543a52492106a1ee4ad815f5a2f183e2f7142979f4edb2ae34755d0c4b3a087",
+      "windows": [
+        {
+          "start_ns": 12787311000000,
+          "samples": 1200,
+          "labels": 13
+        },
+        {
+          "start_ns": 12796310000000,
+          "samples": 1110,
+          "labels": 12
+        },
+        {
+          "start_ns": 12805310000000,
+          "samples": 1020,
+          "labels": 11
+        },
+        {
+          "start_ns": 12814310000000,
+          "samples": 930,
+          "labels": 10
+        },
+        {
+          "start_ns": 12823309000000,
+          "samples": 840,
+          "labels": 9
+        },
+        {
+          "start_ns": 12832310000000,
+          "samples": 750,
+          "labels": 8
+        },
+        {
+          "start_ns": 12841410000000,
+          "samples": 659,
+          "labels": 7
+        },
+        {
+          "start_ns": 12850410000000,
+          "samples": 569,
+          "labels": 6
+        },
+        {
+          "start_ns": 12859310000000,
+          "samples": 480,
+          "labels": 5
+        },
+        {
+          "start_ns": 12868410000000,
+          "samples": 389,
+          "labels": 4
+        },
+        {
+          "start_ns": 12877310000000,
+          "samples": 300,
+          "labels": 3
+        }
+      ],
+      "excluded_windows": [
+        {
+          "start_ns": 12886310000000,
+          "reason": "fewer than three supervised fixes"
+        }
+      ]
+    },
+    {
+      "trip_id": "S-Vw7",
+      "group": "S-Vw7",
+      "sha256": "953176680614bf889a938ee4cc940227d820206a2f58942f8a5ff74ada4e7b2f",
+      "windows": [
+        {
+          "start_ns": 13194310000000,
+          "samples": 1512,
+          "labels": 16
+        },
+        {
+          "start_ns": 13203310000000,
+          "samples": 1422,
+          "labels": 15
+        },
+        {
+          "start_ns": 13212310000000,
+          "samples": 1332,
+          "labels": 14
+        },
+        {
+          "start_ns": 13230311000000,
+          "samples": 1152,
+          "labels": 12
+        },
+        {
+          "start_ns": 13239310000000,
+          "samples": 1062,
+          "labels": 11
+        },
+        {
+          "start_ns": 13248410000000,
+          "samples": 971,
+          "labels": 10
+        },
+        {
+          "start_ns": 13266409000000,
+          "samples": 791,
+          "labels": 8
+        },
+        {
+          "start_ns": 13275410000000,
+          "samples": 701,
+          "labels": 7
+        },
+        {
+          "start_ns": 13284310000000,
+          "samples": 612,
+          "labels": 6
+        },
+        {
+          "start_ns": 13293310000000,
+          "samples": 522,
+          "labels": 5
+        },
+        {
+          "start_ns": 13311310000000,
+          "samples": 342,
+          "labels": 3
+        }
+      ],
+      "excluded_windows": [
+        {
+          "start_ns": 13320410000000,
+          "reason": "fewer than three supervised fixes"
+        }
+      ]
+    },
+    {
+      "trip_id": "S-Vw8",
+      "group": "S-Vw8",
+      "sha256": "f1321e689b66128e7b116b9aedb0e8e5304f9566781f8111c4d1f4a933c543a2",
+      "windows": [
+        {
+          "start_ns": 13374409000000,
+          "samples": 1438,
+          "labels": 15
+        },
+        {
+          "start_ns": 13383309000000,
+          "samples": 1349,
+          "labels": 14
+        },
+        {
+          "start_ns": 13392310000000,
+          "samples": 1259,
+          "labels": 13
+        },
+        {
+          "start_ns": 13401310000000,
+          "samples": 1169,
+          "labels": 12
+        },
+        {
+          "start_ns": 13419310000000,
+          "samples": 989,
+          "labels": 10
+        },
+        {
+          "start_ns": 13428311000000,
+          "samples": 899,
+          "labels": 9
+        },
+        {
+          "start_ns": 13437311000000,
+          "samples": 809,
+          "labels": 8
+        },
+        {
+          "start_ns": 13446310000000,
+          "samples": 719,
+          "labels": 7
+        },
+        {
+          "start_ns": 13455310000000,
+          "samples": 629,
+          "labels": 6
+        },
+        {
+          "start_ns": 13473309000000,
+          "samples": 449,
+          "labels": 4
+        },
+        {
+          "start_ns": 13482410000000,
+          "samples": 358,
+          "labels": 3
+        }
+      ],
+      "excluded_windows": [
+        {
+          "start_ns": 13491310000000,
+          "reason": "fewer than three supervised fixes"
+        }
+      ]
+    },
+    {
+      "trip_id": "S-Vw9",
+      "group": "S-Vw9",
+      "sha256": "40d96f99b100518c0f2dbe6bf9dbfc94b89e25c865b3d1e6b795d132127d917c",
+      "windows": [
+        {
+          "start_ns": 13716809000000,
+          "samples": 551,
+          "labels": 6
+        },
+        {
+          "start_ns": 13725410000000,
+          "samples": 465,
+          "labels": 5
+        },
+        {
+          "start_ns": 13734410000000,
+          "samples": 375,
+          "labels": 4
+        },
+        {
+          "start_ns": 13743312000000,
+          "samples": 286,
+          "labels": 3
+        }
+      ],
+      "excluded_windows": [
+        {
+          "start_ns": 13752410000000,
+          "reason": "fewer than three supervised fixes"
+        },
+        {
+          "start_ns": 13761310000000,
+          "reason": "fewer than three supervised fixes"
+        },
+        {
+          "start_ns": 13770312000000,
+          "reason": "fewer than three supervised fixes"
+        }
+      ]
+    }
+  ],
+  "window_count": 219,
+  "holdout_read": false,
+  "label_scope": "training groups only",
+  "cache_sample_sha256": "89bd4da16dad62a5c6f58e9c0f97f2027888a1b9289a2891194f72bf79de2aa7",
+  "cache_code_commit": "a1c874b17734d05acaef7dbb239daf702c7cf57b",
+  "projected_only": true
+}

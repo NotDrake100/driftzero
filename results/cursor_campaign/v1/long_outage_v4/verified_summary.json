@@ -1,0 +1,105 @@
+{
+  "actions_run": 34470745169,
+  "code_commit": "a1c874b17734d05acaef7dbb239daf702c7cf57b",
+  "data_commit": "118939602e3422d47b8ab0807b623751c3ac135b",
+  "training_samples_sha256": "89bd4da16dad62a5c6f58e9c0f97f2027888a1b9289a2891194f72bf79de2aa7",
+  "window_count": 219,
+  "holdout_read": false,
+  "status": "rejected",
+  "selected": null,
+  "locked_confirmation": false,
+  "fresh_holdout_open": false,
+  "candidates": {
+    "seed_gyro": {
+      "count": 11,
+      "p50": 0.400650494429274,
+      "p95": 0.5894975874481975,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "gru_8": {
+      "count": 11,
+      "p50": 0.3178058310651735,
+      "p95": 0.9058322366585967,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "gru_16": {
+      "count": 11,
+      "p50": 0.3470934516108504,
+      "p95": 0.9800131785019728,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "gru_24": {
+      "count": 11,
+      "p50": 0.4292522302936451,
+      "p95": 0.9682590059117724,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "gru_32": {
+      "count": 11,
+      "p50": 0.43026521596809475,
+      "p95": 0.949383141737564,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "gru_40": {
+      "count": 11,
+      "p50": 0.4709945402175226,
+      "p95": 0.9102642667024713,
+      "fail10": 11,
+      "fallback_count": 0
+    },
+    "gru_48": {
+      "count": 11,
+      "p50": 0.4761548355198045,
+      "p95": 0.90923514652004,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "tcn_long_8": {
+      "count": 11,
+      "p50": 0.3532189027843623,
+      "p95": 0.9530724158466334,
+      "fail10": 11,
+      "fallback_count": 0
+    },
+    "tcn_long_16": {
+      "count": 11,
+      "p50": 0.5400491057683053,
+      "p95": 0.9668618555830942,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "tcn_long_24": {
+      "count": 11,
+      "p50": 0.42484599562191594,
+      "p95": 0.9676735437161168,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "tcn_long_32": {
+      "count": 11,
+      "p50": 0.5178511221702663,
+      "p95": 0.9667270819872973,
+      "fail10": 10,
+      "fallback_count": 0
+    },
+    "tcn_long_40": {
+      "count": 11,
+      "p50": 0.5142160904998887,
+      "p95": 0.9704122666528773,
+      "fail10": 11,
+      "fallback_count": 0
+    },
+    "tcn_long_48": {
+      "count": 11,
+      "p50": 0.5360108700417647,
+      "p95": 0.9539542779529718,
+      "fail10": 11,
+      "fallback_count": 0
+    }
+  }
+}

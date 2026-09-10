@@ -1,6 +1,6 @@
 {
   "campaign": "cursor-accuracy-below-10pct",
-  "version": 11,
+  "version": 12,
   "date_utc": "2026-09-10",
   "role": "F-coordinator",
   "status": "checkpoint",
@@ -10,7 +10,7 @@
     "median_target_passed": false,
     "all_interval_target_passed": false,
     "field_placements_tested": false,
-    "notes": "Diagnostics, capture logger, and C research trainer are on main. PR 23 long-outage round is measuring. That is not a 10% pass. Three prior C rounds rejected. B overlay not merged. D selection blocked. No field drive."
+    "notes": "Diagnostics, capture logger, and C research trainer are on main. Long-horizon polar round 4 rejected. Integrated follow-up on PR 23 is measuring. That is not a 10% pass. B overlay not merged. D selection blocked. No field drive."
   },
   "pins": {
     "campaign_base_commit": "b80a2aa25ae94ae62d92a373d264ff3f45efc2e8",
@@ -231,7 +231,7 @@
     },
     "C": {
       "name": "learned-motion",
-      "status": "round4_measurement_pending",
+      "status": "round4_rejected_round5_measurement_pending",
       "holdout_open": false,
       "objective": "joint_distance_and_heading",
       "primary_score": "blackout_position_drift",
@@ -290,15 +290,20 @@
         "author": "NotDrake100",
         "adr": "docs/adr/019-long-outage-motion.md",
         "variant": "long_outage_v4",
-        "status": "measurement_pending",
+        "status": "rejected",
         "training_started": true,
         "measured_candidate": false,
         "locked_confirmation": false,
         "fresh_holdout_open": false,
         "android_defaults_changed": false,
         "confounded": true,
-        "review": "protocol_accepted_for_measurement_not_merge",
+        "review": "measured_rejection_p95",
+        "actions_run": 34470745169,
+        "archive": "results/cursor_campaign/v1/long_outage_v4",
         "output": "results/joint_sequence_long",
+        "window_count": 219,
+        "training_samples_sha256": "89bd4da16dad62a5c6f58e9c0f97f2027888a1b9289a2891194f72bf79de2aa7",
+        "holdout_read": false,
         "changes": [
           "window_180s",
           "tcn_long_rf_1365",
@@ -308,7 +313,40 @@
         ],
         "architectures": ["gru", "tcn_long"],
         "relative_gate": "seed_gyro 10% median improvement, p95 and fail10 no worse, zero fallback",
-        "notes": "Draft. No development scores yet. validate_roles still cardinality-only. age_90s still scaled by 90 s inside 180 s windows. Do not open holdout."
+        "baseline_seed_gyro": {"median": 0.400650494429274, "p95": 0.5894975874481975, "fail10": 10},
+        "best_median": {"config": "gru_8", "median": 0.3178058310651735, "p95": 0.9058322366585967, "fail10": 10},
+        "selected": null,
+        "notes": "gru_8 passed the relative median gate and failed p95. All twelve trained checkpoints rejected. 180 s horizon did not fix the tail."
+      },
+      "integrated_run": {
+        "branch": "codex/long-outage-motion",
+        "pr": "https://github.com/NotDrake100/driftzero/pull/23",
+        "latest_commit": "68beb4c542f5899fdddf9818f6807fa2c73422b5",
+        "author": "NotDrake100",
+        "adr": "docs/adr/019-long-outage-motion.md",
+        "variant": "integrated_v5",
+        "status": "measurement_pending",
+        "training_started": true,
+        "measured_candidate": false,
+        "locked_confirmation": false,
+        "fresh_holdout_open": false,
+        "android_defaults_changed": false,
+        "confounded": true,
+        "review": "protocol_accepted_for_measurement_not_merge",
+        "output": "results/joint_sequence_integrated",
+        "cache_actions_run": 34470745169,
+        "cache_sha256": "89bd4da16dad62a5c6f58e9c0f97f2027888a1b9289a2891194f72bf79de2aa7",
+        "changes": [
+          "integrated_heading",
+          "sigmoid_speed",
+          "projected_only_zero_raw_gyro",
+          "mlp_and_short_tcn",
+          "epochs_32"
+        ],
+        "architectures": ["mlp", "tcn"],
+        "head_mode": "integrated",
+        "relative_gate": "seed_gyro 10% median improvement, p95 and fail10 no worse, zero fallback",
+        "notes": "Draft follow-up on frozen round-4 tensors. Combined head and input change. Do not open holdout."
       }
     },
     "D": {
@@ -348,14 +386,14 @@
   "blockers": [
     "DIAGNOSTIC_ONLY results must not change live defaults.",
     "B round is closed. Do not merge the overlay. Do not expand map-only tuning without a new hypothesis.",
-    "C trainer is on main as a research rejection. PR 23 is measuring a confounded tail hypothesis. Pin exact frozen group IDs. Do not open the fresh holdout.",
+    "C trainer is on main as a research rejection. Long-horizon polar round 4 rejected on p95. Integrated follow-up on PR 23 is measuring. Pin exact frozen group IDs. Do not open the fresh holdout.",
     "D selection and locked confirmation stay blocked until an eligible candidate exists.",
     "E model wiring stays blocked until D selects a candidate. Physical placement validation is pending.",
     "No field recordings exist. Cloud agents cannot manufacture drives.",
     "This coordinator workspace has no ANDROID_HOME. Android app unit tests were not run here."
   ],
-  "last_completed_step": "F v11: reviewed owner PR 23 long-outage protocol. Measurement pending. Selection still blocked.",
-  "next_step": "Wait for PR 23 development scores. Do not merge before numbers exist. Keep holdout closed. Do not run locked confirmation. Do not merge B as a live default.",
+  "last_completed_step": "F v12: verified long-outage v4 rejection from Actions 34470745169. Integrated follow-up measuring. Selection still blocked.",
+  "next_step": "Wait for PR 23 integrated follow-up development scores. Do not merge before numbers exist. Keep holdout closed. Do not run locked confirmation. Do not merge B as a live default.",
   "failures": [
     "A and B first appeared as RUNNING with no branch. Git evidence arrived later. Do not treat lifecycle RUNNING as an experiment."
   ]

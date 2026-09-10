@@ -1,0 +1,189 @@
+{
+  "system": "joint_sequence",
+  "failures": [],
+  "per_interval": [
+    {
+      "interval_id": "S-Vta11:mid",
+      "metrics": {
+        "endpoint_error_m": 117.92182444989602,
+        "truth_path_length_m": 209.7596573303465,
+        "drift_ratio": 0.5621759014612766,
+        "mean_position_error_m": 65.42182726484879,
+        "max_position_error_m": 117.92182444989602,
+        "sample_count": 3,
+        "along_track_error_m": -82.28588659507793,
+        "cross_track_error_m": -84.46591276537637,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "fallback_reason": null
+    },
+    {
+      "interval_id": "S-Vta29:mid",
+      "metrics": {
+        "endpoint_error_m": 110.31304180958874,
+        "truth_path_length_m": 273.61093501719745,
+        "drift_ratio": 0.4031748285303552,
+        "mean_position_error_m": 45.87763687241222,
+        "max_position_error_m": 110.31304180958874,
+        "sample_count": 4,
+        "along_track_error_m": 14.148267121001453,
+        "cross_track_error_m": 109.40220583160539,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "fallback_reason": null
+    },
+    {
+      "interval_id": "S-Vta29:d1000",
+      "metrics": {
+        "endpoint_error_m": 498.46261704702687,
+        "truth_path_length_m": 1025.439038789527,
+        "drift_ratio": 0.48609678215043756,
+        "mean_position_error_m": 274.7103268610246,
+        "max_position_error_m": 498.46261704702687,
+        "sample_count": 15,
+        "along_track_error_m": -316.24375656723856,
+        "cross_track_error_m": -385.311223932161,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "fallback_reason": null
+    },
+    {
+      "interval_id": "S-Vta6:mid",
+      "metrics": {
+        "endpoint_error_m": 21.923561550372863,
+        "truth_path_length_m": 537.527157242796,
+        "drift_ratio": 0.04078596077420177,
+        "mean_position_error_m": 19.059108131412405,
+        "max_position_error_m": 32.48129015332681,
+        "sample_count": 4,
+        "along_track_error_m": -21.919961135607778,
+        "cross_track_error_m": 0.39626322775050404,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "fallback_reason": null
+    },
+    {
+      "interval_id": "S-Vta8:mid",
+      "metrics": {
+        "endpoint_error_m": 123.25879154418266,
+        "truth_path_length_m": 327.7424888347896,
+        "drift_ratio": 0.3760842604887757,
+        "mean_position_error_m": 60.96286030587855,
+        "max_position_error_m": 123.25879154418266,
+        "sample_count": 4,
+        "along_track_error_m": -119.37485101169597,
+        "cross_track_error_m": 30.698050285208105,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "fallback_reason": null
+    },
+    {
+      "interval_id": "S-Vta8:d1000",
+      "metrics": {
+        "endpoint_error_m": 838.0290308707791,
+        "truth_path_length_m": 1064.0610495257522,
+        "drift_ratio": 0.7875760805682017,
+        "mean_position_error_m": 359.7286048222995,
+        "max_position_error_m": 838.0290308707791,
+        "sample_count": 14,
+        "along_track_error_m": -836.1350986243032,
+        "cross_track_error_m": -56.25140285631255,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "fallback_reason": null
+    },
+    {
+      "interval_id": "S-Vtb2:mid",
+      "metrics": {
+        "endpoint_error_m": 110.0794705902431,
+        "truth_path_length_m": 305.5165153183739,
+        "drift_ratio": 0.360306121178199,
+        "mean_position_error_m": 56.914823866528295,
+        "max_position_error_m": 110.0794705902431,
+        "sample_count": 4,
+        "along_track_error_m": -71.86237690832087,
+        "cross_track_error_m": 83.38646936355336,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "fallback_reason": null
+    },
+    {
+      "interval_id": "S-Vtb2:d1000",
+      "metrics": {
+        "endpoint_error_m": 154.19724783851066,
+        "truth_path_length_m": 1091.7040740018465,
+        "drift_ratio": 0.1412445474104275,
+        "mean_position_error_m": 175.18304271502,
+        "max_position_error_m": 307.8260888345926,
+        "sample_count": 11,
+        "along_track_error_m": 80.4417596384959,
+        "cross_track_error_m": -131.55128902823435,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "fallback_reason": null
+    },
+    {
+      "interval_id": "S-Vtb7:mid",
+      "metrics": {
+        "endpoint_error_m": 115.25894009613133,
+        "truth_path_length_m": 320.0679478955914,
+        "drift_ratio": 0.3601077235441572,
+        "mean_position_error_m": 55.97537077699086,
+        "max_position_error_m": 115.25894009613133,
+        "sample_count": 3,
+        "along_track_error_m": -49.43268215768876,
+        "cross_track_error_m": 104.11970610547309,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "fallback_reason": null
+    },
+    {
+      "interval_id": "S-Vw3:mid",
+      "metrics": {
+        "endpoint_error_m": 106.96604678909821,
+        "truth_path_length_m": 382.68167282773726,
+        "drift_ratio": 0.279517035657071,
+        "mean_position_error_m": 48.105645684140825,
+        "max_position_error_m": 106.96604678909821,
+        "sample_count": 4,
+        "along_track_error_m": 51.15120437493516,
+        "cross_track_error_m": 93.94277642254627,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "fallback_reason": null
+    },
+    {
+      "interval_id": "S-Vw3:d1000",
+      "metrics": {
+        "endpoint_error_m": 399.57895372668463,
+        "truth_path_length_m": 1125.8327025681074,
+        "drift_ratio": 0.3549185885391458,
+        "mean_position_error_m": 131.46365291881654,
+        "max_position_error_m": 399.57895372668463,
+        "sample_count": 10,
+        "along_track_error_m": -161.29820250760056,
+        "cross_track_error_m": -365.5832596291153,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "fallback_reason": null
+    }
+  ],
+  "summary": {
+    "count": 11,
+    "p50": 0.360306121178199,
+    "p95": 0.7875760805682017,
+    "fail10": 10,
+    "fallback_count": 0
+  }
+}

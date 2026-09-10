@@ -1,0 +1,24 @@
+{
+  "seed": 26168,
+  "architectures": [
+    "mlp",
+    "tcn",
+    "gru"
+  ],
+  "epochs": 16,
+  "batch_size": 8,
+  "learning_rate": 0.001,
+  "training_window_s": 90,
+  "starts": [
+    0.2,
+    0.4,
+    0.6,
+    0.8
+  ],
+  "checkpoint_every": 4,
+  "selection": "complete, zero fallback, median 10% relative gain, p95 and fail10 no worse",
+  "split_sha256": "fd4e08756399ceb52db1e268eeffb520b13cc52da1ba89867f72e9cb1be4ade0",
+  "torch": "2.6.0+cpu",
+  "fresh_holdout_open": false,
+  "phone_changed": false
+}

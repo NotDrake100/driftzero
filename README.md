@@ -2,6 +2,8 @@
 
 [Cursor accuracy execution plan and agent prompts](docs/15_CURSOR_ACCURACY_EXECUTION_PLAN.md)
 
+[Real-data neural training and measured results](docs/20_JOINT_SEQUENCE_EXPERIMENT.md): MLP, causal TCN and GRU experiments now run on frozen training groups. The below-10% target remains open; rejected checkpoints are not deployed.
+
 
 Current improvement work: [coast correctness and phone placement continuity](docs/adr/011-coast-and-phone-continuity.md). No physical mount is required for a resting phone; pickup handling is conservative. The development-selected coast reaches 48.83% median drift on all 35 locked intervals, improved from the earlier 58.52%, but the less-than-10% objective is unmet. See the [v3 experiment and raw tables](docs/13_ACCURACY_V3_EXPERIMENT.md). Historical screening scores below are not new measurements. The [real-map and acceleration experiments](docs/14_REAL_MAP_EXPERIMENT.md) record development results and rejection decisions; they do not establish a new locked score.
 

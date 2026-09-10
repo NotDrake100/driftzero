@@ -1,0 +1,555 @@
+{
+  "system": "latch_sparse_reseed",
+  "trips": 7,
+  "intervals_requested": 11,
+  "intervals_scored": 11,
+  "coast_mode": "yaw_speed_hold",
+  "student": "off",
+  "persist_speed_pseudo": false,
+  "source_frames": "results/joint_sequence_raw/baseline/frames",
+  "extra_replay_args": [
+    "--weak-heading-policy=hold_course",
+    "--gnss-reseed-after-s=3",
+    "--gnss-reseed-min-median-unique-s=2",
+    "--gnss-reseed-while-fused",
+    "--coast-latch-gnss-speed",
+    "--coast-mode=yaw_speed_hold"
+  ],
+  "failures": [],
+  "summary": {
+    "interval_count": 11,
+    "endpoint_p50_m": 147.79797151808307,
+    "endpoint_p90_m": 522.8688094196658,
+    "endpoint_p95_m": 565.6368389583183,
+    "endpoint_worst_m": 565.6368389583183,
+    "drift_ratio_p50": 0.39842920890925465,
+    "drift_ratio_p90": 0.5315830696090421,
+    "drift_ratio_p95": 0.5401756750284612,
+    "drift_ratio_worst": 0.5401756750284612,
+    "speed_mae_p50": 2.5726666666666667,
+    "heading_mae_rad_p50": 0.5566308623760047
+  },
+  "modes": {
+    "DEAD_RECKONING": 1295,
+    "LOW_CONFIDENCE": 3698
+  },
+  "health": {
+    "filter_ok_false": 0,
+    "low_confidence": 3698,
+    "imu_gap_flag": 0,
+    "states_in_window": 4993
+  },
+  "trip_meta": {
+    "S-Vta11": {
+      "declared_rate_hz": 10.0,
+      "frame_count": 1026,
+      "imu_gaps": 0
+    },
+    "S-Vta29": {
+      "declared_rate_hz": 10.0,
+      "frame_count": 47659,
+      "imu_gaps": 0
+    },
+    "S-Vta6": {
+      "declared_rate_hz": 10.0,
+      "frame_count": 2768,
+      "imu_gaps": 0
+    },
+    "S-Vta8": {
+      "declared_rate_hz": 10.0,
+      "frame_count": 7385,
+      "imu_gaps": 0
+    },
+    "S-Vtb2": {
+      "declared_rate_hz": 10.0,
+      "frame_count": 11480,
+      "imu_gaps": 0
+    },
+    "S-Vtb7": {
+      "declared_rate_hz": 10.0,
+      "frame_count": 928,
+      "imu_gaps": 0
+    },
+    "S-Vw3": {
+      "declared_rate_hz": 10.0,
+      "frame_count": 7763,
+      "imu_gaps": 0
+    }
+  },
+  "sensitivity_hold100": null,
+  "per_interval": [
+    {
+      "interval_id": "S-Vta11:mid",
+      "trip_id": "S-Vta11",
+      "start_ns": 1145512000000,
+      "end_ns": 1163512000001,
+      "metrics": {
+        "endpoint_error_m": 96.60418207766064,
+        "truth_path_length_m": 209.7596573303465,
+        "drift_ratio": 0.4605470055927892,
+        "mean_position_error_m": 74.31164908787213,
+        "max_position_error_m": 96.60418207766064,
+        "sample_count": 3,
+        "along_track_error_m": -42.6865551318723,
+        "cross_track_error_m": 86.66123230672441,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 1.743333333333334,
+        "heading_mae_rad": 0.6860376419639799
+      },
+      "modes": {
+        "DEAD_RECKONING": 121,
+        "LOW_CONFIDENCE": 42
+      },
+      "health": {
+        "states_in_window": 163,
+        "filter_ok_false": 0,
+        "low_confidence": 42,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "1026",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "456",
+        "masked_gnss_dropped": "2",
+        "consumed_frames": "1024",
+        "modes": "GNSS_FUSED:56,DEAD_RECKONING:306,LOW_CONFIDENCE:94",
+        "first_timestamp_ns": "1118512000000",
+        "last_timestamp_ns": "1169412000000"
+      }
+    },
+    {
+      "interval_id": "S-Vta29:mid",
+      "trip_id": "S-Vta29",
+      "start_ns": 949115000000,
+      "end_ns": 976114000001,
+      "metrics": {
+        "endpoint_error_m": 147.79797151808307,
+        "truth_path_length_m": 273.61093501719745,
+        "drift_ratio": 0.5401756750284612,
+        "mean_position_error_m": 95.01079623403842,
+        "max_position_error_m": 147.79797151808307,
+        "sample_count": 4,
+        "along_track_error_m": 97.51453112479365,
+        "cross_track_error_m": -111.06300795563558,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 4.3525,
+        "heading_mae_rad": 0.17417523867323226
+      },
+      "modes": {
+        "DEAD_RECKONING": 118,
+        "LOW_CONFIDENCE": 111
+      },
+      "health": {
+        "states_in_window": 229,
+        "filter_ok_false": 0,
+        "low_confidence": 111,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "47659",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "20308",
+        "masked_gnss_dropped": "3",
+        "consumed_frames": "47656",
+        "modes": "GNSS_FUSED:4151,DEAD_RECKONING:14329,LOW_CONFIDENCE:1828",
+        "first_timestamp_ns": "15000000",
+        "last_timestamp_ns": "2369793000000"
+      }
+    },
+    {
+      "interval_id": "S-Vta29:d1000",
+      "trip_id": "S-Vta29",
+      "start_ns": 476115000000,
+      "end_ns": 602215000001,
+      "metrics": {
+        "endpoint_error_m": 522.8688094196658,
+        "truth_path_length_m": 1025.439038789527,
+        "drift_ratio": 0.5098975069613918,
+        "mean_position_error_m": 279.54963269357506,
+        "max_position_error_m": 522.8688094196658,
+        "sample_count": 15,
+        "along_track_error_m": -490.7342639827654,
+        "cross_track_error_m": -180.48625296829232,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 2.5726666666666667,
+        "heading_mae_rad": 0.5944525574586429
+      },
+      "modes": {
+        "DEAD_RECKONING": 120,
+        "LOW_CONFIDENCE": 959
+      },
+      "health": {
+        "states_in_window": 1079,
+        "filter_ok_false": 0,
+        "low_confidence": 959,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "47659",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "20308",
+        "masked_gnss_dropped": "14",
+        "consumed_frames": "47645",
+        "modes": "GNSS_FUSED:3959,DEAD_RECKONING:13652,LOW_CONFIDENCE:2697",
+        "first_timestamp_ns": "15000000",
+        "last_timestamp_ns": "2369793000000"
+      }
+    },
+    {
+      "interval_id": "S-Vta6:mid",
+      "trip_id": "S-Vta6",
+      "start_ns": 379512000000,
+      "end_ns": 406511000001,
+      "metrics": {
+        "endpoint_error_m": 24.292773516062194,
+        "truth_path_length_m": 537.527157242796,
+        "drift_ratio": 0.045193574294311194,
+        "mean_position_error_m": 10.988024503708964,
+        "max_position_error_m": 24.292773516062194,
+        "sample_count": 4,
+        "along_track_error_m": 23.14940015577283,
+        "cross_track_error_m": -7.365125925691518,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 2.424999999999999,
+        "heading_mae_rad": 0.21981789433978083
+      },
+      "modes": {
+        "DEAD_RECKONING": 118,
+        "LOW_CONFIDENCE": 120
+      },
+      "health": {
+        "states_in_window": 238,
+        "filter_ok_false": 0,
+        "low_confidence": 120,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "2768",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "1224",
+        "masked_gnss_dropped": "3",
+        "consumed_frames": "2765",
+        "modes": "GNSS_FUSED:208,DEAD_RECKONING:812,LOW_CONFIDENCE:204",
+        "first_timestamp_ns": "318112000000",
+        "last_timestamp_ns": "455612000000"
+      }
+    },
+    {
+      "interval_id": "S-Vta8:mid",
+      "trip_id": "S-Vta8",
+      "start_ns": 704512000000,
+      "end_ns": 731512000001,
+      "metrics": {
+        "endpoint_error_m": 59.21538307518298,
+        "truth_path_length_m": 327.7424888347896,
+        "drift_ratio": 0.1806765527585672,
+        "mean_position_error_m": 31.91935292719581,
+        "max_position_error_m": 59.21538307518298,
+        "sample_count": 4,
+        "along_track_error_m": -51.26577463602821,
+        "cross_track_error_m": 29.635729704114468,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 1.9325,
+        "heading_mae_rad": 0.11718931861973125
+      },
+      "modes": {
+        "DEAD_RECKONING": 122,
+        "LOW_CONFIDENCE": 124
+      },
+      "health": {
+        "states_in_window": 246,
+        "filter_ok_false": 0,
+        "low_confidence": 124,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "7385",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "3285",
+        "masked_gnss_dropped": "3",
+        "consumed_frames": "7382",
+        "modes": "GNSS_FUSED:513,DEAD_RECKONING:1938,LOW_CONFIDENCE:834",
+        "first_timestamp_ns": "551412000000",
+        "last_timestamp_ns": "918912000000"
+      }
+    },
+    {
+      "interval_id": "S-Vta8:d1000",
+      "trip_id": "S-Vta8",
+      "start_ns": 641514000000,
+      "end_ns": 758512000001,
+      "metrics": {
+        "endpoint_error_m": 565.6368389583183,
+        "truth_path_length_m": 1064.0610495257522,
+        "drift_ratio": 0.5315830696090421,
+        "mean_position_error_m": 238.96670910638733,
+        "max_position_error_m": 565.6368389583183,
+        "sample_count": 14,
+        "along_track_error_m": -565.2707337918545,
+        "cross_track_error_m": -20.310086625207873,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 4.913494007918506,
+        "heading_mae_rad": 0.10224760232722267
+      },
+      "modes": {
+        "LOW_CONFIDENCE": 915,
+        "DEAD_RECKONING": 122
+      },
+      "health": {
+        "states_in_window": 1037,
+        "filter_ok_false": 0,
+        "low_confidence": 915,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "7385",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "3285",
+        "masked_gnss_dropped": "13",
+        "consumed_frames": "7372",
+        "modes": "GNSS_FUSED:338,DEAD_RECKONING:1318,LOW_CONFIDENCE:1629",
+        "first_timestamp_ns": "551412000000",
+        "last_timestamp_ns": "918912000000"
+      }
+    },
+    {
+      "interval_id": "S-Vtb2:mid",
+      "trip_id": "S-Vtb2",
+      "start_ns": 235914000000,
+      "end_ns": 262914000001,
+      "metrics": {
+        "endpoint_error_m": 74.91198547126696,
+        "truth_path_length_m": 305.5165153183739,
+        "drift_ratio": 0.24519782635384663,
+        "mean_position_error_m": 54.730480545706946,
+        "max_position_error_m": 74.91198547126696,
+        "sample_count": 4,
+        "along_track_error_m": -22.809803879922697,
+        "cross_track_error_m": 71.35489357077864,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 1.3724999999999996,
+        "heading_mae_rad": 0.9378059979327562
+      },
+      "modes": {
+        "DEAD_RECKONING": 123,
+        "LOW_CONFIDENCE": 114
+      },
+      "health": {
+        "states_in_window": 237,
+        "filter_ok_false": 0,
+        "low_confidence": 114,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "11480",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "4908",
+        "masked_gnss_dropped": "3",
+        "consumed_frames": "11477",
+        "modes": "GNSS_FUSED:879,DEAD_RECKONING:3448,LOW_CONFIDENCE:581",
+        "first_timestamp_ns": "14000000",
+        "last_timestamp_ns": "571114000000"
+      }
+    },
+    {
+      "interval_id": "S-Vtb2:d1000",
+      "trip_id": "S-Vtb2",
+      "start_ns": 118914000000,
+      "end_ns": 208914000001,
+      "metrics": {
+        "endpoint_error_m": 232.9948211990666,
+        "truth_path_length_m": 1091.7040740018465,
+        "drift_ratio": 0.21342305735379394,
+        "mean_position_error_m": 212.8839666755314,
+        "max_position_error_m": 347.95145485397757,
+        "sample_count": 11,
+        "along_track_error_m": 150.87718818203982,
+        "cross_track_error_m": -177.54387799170428,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 4.567272727272728,
+        "heading_mae_rad": 0.6532765621970866
+      },
+      "modes": {
+        "DEAD_RECKONING": 118,
+        "LOW_CONFIDENCE": 650
+      },
+      "health": {
+        "states_in_window": 768,
+        "filter_ok_false": 0,
+        "low_confidence": 650,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "11480",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "4908",
+        "masked_gnss_dropped": "10",
+        "consumed_frames": "11470",
+        "modes": "GNSS_FUSED:767,DEAD_RECKONING:3028,LOW_CONFIDENCE:1113",
+        "first_timestamp_ns": "14000000",
+        "last_timestamp_ns": "571114000000"
+      }
+    },
+    {
+      "interval_id": "S-Vtb7:mid",
+      "trip_id": "S-Vtb7",
+      "start_ns": 8025914000000,
+      "end_ns": 8043914000001,
+      "metrics": {
+        "endpoint_error_m": 71.70189083938448,
+        "truth_path_length_m": 320.0679478955914,
+        "drift_ratio": 0.2240208409208603,
+        "mean_position_error_m": 47.71173239435467,
+        "max_position_error_m": 71.70189083938448,
+        "sample_count": 3,
+        "along_track_error_m": -0.6584634219517262,
+        "cross_track_error_m": 71.69877006944941,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 1.153333333333333,
+        "heading_mae_rad": 0.8601486167505897
+      },
+      "modes": {
+        "DEAD_RECKONING": 112,
+        "LOW_CONFIDENCE": 38
+      },
+      "health": {
+        "states_in_window": 150,
+        "filter_ok_false": 0,
+        "low_confidence": 38,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "928",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "382",
+        "masked_gnss_dropped": "2",
+        "consumed_frames": "926",
+        "modes": "GNSS_FUSED:50,DEAD_RECKONING:285,LOW_CONFIDENCE:47",
+        "first_timestamp_ns": "7998913000000",
+        "last_timestamp_ns": "8044914000000"
+      }
+    },
+    {
+      "interval_id": "S-Vw3:mid",
+      "trip_id": "S-Vw3",
+      "start_ns": 5455311000000,
+      "end_ns": 5482311000001,
+      "metrics": {
+        "endpoint_error_m": 152.47155616882557,
+        "truth_path_length_m": 382.68167282773726,
+        "drift_ratio": 0.39842920890925465,
+        "mean_position_error_m": 58.61385045575137,
+        "max_position_error_m": 152.47155616882557,
+        "sample_count": 4,
+        "along_track_error_m": 100.28275491265799,
+        "cross_track_error_m": 114.85193657404585,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 4.93,
+        "heading_mae_rad": 0.48471687475527525
+      },
+      "modes": {
+        "DEAD_RECKONING": 115,
+        "LOW_CONFIDENCE": 104
+      },
+      "health": {
+        "states_in_window": 219,
+        "filter_ok_false": 0,
+        "low_confidence": 104,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "7763",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "3049",
+        "masked_gnss_dropped": "3",
+        "consumed_frames": "7760",
+        "modes": "GNSS_FUSED:579,DEAD_RECKONING:2211,LOW_CONFIDENCE:259",
+        "first_timestamp_ns": "5293310000000",
+        "last_timestamp_ns": "5679311000000"
+      }
+    },
+    {
+      "interval_id": "S-Vw3:d1000",
+      "trip_id": "S-Vw3",
+      "start_ns": 5374311000000,
+      "end_ns": 5455311000001,
+      "metrics": {
+        "endpoint_error_m": 481.66577400821853,
+        "truth_path_length_m": 1125.8327025681074,
+        "drift_ratio": 0.4278306829331777,
+        "mean_position_error_m": 185.14777172831347,
+        "max_position_error_m": 481.66577400821853,
+        "sample_count": 10,
+        "along_track_error_m": -22.94261039876025,
+        "cross_track_error_m": -481.12419965225655,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 2.662,
+        "heading_mae_rad": 0.5566308623760047
+      },
+      "modes": {
+        "DEAD_RECKONING": 106,
+        "LOW_CONFIDENCE": 521
+      },
+      "health": {
+        "states_in_window": 627,
+        "filter_ok_false": 0,
+        "low_confidence": 521,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "7763",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "3049",
+        "masked_gnss_dropped": "9",
+        "consumed_frames": "7754",
+        "modes": "GNSS_FUSED:488,DEAD_RECKONING:1877,LOW_CONFIDENCE:684",
+        "first_timestamp_ns": "5293310000000",
+        "last_timestamp_ns": "5679311000000"
+      }
+    }
+  ]
+}

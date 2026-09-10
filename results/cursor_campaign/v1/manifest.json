@@ -1,7 +1,7 @@
 {
   "campaign": "cursor-accuracy-below-10pct",
-  "version": 9,
-  "date_utc": "2026-09-07",
+  "version": 10,
+  "date_utc": "2026-09-10",
   "role": "F-coordinator",
   "status": "checkpoint",
   "claim": {
@@ -10,10 +10,10 @@
     "median_target_passed": false,
     "all_interval_target_passed": false,
     "field_placements_tested": false,
-    "notes": "A diagnostics and E logger audit are on main. B is a closed rejection. C PR 22 archived three real-data rounds, all rejected. Best polar median 22.33% with p95 95.92%. D selection stays blocked. No field drive."
+    "notes": "Diagnostics, capture logger, and C research trainer are on main. That is not a 10% pass. Three C rounds rejected. B overlay not merged. D selection blocked. No field drive."
   },
   "pins": {
-    "campaign_base_commit": "1bd76e345080ec2d37d483ee8732d42b13429e17",
+    "campaign_base_commit": "b80a2aa25ae94ae62d92a373d264ff3f45efc2e8",
     "plan_named_baseline_commit": "5a0893fdb321605784f1f492445ad53f2fae47fc",
     "selected_coast_commit": "1cd92fb3d5dc60fea57e944a4862991c714d484d",
     "io_vnbd_commit": "118939602e3422d47b8ab0807b623751c3ac135b",
@@ -231,7 +231,7 @@
     },
     "C": {
       "name": "learned-motion",
-      "status": "measured_rejection",
+      "status": "merged_research_rejection",
       "holdout_open": false,
       "objective": "joint_distance_and_heading",
       "primary_score": "blackout_position_drift",
@@ -245,10 +245,11 @@
         "branch": "codex/joint-motion-real-data",
         "pr": "https://github.com/NotDrake100/driftzero/pull/22",
         "latest_commit": "9c7fbd846bd41412632f4b97b21d9326eb3d0421",
+        "merged_commit": "b80a2aa25ae94ae62d92a373d264ff3f45efc2e8",
         "author": "NotDrake100",
         "training_started": true,
         "measured_candidate": false,
-        "review": "fix_required_exact_group_pin",
+        "review": "merged_as_research_not_candidate",
         "round1": {
           "actions_run": 34157730168,
           "archive": "results/joint_motion_20260907/initial",
@@ -280,7 +281,7 @@
           "baseline_seed_gyro": {"median": 0.400650494429274, "p95": 0.5894975874481975, "fail10": 10},
           "best_median": {"config": "gru_16", "median": 0.22331874793983045, "p95": 0.9592330405459883, "fail10": 9}
         },
-        "notes": "All three rounds archived and rejected. No locked confirmation. Exact 24/10/1 IDs still not pinned. Do not merge as a live default."
+        "notes": "Merged to main as research with negative numbers. Android defaults unchanged. Exact 24/10/1 IDs still not pinned on the trainer. Do not run locked confirmation."
       }
     },
     "D": {
@@ -320,14 +321,14 @@
   "blockers": [
     "DIAGNOSTIC_ONLY results must not change live defaults.",
     "B round is closed. Do not merge the overlay. Do not expand map-only tuning without a new hypothesis.",
-    "C real-data training is PR 22. Pin exact frozen group IDs before merge. Do not open the fresh holdout.",
+    "C trainer is on main as a research rejection. Pin exact frozen group IDs. Do not open the fresh holdout.",
     "D selection and locked confirmation stay blocked until an eligible candidate exists.",
     "E model wiring stays blocked until D selects a candidate. Physical placement validation is pending.",
     "No field recordings exist. Cloud agents cannot manufacture drives.",
     "This coordinator workspace has no ANDROID_HOME. Android app unit tests were not run here."
   ],
-  "last_completed_step": "F v9: recorded three archived C rejections on PR 22. Polar gru_16 median 22.33% failed p95. Selection still blocked.",
-  "next_step": "Do not run locked confirmation. Keep holdout closed. Group-ID pin remains a follow-up on the trainer. Do not change Android defaults. A later C round needs a tail hypothesis, not a larger network alone.",
+  "last_completed_step": "F v10: owner merged PR 22 as research. Three C rounds remain rejected. Selection still blocked.",
+  "next_step": "Do not run locked confirmation. Keep holdout closed. Pin exact group IDs on the trainer as follow-up. A later C round needs a tail hypothesis. Do not merge B as a live default.",
   "failures": [
     "A and B first appeared as RUNNING with no branch. Git evidence arrived later. Do not treat lifecycle RUNNING as an experiment."
   ]

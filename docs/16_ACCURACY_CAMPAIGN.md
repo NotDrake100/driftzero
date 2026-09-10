@@ -1,6 +1,6 @@
 # Accuracy campaign index
 
-Date: 2026-09-10. Coordinator checkpoint v9. This is a tracking document, not
+Date: 2026-09-10. Coordinator checkpoint v10. This is a tracking document, not
 an accuracy result. Machine-readable copy:
 [results/cursor_campaign/v1/manifest.json](../results/cursor_campaign/v1/manifest.json).
 Plan: [docs/15_CURSOR_ACCURACY_EXECUTION_PLAN.md](15_CURSOR_ACCURACY_EXECUTION_PLAN.md).
@@ -10,7 +10,7 @@ Coordination ADR: [015](adr/015-accuracy-campaign.md).
 
 | Status | Value | Evidence |
 |---|---|---|
-| Code merged | Partial | Diagnostics PR 17 and capture-audit PR 18 are on main. B overlay is not. C/D are not. |
+| Code merged | Partial | Diagnostics, capture logger, and C research trainer are on main. B overlay is not. No live candidate. |
 | Experiment completed | Partial | A done. B rejected. C three rounds rejected. No candidate. |
 | Median target passed | No | Reproduced locked median 48.83% |
 | All-interval target passed | No | `accuracy_gate` failed. 6/35 below 10% |
@@ -24,7 +24,7 @@ Do not describe the 48.83% locked median as a fresh independent validation.
 |---|---|---|---|---|
 | A diagnostics | Merged | `cursor/accuracy-diagnostics-9aba` | [17](https://github.com/NotDrake100/driftzero/pull/17) | Score-only. Locked 35 reproduced. Split frozen. |
 | B road reliability | Closed rejection | `cursor/road-reliability-8d5b` | [19](https://github.com/NotDrake100/driftzero/pull/19) | Relative gate failed. Overlay not enabled. Not merged. |
-| C learned motion | Measured rejection | `codex/joint-motion-real-data` | [22](https://github.com/NotDrake100/driftzero/pull/22) | Development scored. No eligible candidate. Holdout closed. Preregistration remains [20](https://github.com/NotDrake100/driftzero/pull/20). |
+| C learned motion | Merged research rejection | `codex/joint-motion-real-data` | [22](https://github.com/NotDrake100/driftzero/pull/22) | Three development rounds rejected. On main as research. Not a candidate. |
 | D evaluation | Checks prepared | `cursor/accuracy-evaluation-d676` | [21](https://github.com/NotDrake100/driftzero/pull/21) | Parity and leakage only. Selection blocked. |
 | E capture audit | Logger merged | `cursor/phone-validation-d676` | [18](https://github.com/NotDrake100/driftzero/pull/18) | 0 field drives. Placement validation pending. |
 
@@ -75,9 +75,8 @@ enabled on main. Do not start another map-only pass without a new hypothesis.
 ## C status
 
 PR 20 remains the coordinator preregistration (ADR 016). Owner PR 22
-(`codex/joint-motion-real-data`, ADR 018) archived three measured rounds.
-All three rejected. Locked confirmation off. Holdout closed. Android defaults
-unchanged.
+merged to main at `b80a2aa` as research. Android defaults were not changed.
+All three rounds rejected. Locked confirmation off. Holdout closed.
 
 Development 11, physics `seed_gyro` 40.07% / 58.95% / 1/11 below 0.10.
 Kotlin selected-coast comparison remains 39.84% / 54.02% / 1/11.
@@ -89,11 +88,17 @@ Kotlin selected-coast comparison remains 39.84% / 54.02% / 1/11.
 | `polar_balanced_v3` | `gru_16` | 22.33% | 95.92% | 2/11 | reject |
 
 Archives: `results/joint_motion_20260907/{initial,raw_gyro,polar_balanced}`.
-Report: [docs/20_JOINT_SEQUENCE_EXPERIMENT.md](https://github.com/NotDrake100/driftzero/blob/codex/joint-motion-real-data/docs/20_JOINT_SEQUENCE_EXPERIMENT.md).
+Report: [docs/20_JOINT_SEQUENCE_EXPERIMENT.md](20_JOINT_SEQUENCE_EXPERIMENT.md).
 Exact 24/10/1 group IDs are still not pinned in `validate_roles`. Do not run
 locked confirmation. Do not treat any checkpoint as a candidate.
 
 ## D checks
+
+D's eval-check module remains a gate, not a selector. SELECTION_OPEN stays
+false. A later C tail-focused round is not a candidate until it beats
+`seed_gyro` 40.07% median and 58.95% p95 on the 11 development intervals,
+then D re-runs eval checks. Polar `gru_16` (22.33% / 95.92% / 2/11) is not
+that bar.
 
 ADR [017](https://github.com/NotDrake100/driftzero/blob/cursor/accuracy-evaluation-d676/docs/adr/017-evaluation-checks.md).
 Locked IDs unchanged. DIAGNOSTIC_ONLY and oracle reports rejected. Matrix
@@ -134,15 +139,15 @@ Route and vehicle identities are unavailable. Driver letter is prefix-only.
 
 ## Next justified work
 
-1. Do not promote PR 22 as a live default. A later C round needs a tail
-   hypothesis, not a larger network alone. Pin exact frozen group IDs on
-   the trainer. Do not open the holdout.
+1. Do not run locked confirmation. Keep the holdout closed. Pin exact frozen
+   group IDs on the trainer. A later C round needs a tail hypothesis, not a
+   larger network alone.
 2. Keep D selection closed until an eligible C config exists.
 3. Do not merge PR 19 as a live map default.
 4. Owner field drives remain required for placement validation.
 
 ## Resume
 
-Resume from this file and `results/cursor_campaign/v1/manifest.json`. A and the
-E logger are on main. B is closed. C training is PR 22. Do not restart A's
-diagnostic run.
+Resume from this file and `results/cursor_campaign/v1/manifest.json`. A, the
+E logger, and the C research trainer are on main. B is closed and not merged.
+Do not restart A's diagnostic run. Do not treat polar `gru_16` as a candidate.

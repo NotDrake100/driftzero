@@ -1,6 +1,6 @@
 # Accuracy campaign index
 
-Date: 2026-09-10. Coordinator checkpoint v12. This is a tracking document, not
+Date: 2026-09-10. Coordinator checkpoint v13. This is a tracking document, not
 an accuracy result. Machine-readable copy:
 [results/cursor_campaign/v1/manifest.json](../results/cursor_campaign/v1/manifest.json).
 Plan: [docs/15_CURSOR_ACCURACY_EXECUTION_PLAN.md](15_CURSOR_ACCURACY_EXECUTION_PLAN.md).
@@ -11,7 +11,7 @@ Coordination ADR: [015](adr/015-accuracy-campaign.md).
 | Status | Value | Evidence |
 |---|---|---|
 | Code merged | Partial | Diagnostics, capture logger, and C research trainer are on main. B overlay is not. No live candidate. |
-| Experiment completed | Partial | A done. B rejected. C rounds 1-4 rejected. Integrated follow-up measuring. No candidate. |
+| Experiment completed | Partial | A done. B rejected. C rounds 1-5 rejected. No candidate. |
 | Median target passed | No | Reproduced locked median 48.83% |
 | All-interval target passed | No | `accuracy_gate` failed. 6/35 below 10% |
 | Field placements tested | No | No owner drives |
@@ -24,7 +24,7 @@ Do not describe the 48.83% locked median as a fresh independent validation.
 |---|---|---|---|---|
 | A diagnostics | Merged | `cursor/accuracy-diagnostics-9aba` | [17](https://github.com/NotDrake100/driftzero/pull/17) | Score-only. Locked 35 reproduced. Split frozen. |
 | B road reliability | Closed rejection | `cursor/road-reliability-8d5b` | [19](https://github.com/NotDrake100/driftzero/pull/19) | Relative gate failed. Overlay not enabled. Not merged. |
-| C learned motion | Round 4 rejected; follow-up measuring | `codex/long-outage-motion` | [23](https://github.com/NotDrake100/driftzero/pull/23) | Long-horizon polar rejected. Integrated head measuring. Not a candidate. |
+| C learned motion | Rounds 1-5 rejected | `codex/long-outage-motion` | [23](https://github.com/NotDrake100/driftzero/pull/23) | Long-horizon polar and integrated head rejected. Not a candidate. Holdout closed. |
 | D evaluation | Checks prepared | `cursor/accuracy-evaluation-d676` | [21](https://github.com/NotDrake100/driftzero/pull/21) | Parity and leakage only. Selection blocked. |
 | E capture audit | Logger merged | `cursor/phone-validation-d676` | [18](https://github.com/NotDrake100/driftzero/pull/18) | 0 field drives. Placement validation pending. |
 
@@ -76,7 +76,7 @@ enabled on main. Do not start another map-only pass without a new hypothesis.
 
 PR 20 remains the coordinator preregistration (ADR 016). Owner PR 22
 merged to main at `b80a2aa` as research. Android defaults were not changed.
-Rounds 1-4 rejected. Locked confirmation off. Holdout closed.
+Rounds 1-5 rejected. Locked confirmation off. Holdout closed.
 
 Development 11, physics `seed_gyro` 40.07% / 58.95% / 1/11 below 0.10.
 Kotlin selected-coast comparison remains 39.84% / 54.02% / 1/11.
@@ -87,7 +87,7 @@ Kotlin selected-coast comparison remains 39.84% / 54.02% / 1/11.
 | `raw_gyro_v2` | `tcn_8` | 30.06% | 120.81% | 1/11 | reject |
 | `polar_balanced_v3` | `gru_16` | 22.33% | 95.92% | 2/11 | reject |
 | `long_outage_v4` | `gru_8` | 31.78% | 90.58% | 1/11 | reject |
-| `integrated_v5` PR 23 | pending |  |  |  | measuring |
+| `integrated_v5` | `mlp_16` | 38.31% | 100.78% | 0/11 | reject |
 
 Round 4 evidence: Actions [34470745169](https://github.com/NotDrake100/driftzero/actions/runs/34470745169)
 at `a1c874b`. Copied selection: `results/cursor_campaign/v1/long_outage_v4/`.
@@ -99,22 +99,25 @@ failed p95 (90.58% vs 58.95%). All twelve trained checkpoints rejected.
 The 180 s horizon did not fix the tail.
 
 Owner [PR 23](https://github.com/NotDrake100/driftzero/pull/23) HEAD
-`68beb4c` is now an integrated-heading follow-up on that frozen cache.
-Protocol is accepted for measurement, not for merge. No Android files.
-MLP and short TCN, 32 epochs, `head_mode=integrated`, projected 12
-channels with raw gyro zeroed in train and eval. Combined head and input
-change, not an ablation. Relative gate unchanged.
+`68beb4c` ran the integrated-heading follow-up on that frozen cache.
+Actions [34472740580](https://github.com/NotDrake100/driftzero/actions/runs/34472740580).
+Copied selection: `results/cursor_campaign/v1/integrated_v5/`. `selected`
+is null. Cache SHA matched. `holdout_read` false. `projected_only` true.
+Best median `mlp_16` 38.31% failed the relative median gate (threshold
+36.06%) and failed p95 (100.78% vs 58.95%). `tcn_32` reached 2/11 below
+10% and still failed median and p95. Combined head and input change, not
+an ablation. Do not merge PR 23 as a live default.
 
-Do not run locked confirmation. Do not treat `gru_8` or an in-flight
-integrated checkpoint as a candidate.
+Do not run locked confirmation. Polar `gru_16` remains the best C median
+and is not a candidate. A later C round needs an isolated tail
+hypothesis, not another combined architecture, head, and input change.
 
 ## D checks
 
 D's eval-check module remains a gate, not a selector. SELECTION_OPEN stays
-false. The integrated follow-up is not a candidate until it is measured and
-beats `seed_gyro` 40.07% median and 58.95% p95 on the 11 development
-intervals, then D re-runs eval checks. `gru_8` (31.78% / 90.58% / 1/11)
-failed that bar. Polar `gru_16` is also not a candidate.
+false. No C config is eligible. `mlp_16` (38.31% / 100.78% / 0/11) and
+`gru_8` (31.78% / 90.58% / 1/11) failed the `seed_gyro` 40.07% / 58.95%
+development bar. Polar `gru_16` is also not a candidate.
 
 ADR [017](https://github.com/NotDrake100/driftzero/blob/cursor/accuracy-evaluation-d676/docs/adr/017-evaluation-checks.md).
 Locked IDs unchanged. DIAGNOSTIC_ONLY and oracle reports rejected. Matrix
@@ -155,10 +158,10 @@ Route and vehicle identities are unavailable. Driver letter is prefix-only.
 
 ## Next justified work
 
-1. Wait for the integrated follow-up development scores on PR 23. Do not
-   merge before those numbers exist. Keep the holdout closed.
+1. Do not start another combined C round. A later attempt needs an isolated
+   tail hypothesis. Keep the holdout closed.
 2. Keep D selection closed until an eligible C config exists.
-3. Do not merge PR 19 as a live map default.
+3. Do not merge PR 19 or PR 23 as a live default.
 4. Owner field drives remain required for placement validation.
 5. Pin exact frozen group IDs on the trainer remains a follow-up.
 
@@ -166,6 +169,5 @@ Route and vehicle identities are unavailable. Driver letter is prefix-only.
 
 Resume from this file and `results/cursor_campaign/v1/manifest.json`. A, the
 E logger, and the C research trainer are on main. B is closed and not merged.
-Long-horizon polar round 4 is rejected. The integrated follow-up is measuring.
-Do not restart A's diagnostic run. Do not treat polar `gru_16`, long-horizon
-`gru_8`, or an unfinished integrated checkpoint as a candidate.
+C rounds 1-5 are rejected. Do not restart A's diagnostic run. Do not treat
+polar `gru_16`, long-horizon `gru_8`, or integrated `mlp_16` as a candidate.

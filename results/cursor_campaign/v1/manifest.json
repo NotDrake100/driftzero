@@ -1,6 +1,6 @@
 {
   "campaign": "cursor-accuracy-below-10pct",
-  "version": 12,
+  "version": 13,
   "date_utc": "2026-09-10",
   "role": "F-coordinator",
   "status": "checkpoint",
@@ -10,7 +10,7 @@
     "median_target_passed": false,
     "all_interval_target_passed": false,
     "field_placements_tested": false,
-    "notes": "Diagnostics, capture logger, and C research trainer are on main. Long-horizon polar round 4 rejected. Integrated follow-up on PR 23 is measuring. That is not a 10% pass. B overlay not merged. D selection blocked. No field drive."
+    "notes": "Diagnostics, capture logger, and C research trainer are on main. C rounds 1-5 rejected. That is not a 10% pass. B overlay not merged. D selection blocked. No field drive."
   },
   "pins": {
     "campaign_base_commit": "b80a2aa25ae94ae62d92a373d264ff3f45efc2e8",
@@ -231,7 +231,7 @@
     },
     "C": {
       "name": "learned-motion",
-      "status": "round4_rejected_round5_measurement_pending",
+      "status": "rounds_1_to_5_rejected",
       "holdout_open": false,
       "objective": "joint_distance_and_heading",
       "primary_score": "blackout_position_drift",
@@ -325,17 +325,22 @@
         "author": "NotDrake100",
         "adr": "docs/adr/019-long-outage-motion.md",
         "variant": "integrated_v5",
-        "status": "measurement_pending",
+        "status": "rejected",
         "training_started": true,
         "measured_candidate": false,
         "locked_confirmation": false,
         "fresh_holdout_open": false,
         "android_defaults_changed": false,
         "confounded": true,
-        "review": "protocol_accepted_for_measurement_not_merge",
+        "review": "measured_rejection_median_and_p95",
+        "actions_run": 34472740580,
+        "archive": "results/cursor_campaign/v1/integrated_v5",
         "output": "results/joint_sequence_integrated",
         "cache_actions_run": 34470745169,
         "cache_sha256": "89bd4da16dad62a5c6f58e9c0f97f2027888a1b9289a2891194f72bf79de2aa7",
+        "holdout_read": false,
+        "projected_only": true,
+        "window_count": 219,
         "changes": [
           "integrated_heading",
           "sigmoid_speed",
@@ -346,7 +351,10 @@
         "architectures": ["mlp", "tcn"],
         "head_mode": "integrated",
         "relative_gate": "seed_gyro 10% median improvement, p95 and fail10 no worse, zero fallback",
-        "notes": "Draft follow-up on frozen round-4 tensors. Combined head and input change. Do not open holdout."
+        "baseline_seed_gyro": {"median": 0.400650494429274, "p95": 0.5894975874481975, "fail10": 10},
+        "best_median": {"config": "mlp_16", "median": 0.38306945571717316, "p95": 1.007756429967717, "fail10": 11},
+        "selected": null,
+        "notes": "mlp_16 failed the relative median gate and p95. tcn_32 reached fail10 9 and still failed median and p95. Combined head and input change. Do not open holdout."
       }
     },
     "D": {
@@ -386,14 +394,14 @@
   "blockers": [
     "DIAGNOSTIC_ONLY results must not change live defaults.",
     "B round is closed. Do not merge the overlay. Do not expand map-only tuning without a new hypothesis.",
-    "C trainer is on main as a research rejection. Long-horizon polar round 4 rejected on p95. Integrated follow-up on PR 23 is measuring. Pin exact frozen group IDs. Do not open the fresh holdout.",
+    "C trainer is on main as a research rejection. Rounds 1-5 rejected. Pin exact frozen group IDs. Do not open the fresh holdout. Do not start another combined C round without an isolated tail hypothesis.",
     "D selection and locked confirmation stay blocked until an eligible candidate exists.",
     "E model wiring stays blocked until D selects a candidate. Physical placement validation is pending.",
     "No field recordings exist. Cloud agents cannot manufacture drives.",
     "This coordinator workspace has no ANDROID_HOME. Android app unit tests were not run here."
   ],
-  "last_completed_step": "F v12: verified long-outage v4 rejection from Actions 34470745169. Integrated follow-up measuring. Selection still blocked.",
-  "next_step": "Wait for PR 23 integrated follow-up development scores. Do not merge before numbers exist. Keep holdout closed. Do not run locked confirmation. Do not merge B as a live default.",
+  "last_completed_step": "F v13: verified integrated v5 rejection from Actions 34472740580. No eligible C candidate. Selection still blocked.",
+  "next_step": "Do not start another combined C round. Keep holdout closed. Do not run locked confirmation. Do not merge PR 19 or PR 23 as a live default.",
   "failures": [
     "A and B first appeared as RUNNING with no branch. Git evidence arrived later. Do not treat lifecycle RUNNING as an experiment."
   ]

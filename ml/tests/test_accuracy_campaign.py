@@ -32,13 +32,13 @@ class AccuracyCampaignTest(unittest.TestCase):
             self.assertNotIn("S-Vtb3", hold)
             self.assertTrue(freeze.get("c_may_train"))
             self.assertFalse(freeze.get("holdout_open", False))
-        self.assertGreaterEqual(payload["version"], 12)
+        self.assertGreaterEqual(payload["version"], 13)
         self.assertEqual(
             payload["pins"]["campaign_base_commit"],
             "b80a2aa25ae94ae62d92a373d264ff3f45efc2e8",
         )
         learned = payload["tasks"]["C"]
-        self.assertEqual(learned["status"], "round4_rejected_round5_measurement_pending")
+        self.assertEqual(learned["status"], "rounds_1_to_5_rejected")
         self.assertFalse(learned["holdout_open"])
         self.assertFalse(learned["real_data_run"]["measured_candidate"])
         self.assertEqual(
@@ -50,8 +50,10 @@ class AccuracyCampaignTest(unittest.TestCase):
         self.assertFalse(learned["long_outage_run"]["fresh_holdout_open"])
         self.assertFalse(learned["long_outage_run"]["locked_confirmation"])
         self.assertIsNone(learned["long_outage_run"]["selected"])
+        self.assertEqual(learned["integrated_run"]["status"], "rejected")
         self.assertFalse(learned["integrated_run"]["measured_candidate"])
         self.assertFalse(learned["integrated_run"]["fresh_holdout_open"])
+        self.assertIsNone(learned["integrated_run"]["selected"])
         verified = json.loads(
             (ROOT / "results" / "cursor_campaign" / "v1" / "long_outage_v4" / "verified_summary.json").read_text()
         )
@@ -61,6 +63,16 @@ class AccuracyCampaignTest(unittest.TestCase):
         self.assertEqual(
             verified["candidates"]["gru_8"]["p50"],
             learned["long_outage_run"]["best_median"]["median"],
+        )
+        integrated = json.loads(
+            (ROOT / "results" / "cursor_campaign" / "v1" / "integrated_v5" / "verified_summary.json").read_text()
+        )
+        self.assertEqual(integrated["status"], "rejected")
+        self.assertIsNone(integrated["selected"])
+        self.assertFalse(integrated["fresh_holdout_open"])
+        self.assertEqual(
+            integrated["candidates"]["mlp_16"]["p50"],
+            learned["integrated_run"]["best_median"]["median"],
         )
         self.assertFalse(payload["tasks"]["D"]["selection_open"])
         self.assertFalse(payload["tasks"]["D"]["locked_confirmation_open"])

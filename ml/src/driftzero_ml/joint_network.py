@@ -12,7 +12,7 @@ class JointNetwork(nn.Module):
     def __init__(self, kind: str, head_mode: str = 'cartesian'):
         super().__init__()
         self.kind = kind
-        if head_mode not in ('cartesian', 'polar'):
+        if head_mode not in ('cartesian', 'polar', 'integrated'):
             raise ValueError('unknown motion head')
         self.head_mode = head_mode
         width = 24
@@ -44,7 +44,12 @@ class JointNetwork(nn.Module):
         else:
             x = F.silu(self.body(x))
         raw = self.head(x)
-        if self.head_mode == 'polar':
+        if self.head_mode == 'integrated':
+            angle = torch.atan2(features[..., 7], features[..., 8])+torch.cumsum(torch.tanh(raw[..., 0])*dt, dim=1)
+            prior = (torch.linalg.vector_norm(base, dim=-1)/55).clamp(1e-5, 1-1e-5)
+            speed = 55*torch.sigmoid(torch.logit(prior)+raw[..., 1])
+            velocity = torch.stack((speed*torch.sin(angle), speed*torch.cos(angle)), dim=-1)
+        elif self.head_mode == 'polar':
             angle = torch.atan2(features[..., 7], features[..., 8])+torch.pi*torch.tanh(raw[..., 0])
             speed = (torch.linalg.vector_norm(base, dim=-1)+55*torch.tanh(raw[..., 1])).clamp(0, 55)
             velocity = torch.stack((speed*torch.sin(angle), speed*torch.cos(angle)), dim=-1)

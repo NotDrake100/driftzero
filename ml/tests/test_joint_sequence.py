@@ -80,12 +80,13 @@ class JointSequenceTest(unittest.TestCase):
         torch.set_num_threads(1)
         for kind in ('mlp', 'tcn', 'gru', 'tcn_long'):
             model = JointNetwork(kind, head_mode='polar')
-            x, base, dt = torch.randn(2, 35, len(FEATURES)), torch.randn(2, 35, 2), torch.full((2, 35), .1)
+            length, prefix = (1536, 900) if kind == 'tcn_long' else (35, 20)
+            x, base, dt = torch.randn(2, length, len(FEATURES)), torch.randn(2, length, 2), torch.full((2, length), .1)
             # Nonzero heads ensure test covers the learned path, not only zero-init fallback.
             torch.nn.init.normal_(model.head.weight, std=.01)
             full, sigma = model(x, base, dt)
-            short, _ = model(x[:, :20], base[:, :20], dt[:, :20])
-            torch.testing.assert_close(full[:, :20], short, atol=1e-5, rtol=1e-5)
+            short, _ = model(x[:, :prefix], base[:, :prefix], dt[:, :prefix])
+            torch.testing.assert_close(full[:, :prefix], short, atol=1e-5, rtol=1e-5)
             (full.square().mean()+sigma.mean()).backward()
             self.assertTrue(all(p.grad is not None for p in model.parameters()))
 
@@ -152,3 +153,26 @@ class JointSequenceTest(unittest.TestCase):
             return torch.cat((x, torch.full_like(x, value)), dim=1)
         torch.testing.assert_close(first, supervised_motion_loss(padded(pred, 0), padded(sigma, 5),
                                    padded(target, 0), padded(mask, 0), padded(dt, 0), 1.))
+
+    @unittest.skipUnless(importlib.util.find_spec('torch'), 'optional PyTorch is unavailable')
+    def test_integrated_speed_retains_gradient_and_heading_is_causal(self):
+        import torch
+
+        from driftzero_ml.joint_network import JointNetwork
+
+        model = JointNetwork('mlp', head_mode='integrated')
+        x = torch.zeros(1, 100, len(FEATURES))
+        x[..., 8] = 1
+        base = torch.zeros(1, 100, 2)
+        base[..., 1] = 25
+        dt = torch.full((1, 100), .1)
+        with torch.no_grad():
+            model.head.bias[1] = -3
+            model.head.bias[0] = .5
+        full, _ = model(x, base, dt)
+        short, _ = model(x[:, :50], base[:, :50], dt[:, :50])
+        torch.testing.assert_close(full[:, :50], short)
+        (-full.square().sum()).backward()
+        self.assertGreater(abs(float(model.head.bias.grad[1])), 0)
+        velocity = full.diff(dim=1)/.1
+        self.assertTrue((torch.linalg.vector_norm(velocity, dim=-1) < 55).all())

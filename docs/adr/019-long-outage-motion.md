@@ -34,3 +34,34 @@ p95 or failure count is only a development gate, not an absolute 10% pass.
 
 Tests cover long-TCN and polar output prefix invariance and actual gradients,
 plus loss independence from unlabelled target values and padded timesteps.
+
+
+## Follow-up: explicit heading integration and smooth speed
+
+The completed long-horizon round rejected all twelve trained checkpoints.
+Best median was GRU epoch 8, 31.78% median / 90.58% p95 / 1 of 11 below 10%.
+Across every tenth accepted training window, near-zero predicted speed occupies
+23.46% at GRU 8 and 27.43% at GRU 48; long TCN moves from 21.41% to 35.87%.
+These are model diagnostics, not true-stop rates. They do not prove collapse.
+The hard clamp nonetheless has zero derivative below its speed boundary.
+
+Declare a follow-up before measuring it: an integrated heading correction
+(cumulative tanh(output) radians/second times dt) and smooth speed
+55*sigmoid(logit(clamp(seed_speed/55, 1e-5, 1-1e-5))+output). This keeps speeds
+strictly between 0 and 55 m/s and retains gradients at finite low outputs.
+At zero output, zero/55 m/s seeds differ by at most 0.00055 m/s. Heading still
+uses the causal physics prior plus the integrated correction.
+
+Use MLP and short TCN, 32 epochs, checkpoints every eight epochs. Keep the
+180-second windows and both loss weights. Use only the 12 projected sensor and
+context features; zero the four raw-gyro channels in BOTH training and evaluation.
+This allows exact reuse of the previous immutable training/replay artifact without
+reading any new data. It is a combined head/input experiment, not an ablation.
+
+Cache source is run 34470745169, artifact 10150025090. The workflow verifies the
+training tensor SHA256 before use; manifest split, horizon and every sample's
+training role are checked, and development IDs must match the frozen manifest.
+Use weights_only=True when loading the cache. The cached baseline is the same
+Kotlin implementation; it is not described as a new Kotlin rerun. Artifacts expire
+after 30 days; the preceding source commit can regenerate the cache. No fresh
+holdout is opened, and all unchanged accuracy gates still apply.

@@ -2,7 +2,7 @@ name: Real-data joint motion training
 on:
   workflow_dispatch:
   push:
-    branches: [codex/joint-motion-real-data]
+    branches: [codex/joint-motion-real-data, codex/long-outage-motion]
     paths: [.github/workflows/joint-motion.yml, ml/src/driftzero_ml/joint_sequence.py, ml/src/driftzero_ml/joint_network.py, ml/src/driftzero_ml/train_joint_sequence.py]
 permissions:
   contents: read
@@ -40,19 +40,19 @@ jobs:
         run: git lfs pull --include='**/Categorised IOVNB Dataset/**/S-*.csv'
       - name: Record provenance
         run: |
-          mkdir -p results/joint_sequence_polar
-          git rev-parse HEAD > results/joint_sequence_polar/code_commit.txt
-          git -C data/raw/io_vnbd rev-parse HEAD > results/joint_sequence_polar/data_commit.txt
-          git -C data/raw/io_vnbd lfs ls-files --long > results/joint_sequence_polar/lfs_objects.txt
-          python --version > results/joint_sequence_polar/runtime.txt
-          java -version 2>> results/joint_sequence_polar/runtime.txt
+          mkdir -p results/joint_sequence_long
+          git rev-parse HEAD > results/joint_sequence_long/code_commit.txt
+          git -C data/raw/io_vnbd rev-parse HEAD > results/joint_sequence_long/data_commit.txt
+          git -C data/raw/io_vnbd lfs ls-files --long > results/joint_sequence_long/lfs_objects.txt
+          python --version > results/joint_sequence_long/runtime.txt
+          java -version 2>> results/joint_sequence_long/runtime.txt
       - name: Train and score development checkpoints
         env:
           PYTHONPATH: ml/src
-        run: python -m driftzero_ml.train_joint_sequence
+        run: python -m driftzero_ml.train_joint_sequence --out results/joint_sequence_long --window-s 180 --epochs 48 --checkpoint-every 8 --architectures gru tcn_long --increment-weight 1 --tail-weight 0.5
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: joint-motion-evidence
           retention-days: 30
-          path: results/joint_sequence_polar/
+          path: results/joint_sequence_long/

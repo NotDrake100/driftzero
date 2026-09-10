@@ -78,8 +78,8 @@ class JointSequenceTest(unittest.TestCase):
         from driftzero_ml.joint_network import JointNetwork
 
         torch.set_num_threads(1)
-        for kind in ('mlp', 'tcn', 'gru'):
-            model = JointNetwork(kind)
+        for kind in ('mlp', 'tcn', 'gru', 'tcn_long'):
+            model = JointNetwork(kind, head_mode='polar')
             x, base, dt = torch.randn(2, 35, len(FEATURES)), torch.randn(2, 35, 2), torch.full((2, 35), .1)
             # Nonzero heads ensure test covers the learned path, not only zero-init fallback.
             torch.nn.init.normal_(model.head.weight, std=.01)
@@ -126,3 +126,29 @@ class JointSequenceTest(unittest.TestCase):
             model.head.bias[1] = 10
             capped, _ = model(x, base, dt)
             self.assertLessEqual(float(torch.linalg.vector_norm(capped[0, -1])), 55.001)
+
+    @unittest.skipUnless(importlib.util.find_spec('torch'), 'optional PyTorch is unavailable')
+    def test_increment_loss_ignores_unlabelled_positions_and_padding(self):
+        import torch
+
+        from driftzero_ml.joint_network import supervised_motion_loss
+
+        pred = torch.tensor([[[0., 2.], [0., 4.], [0., 6.], [0., 8.]]], requires_grad=True)
+        target = pred.detach().clone()
+        mask, dt = torch.tensor([[0., 1., 0., 1.]]), torch.ones(1, 4)
+        sigma = torch.full((1, 4), 5.)
+        first = supervised_motion_loss(pred, sigma, target, mask, dt, 1.)
+        target[:, 0] = 999
+        target[:, 2] = -999
+        torch.testing.assert_close(first, supervised_motion_loss(pred, sigma, target, mask, dt, 1.))
+        wrong = pred.detach().clone()
+        wrong[:, 1, 0] = 3
+        wrong.requires_grad_()
+        loss = supervised_motion_loss(wrong, sigma, target, mask, dt, 1.)
+        self.assertGreater(float(loss), float(first))
+        loss.sum().backward()
+        self.assertTrue(torch.isfinite(wrong.grad).all())
+        def padded(x, value):
+            return torch.cat((x, torch.full_like(x, value)), dim=1)
+        torch.testing.assert_close(first, supervised_motion_loss(padded(pred, 0), padded(sigma, 5),
+                                   padded(target, 0), padded(mask, 0), padded(dt, 0), 1.))

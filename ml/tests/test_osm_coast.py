@@ -63,6 +63,70 @@ class OsmCoastTest(unittest.TestCase):
         self.assertEqual(first[-1], baseline[-1])
         self.assertEqual(info['failure']['timestamp_ns'], 900_000_000)
 
+    def test_grade_separation_blocks_bridge_to_tunnel(self):
+        elements = [
+            {'type': 'way', 'id': 10, 'nodes': [1, 2],
+             'geometry': [{'lat': 0, 'lon': 0}, {'lat': 0, 'lon': .001}],
+             'tags': {'highway': 'residential', 'oneway': 'yes', 'bridge': 'yes', 'layer': '1'}},
+            {'type': 'way', 'id': 11, 'nodes': [2, 3],
+             'geometry': [{'lat': 0, 'lon': .001}, {'lat': .001, 'lon': .001}],
+             'tags': {'highway': 'residential', 'oneway': 'yes', 'tunnel': 'yes', 'layer': '-1'}},
+        ]
+        connected = Graph({'elements': elements}, (0, 0))
+        self.assertEqual(connected.successors(0), [1])
+        separated = Graph({'elements': elements}, (0, 0), grade_separation=True)
+        self.assertEqual(separated.successors(0), [])
+
+    def test_turn_restriction_is_noop_without_relations(self):
+        osm = {'elements': [way([1, 2, 3], [(0, 0), (.001, 0), (.002, 0)], oneway='yes')]}
+        osm['elements'][0]['id'] = 7
+        plain = Graph(osm, (0, 0))
+        parsed = Graph(osm, (0, 0), parse_turn_restrictions=True)
+        self.assertEqual([e.target for e in plain.edges], [e.target for e in parsed.edges])
+        self.assertEqual(parsed.successors(0), plain.successors(0))
+        self.assertEqual(parsed.forbidden_turns, set())
+
+    def test_only_straight_restriction_keeps_the_named_way(self):
+        elements = [
+            {'type': 'way', 'id': 1, 'nodes': [1, 2],
+             'geometry': [{'lat': 0, 'lon': 0}, {'lat': 0, 'lon': .001}],
+             'tags': {'highway': 'residential', 'oneway': 'yes'}},
+            {'type': 'way', 'id': 2, 'nodes': [2, 3],
+             'geometry': [{'lat': 0, 'lon': .001}, {'lat': 0, 'lon': .002}],
+             'tags': {'highway': 'residential', 'oneway': 'yes'}},
+            {'type': 'way', 'id': 3, 'nodes': [2, 4],
+             'geometry': [{'lat': 0, 'lon': .001}, {'lat': .001, 'lon': .001}],
+             'tags': {'highway': 'residential', 'oneway': 'yes'}},
+            {'type': 'relation', 'tags': {'type': 'restriction', 'restriction': 'only_straight_on'},
+             'members': [{'type': 'way', 'ref': 1, 'role': 'from'},
+                         {'type': 'node', 'ref': 2, 'role': 'via'},
+                         {'type': 'way', 'ref': 2, 'role': 'to'}]},
+        ]
+        graph = Graph({'elements': elements}, (0, 0), parse_turn_restrictions=True)
+        targets = [graph.edges[i].target for i in graph.successors(0)]
+        self.assertEqual(targets, [3])
+
+    def test_deadend_uturn_only_when_enabled(self):
+        graph = Graph({'elements': [way([1, 2], [(0, 0), (.001, 0)])]}, (0, 0))
+        self.assertEqual(graph.successors(0), [])
+        self.assertEqual(graph.successors(0, allow_deadend_uturn=True), [1])
+        self.assertEqual(graph.edges[1].target, 1)
+
+    def test_heading_aware_junction_prefers_matching_branch(self):
+        elements = [
+            way([1, 2], [(0, 0), (.0002, 0)], oneway='yes'),
+            way([2, 3], [(.0002, 0), (.003, 0)], oneway='yes'),
+            way([2, 4], [(.0002, 0), (.0002, .002)], oneway='yes'),
+        ]
+        graph = Graph({'elements': elements}, (0, 0))
+        seed = {'latitude_deg': 0, 'longitude_deg': 0, 'speed_mps': 12, 'bearing_rad': math.pi/2}
+        coast = RoadCoast(graph, seed, count=64, heading_aware_junction=True)
+        for _ in range(30):
+            coast.step(.1, 0.0)
+        east = sum(1 for p in coast.particles if graph.edges[p.edge].target == 3)
+        north = sum(1 for p in coast.particles if graph.edges[p.edge].target == 4)
+        self.assertGreater(east, north)
+
     def test_offline_cache_rejects_tampering(self):
         import hashlib
         import json

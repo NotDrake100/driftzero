@@ -1,0 +1,678 @@
+{
+  "system": "osm_particle_research",
+  "heading_sigma_rad": 0.4,
+  "seed": 26168,
+  "summary": {
+    "interval_count": 11,
+    "drift_ratio_p50": 0.2425205816401905,
+    "drift_ratio_p95": 0.6817482347516653,
+    "below_10_count": 2,
+    "road_covered_intervals": 11
+  },
+  "failures": [],
+  "per_interval": [
+    {
+      "interval_id": "S-Vta11:mid",
+      "trip_id": "S-Vta11",
+      "start_ns": 1145512000000,
+      "end_ns": 1163512000001,
+      "metrics": {
+        "endpoint_error_m": 143.00327610707794,
+        "truth_path_length_m": 209.7596573303465,
+        "drift_ratio": 0.6817482347516653,
+        "mean_position_error_m": 92.7462031191476,
+        "max_position_error_m": 143.00327610707794,
+        "sample_count": 3,
+        "along_track_error_m": -142.9888039519876,
+        "cross_track_error_m": 2.011091863017029,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 1.743333333333334,
+        "heading_mae_rad": 0.6860376419639799
+      },
+      "modes": {
+        "DEAD_RECKONING": 121,
+        "LOW_CONFIDENCE": 42
+      },
+      "health": {
+        "states_in_window": 163,
+        "filter_ok_false": 0,
+        "low_confidence": 42,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "1026",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "456",
+        "masked_gnss_dropped": "2",
+        "consumed_frames": "1024",
+        "modes": "GNSS_FUSED:56,DEAD_RECKONING:306,LOW_CONFIDENCE:94",
+        "first_timestamp_ns": "1118512000000",
+        "last_timestamp_ns": "1169412000000"
+      },
+      "road": {
+        "road_states": 162,
+        "failure": null,
+        "acceleration_model_accepted": false,
+        "posterior": "mean with uncalibrated spread; no lane claim",
+        "config": "topo_v1",
+        "overlay_reasons": {
+          "road": 162
+        },
+        "fallback_states": 0,
+        "raw_spread_end_m": 35.400175391275496,
+        "dominant_mass_end": 0.337890625,
+        "cluster_count_end": 8,
+        "unique_edges_end": 5,
+        "map_sha256": "d82e118da15677e04d44002c1de4cf956e49a9f66f748718f5f11e4274181087",
+        "segment_count": 208871
+      }
+    },
+    {
+      "interval_id": "S-Vta29:mid",
+      "trip_id": "S-Vta29",
+      "start_ns": 949115000000,
+      "end_ns": 976114000001,
+      "metrics": {
+        "endpoint_error_m": 66.35628310348709,
+        "truth_path_length_m": 273.61093501719745,
+        "drift_ratio": 0.2425205816401905,
+        "mean_position_error_m": 90.55366804565308,
+        "max_position_error_m": 147.27367633296942,
+        "sample_count": 4,
+        "along_track_error_m": 39.08528647864918,
+        "cross_track_error_m": 53.62365906574245,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 4.3525,
+        "heading_mae_rad": 0.17417523867323226
+      },
+      "modes": {
+        "DEAD_RECKONING": 118,
+        "LOW_CONFIDENCE": 111
+      },
+      "health": {
+        "states_in_window": 229,
+        "filter_ok_false": 0,
+        "low_confidence": 111,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "47659",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "20308",
+        "masked_gnss_dropped": "3",
+        "consumed_frames": "47656",
+        "modes": "GNSS_FUSED:4151,DEAD_RECKONING:14329,LOW_CONFIDENCE:1828",
+        "first_timestamp_ns": "15000000",
+        "last_timestamp_ns": "2369793000000"
+      },
+      "road": {
+        "road_states": 229,
+        "failure": null,
+        "acceleration_model_accepted": false,
+        "posterior": "mean with uncalibrated spread; no lane claim",
+        "config": "topo_v1",
+        "overlay_reasons": {
+          "road": 229
+        },
+        "fallback_states": 0,
+        "raw_spread_end_m": 26.70227929380912,
+        "dominant_mass_end": 0.404296875,
+        "cluster_count_end": 8,
+        "unique_edges_end": 8,
+        "map_sha256": "99f3c29c18268b74d677643bde5b41018e03b658584d4dcf61418c5fc918c2d4",
+        "segment_count": 179686
+      }
+    },
+    {
+      "interval_id": "S-Vta29:d1000",
+      "trip_id": "S-Vta29",
+      "start_ns": 476115000000,
+      "end_ns": 602215000001,
+      "metrics": {
+        "endpoint_error_m": 674.5846359190126,
+        "truth_path_length_m": 1025.439038789527,
+        "drift_ratio": 0.6578495750613529,
+        "mean_position_error_m": 304.94213650976,
+        "max_position_error_m": 674.5846359190126,
+        "sample_count": 15,
+        "along_track_error_m": -171.95371000187575,
+        "cross_track_error_m": -652.3119190024771,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 2.5726666666666667,
+        "heading_mae_rad": 0.5944525574586429
+      },
+      "modes": {
+        "DEAD_RECKONING": 120,
+        "LOW_CONFIDENCE": 959
+      },
+      "health": {
+        "states_in_window": 1079,
+        "filter_ok_false": 0,
+        "low_confidence": 959,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "47659",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "20308",
+        "masked_gnss_dropped": "14",
+        "consumed_frames": "47645",
+        "modes": "GNSS_FUSED:3959,DEAD_RECKONING:13652,LOW_CONFIDENCE:2697",
+        "first_timestamp_ns": "15000000",
+        "last_timestamp_ns": "2369793000000"
+      },
+      "road": {
+        "road_states": 1078,
+        "failure": null,
+        "acceleration_model_accepted": false,
+        "posterior": "mean with uncalibrated spread; no lane claim",
+        "config": "topo_v1",
+        "overlay_reasons": {
+          "road": 1078
+        },
+        "fallback_states": 0,
+        "raw_spread_end_m": 1.9690809099186848,
+        "dominant_mass_end": 1.0000000000000002,
+        "cluster_count_end": 1,
+        "unique_edges_end": 2,
+        "map_sha256": "832df9f6f8067f66eaf17e245ebd3e36ab037f85347de4f25430960fe2423292",
+        "segment_count": 176182
+      }
+    },
+    {
+      "interval_id": "S-Vta6:mid",
+      "trip_id": "S-Vta6",
+      "start_ns": 379512000000,
+      "end_ns": 406511000001,
+      "metrics": {
+        "endpoint_error_m": 27.906006862427656,
+        "truth_path_length_m": 537.527157242796,
+        "drift_ratio": 0.051915529264734014,
+        "mean_position_error_m": 12.852551737939756,
+        "max_position_error_m": 27.906006862427656,
+        "sample_count": 4,
+        "along_track_error_m": 27.658153057364373,
+        "cross_track_error_m": 3.7112400064899784,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 2.424999999999999,
+        "heading_mae_rad": 0.21981789433978083
+      },
+      "modes": {
+        "DEAD_RECKONING": 118,
+        "LOW_CONFIDENCE": 120
+      },
+      "health": {
+        "states_in_window": 238,
+        "filter_ok_false": 0,
+        "low_confidence": 120,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "2768",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "1224",
+        "masked_gnss_dropped": "3",
+        "consumed_frames": "2765",
+        "modes": "GNSS_FUSED:208,DEAD_RECKONING:812,LOW_CONFIDENCE:204",
+        "first_timestamp_ns": "318112000000",
+        "last_timestamp_ns": "455612000000"
+      },
+      "road": {
+        "road_states": 237,
+        "failure": null,
+        "acceleration_model_accepted": false,
+        "posterior": "mean with uncalibrated spread; no lane claim",
+        "config": "topo_v1",
+        "overlay_reasons": {
+          "road": 237
+        },
+        "fallback_states": 0,
+        "raw_spread_end_m": 87.79624144832461,
+        "dominant_mass_end": 0.14453125,
+        "cluster_count_end": 25,
+        "unique_edges_end": 5,
+        "map_sha256": "c75ef754aad3441fd1ed172fa5795effc06867169ced6eb54bc2649387ff5687",
+        "segment_count": 268862
+      }
+    },
+    {
+      "interval_id": "S-Vta8:mid",
+      "trip_id": "S-Vta8",
+      "start_ns": 704512000000,
+      "end_ns": 731512000001,
+      "metrics": {
+        "endpoint_error_m": 59.23083937421154,
+        "truth_path_length_m": 327.7424888347895,
+        "drift_ratio": 0.18072371264645212,
+        "mean_position_error_m": 30.895376602576654,
+        "max_position_error_m": 59.23083937421154,
+        "sample_count": 4,
+        "along_track_error_m": -59.230802938785374,
+        "cross_track_error_m": -0.05839234093452461,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 1.9325,
+        "heading_mae_rad": 0.11718931861973125
+      },
+      "modes": {
+        "DEAD_RECKONING": 122,
+        "LOW_CONFIDENCE": 124
+      },
+      "health": {
+        "states_in_window": 246,
+        "filter_ok_false": 0,
+        "low_confidence": 124,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "7385",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "3285",
+        "masked_gnss_dropped": "3",
+        "consumed_frames": "7382",
+        "modes": "GNSS_FUSED:513,DEAD_RECKONING:1938,LOW_CONFIDENCE:834",
+        "first_timestamp_ns": "551412000000",
+        "last_timestamp_ns": "918912000000"
+      },
+      "road": {
+        "road_states": 245,
+        "failure": null,
+        "acceleration_model_accepted": false,
+        "posterior": "mean with uncalibrated spread; no lane claim",
+        "config": "topo_v1",
+        "overlay_reasons": {
+          "road": 245
+        },
+        "fallback_states": 0,
+        "raw_spread_end_m": 93.0594430988504,
+        "dominant_mass_end": 0.12890625,
+        "cluster_count_end": 22,
+        "unique_edges_end": 11,
+        "map_sha256": "aab19e10cbf8fee28d4bb30d12471d2cc2559d79f8c0968917edede0010bf83b",
+        "segment_count": 311179
+      }
+    },
+    {
+      "interval_id": "S-Vta8:d1000",
+      "trip_id": "S-Vta8",
+      "start_ns": 641514000000,
+      "end_ns": 758512000001,
+      "metrics": {
+        "endpoint_error_m": 622.8159609828766,
+        "truth_path_length_m": 1064.0610495257524,
+        "drift_ratio": 0.5853197626775861,
+        "mean_position_error_m": 232.58975264095292,
+        "max_position_error_m": 622.8159609828766,
+        "sample_count": 14,
+        "along_track_error_m": -622.6655491340855,
+        "cross_track_error_m": -13.6217486572408,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 4.913494007918506,
+        "heading_mae_rad": 0.10224760232722267
+      },
+      "modes": {
+        "LOW_CONFIDENCE": 915,
+        "DEAD_RECKONING": 122
+      },
+      "health": {
+        "states_in_window": 1037,
+        "filter_ok_false": 0,
+        "low_confidence": 915,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "7385",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "3285",
+        "masked_gnss_dropped": "13",
+        "consumed_frames": "7372",
+        "modes": "GNSS_FUSED:338,DEAD_RECKONING:1318,LOW_CONFIDENCE:1629",
+        "first_timestamp_ns": "551412000000",
+        "last_timestamp_ns": "918912000000"
+      },
+      "road": {
+        "road_states": 1036,
+        "failure": null,
+        "acceleration_model_accepted": false,
+        "posterior": "mean with uncalibrated spread; no lane claim",
+        "config": "topo_v1",
+        "overlay_reasons": {
+          "road": 1036
+        },
+        "fallback_states": 0,
+        "raw_spread_end_m": 287.21674744614694,
+        "dominant_mass_end": 0.068359375,
+        "cluster_count_end": 56,
+        "unique_edges_end": 38,
+        "map_sha256": "aab19e10cbf8fee28d4bb30d12471d2cc2559d79f8c0968917edede0010bf83b",
+        "segment_count": 311179
+      }
+    },
+    {
+      "interval_id": "S-Vtb2:mid",
+      "trip_id": "S-Vtb2",
+      "start_ns": 235914000000,
+      "end_ns": 262914000001,
+      "metrics": {
+        "endpoint_error_m": 69.47094668841662,
+        "truth_path_length_m": 305.5165153183739,
+        "drift_ratio": 0.2273885148762647,
+        "mean_position_error_m": 41.845406234511834,
+        "max_position_error_m": 69.47094668841662,
+        "sample_count": 4,
+        "along_track_error_m": -69.4637714698151,
+        "cross_track_error_m": 1.0112739010341265,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 1.3724999999999996,
+        "heading_mae_rad": 0.9378059979327562
+      },
+      "modes": {
+        "DEAD_RECKONING": 123,
+        "LOW_CONFIDENCE": 114
+      },
+      "health": {
+        "states_in_window": 237,
+        "filter_ok_false": 0,
+        "low_confidence": 114,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "11480",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "4908",
+        "masked_gnss_dropped": "3",
+        "consumed_frames": "11477",
+        "modes": "GNSS_FUSED:879,DEAD_RECKONING:3448,LOW_CONFIDENCE:581",
+        "first_timestamp_ns": "14000000",
+        "last_timestamp_ns": "571114000000"
+      },
+      "road": {
+        "road_states": 236,
+        "failure": null,
+        "acceleration_model_accepted": false,
+        "posterior": "mean with uncalibrated spread; no lane claim",
+        "config": "topo_v1",
+        "overlay_reasons": {
+          "road": 236
+        },
+        "fallback_states": 0,
+        "raw_spread_end_m": 73.18790428937142,
+        "dominant_mass_end": 0.146484375,
+        "cluster_count_end": 19,
+        "unique_edges_end": 11,
+        "map_sha256": "6c6394d88fae6929b74d589b8b7b667f82863a497086ae39e67d6cf37c0c9d5b",
+        "segment_count": 181283
+      }
+    },
+    {
+      "interval_id": "S-Vtb2:d1000",
+      "trip_id": "S-Vtb2",
+      "start_ns": 118914000000,
+      "end_ns": 208914000001,
+      "metrics": {
+        "endpoint_error_m": 292.998158068556,
+        "truth_path_length_m": 1091.7040740018465,
+        "drift_ratio": 0.2683860627125043,
+        "mean_position_error_m": 195.7581334414281,
+        "max_position_error_m": 302.90371991207877,
+        "sample_count": 11,
+        "along_track_error_m": 291.2711493277739,
+        "cross_track_error_m": 31.77332341329941,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 4.567272727272728,
+        "heading_mae_rad": 0.6532765621970866
+      },
+      "modes": {
+        "DEAD_RECKONING": 118,
+        "LOW_CONFIDENCE": 650
+      },
+      "health": {
+        "states_in_window": 768,
+        "filter_ok_false": 0,
+        "low_confidence": 650,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "11480",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "4908",
+        "masked_gnss_dropped": "10",
+        "consumed_frames": "11470",
+        "modes": "GNSS_FUSED:767,DEAD_RECKONING:3028,LOW_CONFIDENCE:1113",
+        "first_timestamp_ns": "14000000",
+        "last_timestamp_ns": "571114000000"
+      },
+      "road": {
+        "road_states": 767,
+        "failure": null,
+        "acceleration_model_accepted": false,
+        "posterior": "mean with uncalibrated spread; no lane claim",
+        "config": "topo_v1",
+        "overlay_reasons": {
+          "road": 767
+        },
+        "fallback_states": 0,
+        "raw_spread_end_m": 44.250082021137466,
+        "dominant_mass_end": 0.294921875,
+        "cluster_count_end": 13,
+        "unique_edges_end": 10,
+        "map_sha256": "6c6394d88fae6929b74d589b8b7b667f82863a497086ae39e67d6cf37c0c9d5b",
+        "segment_count": 181283
+      }
+    },
+    {
+      "interval_id": "S-Vtb7:mid",
+      "trip_id": "S-Vtb7",
+      "start_ns": 8025914000000,
+      "end_ns": 8043914000001,
+      "metrics": {
+        "endpoint_error_m": 9.171095531919482,
+        "truth_path_length_m": 320.0679478955914,
+        "drift_ratio": 0.028653589315076198,
+        "mean_position_error_m": 19.00782796691175,
+        "max_position_error_m": 40.65590773337611,
+        "sample_count": 3,
+        "along_track_error_m": -0.2763149427218252,
+        "cross_track_error_m": 9.166930349803414,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 1.153333333333333,
+        "heading_mae_rad": 0.8601486167505897
+      },
+      "modes": {
+        "DEAD_RECKONING": 112,
+        "LOW_CONFIDENCE": 38
+      },
+      "health": {
+        "states_in_window": 150,
+        "filter_ok_false": 0,
+        "low_confidence": 38,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "928",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "382",
+        "masked_gnss_dropped": "2",
+        "consumed_frames": "926",
+        "modes": "GNSS_FUSED:50,DEAD_RECKONING:285,LOW_CONFIDENCE:47",
+        "first_timestamp_ns": "7998913000000",
+        "last_timestamp_ns": "8044914000000"
+      },
+      "road": {
+        "road_states": 149,
+        "failure": null,
+        "acceleration_model_accepted": false,
+        "posterior": "mean with uncalibrated spread; no lane claim",
+        "config": "topo_v1",
+        "overlay_reasons": {
+          "road": 149
+        },
+        "fallback_states": 0,
+        "raw_spread_end_m": 60.02756305572572,
+        "dominant_mass_end": 0.1640625,
+        "cluster_count_end": 18,
+        "unique_edges_end": 8,
+        "map_sha256": "c1e9fe271e35ce23a414e8541a6e7150de150c66e29bfe9c2571f998fe1e6281",
+        "segment_count": 313491
+      }
+    },
+    {
+      "interval_id": "S-Vw3:mid",
+      "trip_id": "S-Vw3",
+      "start_ns": 5455311000000,
+      "end_ns": 5482311000001,
+      "metrics": {
+        "endpoint_error_m": 46.213769281247764,
+        "truth_path_length_m": 382.68167282773726,
+        "drift_ratio": 0.12076295407554237,
+        "mean_position_error_m": 23.730448921007262,
+        "max_position_error_m": 46.213769281247764,
+        "sample_count": 4,
+        "along_track_error_m": 34.360453127566515,
+        "cross_track_error_m": 30.904282549373118,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 4.93,
+        "heading_mae_rad": 0.48471687475527525
+      },
+      "modes": {
+        "DEAD_RECKONING": 115,
+        "LOW_CONFIDENCE": 104
+      },
+      "health": {
+        "states_in_window": 219,
+        "filter_ok_false": 0,
+        "low_confidence": 104,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "7763",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "3049",
+        "masked_gnss_dropped": "3",
+        "consumed_frames": "7760",
+        "modes": "GNSS_FUSED:579,DEAD_RECKONING:2211,LOW_CONFIDENCE:259",
+        "first_timestamp_ns": "5293310000000",
+        "last_timestamp_ns": "5679311000000"
+      },
+      "road": {
+        "road_states": 218,
+        "failure": null,
+        "acceleration_model_accepted": false,
+        "posterior": "mean with uncalibrated spread; no lane claim",
+        "config": "topo_v1",
+        "overlay_reasons": {
+          "road": 218
+        },
+        "fallback_states": 0,
+        "raw_spread_end_m": 108.2869380610428,
+        "dominant_mass_end": 0.232421875,
+        "cluster_count_end": 20,
+        "unique_edges_end": 19,
+        "map_sha256": "4d10e2b1b15771a3d02e35e2c564703fe507cc93a1ebf3bc6bec396887038ed1",
+        "segment_count": 328031
+      }
+    },
+    {
+      "interval_id": "S-Vw3:d1000",
+      "trip_id": "S-Vw3",
+      "start_ns": 5374311000000,
+      "end_ns": 5455311000001,
+      "metrics": {
+        "endpoint_error_m": 465.6612732859695,
+        "truth_path_length_m": 1125.8327025681074,
+        "drift_ratio": 0.41361498224715076,
+        "mean_position_error_m": 170.75222509810774,
+        "max_position_error_m": 465.6612732859695,
+        "sample_count": 10,
+        "along_track_error_m": -397.997123501843,
+        "cross_track_error_m": 241.73137885982405,
+        "speed_mae_mps": null,
+        "heading_mae_rad": null
+      },
+      "extras": {
+        "speed_mae_mps": 2.662,
+        "heading_mae_rad": 0.5566308623760047
+      },
+      "modes": {
+        "DEAD_RECKONING": 106,
+        "LOW_CONFIDENCE": 521
+      },
+      "health": {
+        "states_in_window": 627,
+        "filter_ok_false": 0,
+        "low_confidence": 521,
+        "imu_gap_flag": 0
+      },
+      "replay": {
+        "frames_read": "7763",
+        "gaps": "0",
+        "dropped_lines": "0",
+        "states_written": "3049",
+        "masked_gnss_dropped": "9",
+        "consumed_frames": "7754",
+        "modes": "GNSS_FUSED:488,DEAD_RECKONING:1877,LOW_CONFIDENCE:684",
+        "first_timestamp_ns": "5293310000000",
+        "last_timestamp_ns": "5679311000000"
+      },
+      "road": {
+        "road_states": 626,
+        "failure": null,
+        "acceleration_model_accepted": false,
+        "posterior": "mean with uncalibrated spread; no lane claim",
+        "config": "topo_v1",
+        "overlay_reasons": {
+          "road": 626
+        },
+        "fallback_states": 0,
+        "raw_spread_end_m": 87.82632439740945,
+        "dominant_mass_end": 0.107421875,
+        "cluster_count_end": 22,
+        "unique_edges_end": 18,
+        "map_sha256": "4d10e2b1b15771a3d02e35e2c564703fe507cc93a1ebf3bc6bec396887038ed1",
+        "segment_count": 328031
+      }
+    }
+  ],
+  "baseline_metrics_sha256": "fca93dee5beda46206d462ff63398fd0896d87707a69054dff26f1fd4addd429",
+  "reused_baseline": true,
+  "scope": "Research only. Map failure retains deterministic baseline in denominator."
+}

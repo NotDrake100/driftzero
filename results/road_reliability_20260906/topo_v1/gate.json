@@ -1,0 +1,18 @@
+{
+  "rule": "relative_development_gate_v1",
+  "not_the_absolute_0_10_target": true,
+  "complete": true,
+  "relative_median_ok": true,
+  "p95_ok": false,
+  "fail10_ok": true,
+  "eligible": false,
+  "candidate_p50": 0.2425205816401905,
+  "candidate_p95": 0.6817482347516653,
+  "baseline_p50": 0.39842920890925465,
+  "baseline_p95": 0.5401756750284612,
+  "candidate_fail10": 9,
+  "baseline_fail10": 10,
+  "locked_confirmation": false,
+  "absolute_median_target_passed": false,
+  "all_interval_target_passed": false
+}

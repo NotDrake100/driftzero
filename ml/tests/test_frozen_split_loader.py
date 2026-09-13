@@ -57,13 +57,12 @@ class FrozenSplitTests(unittest.TestCase):
                     )
 
     def test_odometry_loader_preflights_all_paths(self) -> None:
-        with tempfile.TemporaryDirectory() as folder:
-            with patch(
-                "driftzero_ml.datasets.io_vnbd.screening_smartphone_tables",
-                return_value=(Path(folder) / "S-Vta4.csv",),
-            ):
-                with self.assertRaisesRegex(ValueError, "fresh_holdout"):
-                    load_odometry_trips(Path(folder))
+        with tempfile.TemporaryDirectory() as folder, patch(
+            "driftzero_ml.datasets.io_vnbd.screening_smartphone_tables",
+            return_value=(Path(folder) / "S-Vta4.csv",),
+        ):
+            with self.assertRaisesRegex(ValueError, "fresh_holdout"):
+                load_odometry_trips(Path(folder))
 
     def test_unregistered_group_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "unregistered"):

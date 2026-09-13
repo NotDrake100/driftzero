@@ -226,3 +226,8 @@ The coordinator merges reviewed, tested milestones into main. Rejected experimen
 may be merged as clearly separated research with their negative results, but cannot
 change live defaults. Every final status states separately: code merged, experiment
 completed, median target passed, all-interval target passed, and field scope tested.
+
+Live campaign tracking (not an accuracy claim):
+[docs/16_ACCURACY_CAMPAIGN.md](16_ACCURACY_CAMPAIGN.md) and
+[results/cursor_campaign/v1/manifest.json](../results/cursor_campaign/v1/manifest.json).
+ADR: [015](adr/015-accuracy-campaign.md).

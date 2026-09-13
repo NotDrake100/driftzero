@@ -32,6 +32,12 @@ results/*
 !results/pune_v1/README.md
 !results/cursor_diagnostics/
 !results/cursor_diagnostics/**
+!results/joint_motion_20260907/
+!results/joint_motion_20260907/**
+!results/long_motion_20260910/
+!results/long_motion_20260910/**
+!results/cursor_campaign/
+!results/cursor_campaign/**
 secrets.properties
 .DS_Store
 .cursor/skills/

@@ -8,7 +8,7 @@ a candidate.
 
 | Status | Value |
 |---|---|
-| Code merged | No. This is the capture-audit branch. |
+| Code merged | Logger audit merged in PR 18. Model wiring is not. |
 | Experiment completed | No field drive scored. |
 | Median target passed | No. Unchanged locked coast remains 48.83%. |
 | All-interval target passed | No. |

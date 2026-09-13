@@ -1,0 +1,431 @@
+{
+  "campaign": "cursor-accuracy-below-10pct",
+  "version": 16,
+  "date_utc": "2026-09-13",
+  "role": "F-coordinator",
+  "status": "checkpoint",
+  "claim": {
+    "code_merged": false,
+    "experiment_completed": false,
+    "median_target_passed": false,
+    "all_interval_target_passed": false,
+    "field_placements_tested": false,
+    "notes": "Diagnostics, capture logger, and C research through PR 23 are on main. Rounds 1-5 rejected. Exact group-ID pin is on draft PRs 20 and 21. That is not a 10% pass. B overlay not merged. D selection blocked. No field drive."
+  },
+  "pins": {
+    "campaign_base_commit": "60c280d5dd1eaf1b98ae1614a360bbf936f67953",
+    "plan_named_baseline_commit": "5a0893fdb321605784f1f492445ad53f2fae47fc",
+    "selected_coast_commit": "1cd92fb3d5dc60fea57e944a4862991c714d484d",
+    "io_vnbd_commit": "118939602e3422d47b8ab0807b623751c3ac135b",
+    "seed": "26168",
+    "locked_interval_count": 35,
+    "development_interval_count": 11,
+    "model_hash": null,
+    "selected_candidate": null
+  },
+  "measured_on_main": {
+    "locked_selected_coast": {
+      "set": "locked_35",
+      "system": "latch_sparse_reseed",
+      "median_drift": 0.48834485395037297,
+      "p95_drift": 2.682407053981851,
+      "worst_drift": 3.1766947772530147,
+      "intervals_below_0_10": 6,
+      "interval_count": 35,
+      "accuracy_gate_passed": false,
+      "source": [
+        "results/accuracy_v3_20260906/development/locked_gate.json",
+        "docs/13_ACCURACY_V3_EXPERIMENT.md"
+      ]
+    },
+    "development_selected_coast": {
+      "set": "development_11",
+      "median_drift": 0.39842920890925465,
+      "p95_drift": 0.5401756750284612,
+      "source": "results/accuracy_v3_20260906/development/selection.json"
+    },
+    "development_real_map": {
+      "set": "development_11",
+      "median_drift": 0.268956322538104,
+      "p95_drift": 0.8461063500210423,
+      "eligible": false,
+      "locked_confirmation": false,
+      "source": [
+        "results/road_research_20260906/road_complete/metrics.json",
+        "results/road_research_20260906/road_complete/selection.json"
+      ]
+    },
+    "development_prefix_acceleration": {
+      "set": "development_11",
+      "median_drift": 0.268956322538104,
+      "p95_drift": 0.8461063500210423,
+      "accepted_models": 0,
+      "eligible": false
+    }
+  },
+  "task_a_measured": {
+    "label": "DIAGNOSTIC_ONLY",
+    "branch": "cursor/accuracy-diagnostics-9aba",
+    "pr": "https://github.com/NotDrake100/driftzero/pull/17",
+    "latest_commit": "8913eb08beb466f706a6b872892eb10905f37c05",
+    "agent_status": "IDLE",
+    "baseline_reproduced": true,
+    "matches_archive": true,
+    "accuracy_gate_passed": false,
+    "median_drift": 0.48834485395037297,
+    "p95_drift": 2.6824070539818505,
+    "intervals_below_0_10": 6,
+    "substitution_medians": {
+      "ref_speed": 0.34082284110488026,
+      "ref_heading": 0.16286799441490213,
+      "ref_road": 0.16287245385534213,
+      "ref_joint": 4.564954039142319e-08
+    },
+    "source": "results/cursor_diagnostics on branch cursor/accuracy-diagnostics-9aba"
+  },
+  "task_b_measured": {
+    "label": "RESEARCH_REJECTION",
+    "branch": "cursor/road-reliability-8d5b",
+    "pr": "https://github.com/NotDrake100/driftzero/pull/19",
+    "latest_commit": "e161bff69fae794cfd7032dd5f6c9cd010f0a506",
+    "agent_status": "IDLE",
+    "relative_development_gate": "failed",
+    "locked_confirmation": false,
+    "android_defaults_changed": false,
+    "baseline_source": "Actions run 34061769087",
+    "baseline": {
+      "median_drift": 0.39842920890925465,
+      "p95_drift": 0.5401756750284612,
+      "intervals_below_0_10": 1,
+      "interval_count": 11
+    },
+    "configs": {
+      "adr014_reproduce": {"median": 0.26895632253810403, "p95": 0.8461063500210421, "below_0_10": 2, "gate": "fail_p95"},
+      "topo_v1": {"median": 0.2425205816401905, "p95": 0.6817482347516653, "below_0_10": 2, "gate": "fail_p95"},
+      "confidence_v1": {"median": 0.39842920890925465, "p95": 0.5401756750284612, "below_0_10": 1, "gate": "fail_median"},
+      "combined_v1": {"median": 0.39842920890925465, "p95": 0.5401756750284612, "below_0_10": 1, "gate": "fail_median"},
+      "lateral_heal_v1": {"median": 0.39842920890925465, "p95": 0.5401756750284612, "below_0_10": 1, "gate": "fail_median"}
+    },
+    "kotlin_rerun": false,
+    "restriction_relations_in_cache": false,
+    "source": "results/road_reliability_20260906 on branch cursor/road-reliability-8d5b"
+  },
+  "split_freeze": {
+    "status": "reviewed_frozen",
+    "reviewer": "F-coordinator",
+    "source_branch": "cursor/accuracy-diagnostics-9aba",
+    "source_path": "results/cursor_diagnostics/split_manifest.json",
+    "source_commit": "8913eb08beb466f706a6b872892eb10905f37c05",
+    "checks": {
+      "locked_interval_count": 35,
+      "roles_disjoint": true,
+      "fresh_not_previously_exposed": true,
+      "train_not_previously_exposed": true
+    },
+    "train_session_groups": [
+      "S-M",
+      "S-S2",
+      "S-Vfa02",
+      "S-Vta3",
+      "S-Vta7",
+      "S-Vta9",
+      "S-Vta10",
+      "S-Vta16",
+      "S-Vta21",
+      "S-Vta23",
+      "S-Vta26",
+      "S-Vta28",
+      "S-Vtb10",
+      "S-Vtb12",
+      "S-Vw2",
+      "S-Vw4",
+      "S-Vw6",
+      "S-Vw7",
+      "S-Vw8",
+      "S-Vw9",
+      "S-Vw11",
+      "S-Vw13",
+      "S-Vw14",
+      "S-Vw15"
+    ],
+    "fresh_holdout_session_groups": [
+      "S-Vta4",
+      "S-Vta14",
+      "S-Vta19",
+      "S-Vta27",
+      "S-Vta30",
+      "S-Vtb4",
+      "S-Vtb5",
+      "S-Vtb11",
+      "S-Vw1",
+      "S-Vw10"
+    ],
+    "excluded_session_groups": ["S-Vtb3"],
+    "c_may_train": true,
+    "holdout_open": false,
+    "c_block_reason": "A PR 17 is on main. C may train the 24 frozen train groups. Fresh holdout stays closed. S-Vtb3 stays excluded."
+  },
+  "exposed_groups": {
+    "locked_session_groups": [
+      "S-S1",
+      "S-S3",
+      "S-Vfa01",
+      "S-Vta1",
+      "S-Vta2",
+      "S-Vta12",
+      "S-Vta15",
+      "S-Vta17",
+      "S-Vta20",
+      "S-Vta22",
+      "S-Vta24",
+      "S-Vta25",
+      "S-Vtb1",
+      "S-Vtb6",
+      "S-Vtb8",
+      "S-Vtb9",
+      "S-Vw5",
+      "S-Vw16",
+      "S-Y1"
+    ],
+    "development_session_groups": [
+      "S-S4",
+      "S-Vta5",
+      "S-Vta6",
+      "S-Vta8",
+      "S-Vta11",
+      "S-Vta13",
+      "S-Vta29",
+      "S-Vtb2",
+      "S-Vtb7",
+      "S-Vw3",
+      "S-Vw12",
+      "S-Vw17"
+    ],
+    "fresh_holdout": "frozen from A split_manifest.json. 10 unused groups. See split_freeze.",
+    "route_identity": "unavailable in published IO-VNBD stems",
+    "vehicle_identity": "unavailable in published IO-VNBD stems",
+    "driver_identity": "prefix letter only: S-S=A, S-M=B, S-Y=D, S-V=E"
+  },
+  "tasks": {
+    "A": {
+      "name": "diagnostics",
+      "owner": "independent agent",
+      "agent_id": "bc-e28135b8-39c4-5369-ba8b-77d3e95d9aba",
+      "branch": "cursor/accuracy-diagnostics-9aba",
+      "pr": "https://github.com/NotDrake100/driftzero/pull/17",
+      "latest_commit": "8913eb08beb466f706a6b872892eb10905f37c05",
+      "agent_status": "IDLE",
+      "experiment_status": "diagnostic_run_completed. merged. not a 10% pass",
+      "status": "merged"
+    },
+    "B": {
+      "name": "road-reliability",
+      "owner": "independent agent",
+      "agent_id": "bc-39553497-4561-58c6-a6d8-eb2879748d5b",
+      "branch": "cursor/road-reliability-8d5b",
+      "pr": "https://github.com/NotDrake100/driftzero/pull/19",
+      "latest_commit": "e161bff69fae794cfd7032dd5f6c9cd010f0a506",
+      "agent_status": "IDLE",
+      "experiment_status": "round_closed. relative_gate_failed. overlay_not_enabled. not_merged",
+      "status": "closed_rejection_not_merged"
+    },
+    "C": {
+      "name": "learned-motion",
+      "status": "merged_research_rejection",
+      "holdout_open": false,
+      "objective": "joint_distance_and_heading",
+      "primary_score": "blackout_position_drift",
+      "preregistration": {
+        "branch": "cursor/learned-motion-d676",
+        "pr": "https://github.com/NotDrake100/driftzero/pull/20",
+        "latest_commit": "913bc5ba4e20a9519f71fff7bd15ebf4fc7e7e42",
+        "training_started": false,
+        "split_pin": {
+          "commit": "913bc5ba4e20a9519f71fff7bd15ebf4fc7e7e42",
+          "ids_match_campaign_freeze": true,
+          "holdout_open": false,
+          "measured_candidate": false
+        }
+      },
+      "real_data_run": {
+        "branch": "codex/joint-motion-real-data",
+        "pr": "https://github.com/NotDrake100/driftzero/pull/22",
+        "latest_commit": "9c7fbd846bd41412632f4b97b21d9326eb3d0421",
+        "merged_commit": "b80a2aa25ae94ae62d92a373d264ff3f45efc2e8",
+        "author": "NotDrake100",
+        "training_started": true,
+        "measured_candidate": false,
+        "review": "merged_as_research_not_candidate",
+        "round1": {
+          "actions_run": 34157730168,
+          "archive": "results/joint_motion_20260907/initial",
+          "selection_status": "rejected",
+          "locked_confirmation": false,
+          "fresh_holdout_open": false,
+          "baseline_seed_gyro": {"median": 0.400650494429274, "p95": 0.5894975874481975, "fail10": 10},
+          "best_median": {"config": "tcn_12", "median": 0.3393314477171919, "p95": 0.8877010555797002, "fail10": 11}
+        },
+        "round2": {
+          "variant": "raw_gyro_v2",
+          "status": "rejected",
+          "actions_run": 34158350064,
+          "archived_in_git": true,
+          "archive": "results/joint_motion_20260907/raw_gyro",
+          "changes": ["retain_weak_and_column_gyro", "twelve_starts_per_trip"],
+          "output": "results/joint_sequence_raw",
+          "confounded": true,
+          "baseline_seed_gyro": {"median": 0.400650494429274, "p95": 0.5894975874481975, "fail10": 10},
+          "best_median": {"config": "tcn_8", "median": 0.30057255802640515, "p95": 1.2081495113816025, "fail10": 10}
+        },
+        "round3": {
+          "variant": "polar_balanced_v3",
+          "status": "rejected",
+          "actions_run": 34159015449,
+          "archive": "results/joint_motion_20260907/polar_balanced",
+          "changes": ["polar_head", "group_balanced_loss"],
+          "confounded": true,
+          "baseline_seed_gyro": {"median": 0.400650494429274, "p95": 0.5894975874481975, "fail10": 10},
+          "best_median": {"config": "gru_16", "median": 0.22331874793983045, "p95": 0.9592330405459883, "fail10": 9}
+        },
+        "notes": "Merged to main as research with negative numbers. Android defaults unchanged. Exact 24/10/1 IDs still not pinned on the trainer. Do not run locked confirmation."
+      },
+      "long_outage_run": {
+        "branch": "codex/long-outage-motion",
+        "pr": "https://github.com/NotDrake100/driftzero/pull/23",
+        "latest_commit": "a1c874b17734d05acaef7dbb239daf702c7cf57b",
+        "author": "NotDrake100",
+        "adr": "docs/adr/019-long-outage-motion.md",
+        "variant": "long_outage_v4",
+        "status": "rejected",
+        "training_started": true,
+        "measured_candidate": false,
+        "locked_confirmation": false,
+        "fresh_holdout_open": false,
+        "android_defaults_changed": false,
+        "confounded": true,
+        "review": "measured_rejection_p95",
+        "actions_run": 34470745169,
+        "archive": "results/cursor_campaign/v1/long_outage_v4",
+        "output": "results/joint_sequence_long",
+        "window_count": 219,
+        "training_samples_sha256": "89bd4da16dad62a5c6f58e9c0f97f2027888a1b9289a2891194f72bf79de2aa7",
+        "holdout_read": false,
+        "changes": [
+          "window_180s",
+          "tcn_long_rf_1365",
+          "increment_loss_training_labels",
+          "tail_weight_0.5",
+          "epochs_48"
+        ],
+        "architectures": ["gru", "tcn_long"],
+        "relative_gate": "seed_gyro 10% median improvement, p95 and fail10 no worse, zero fallback",
+        "baseline_seed_gyro": {"median": 0.400650494429274, "p95": 0.5894975874481975, "fail10": 10},
+        "best_median": {"config": "gru_8", "median": 0.3178058310651735, "p95": 0.9058322366585967, "fail10": 10},
+        "selected": null,
+        "notes": "gru_8 passed the relative median gate and failed p95. All twelve trained checkpoints rejected. 180 s horizon did not fix the tail."
+      },
+      "integrated_run": {
+        "branch": "codex/long-outage-motion",
+        "pr": "https://github.com/NotDrake100/driftzero/pull/23",
+        "latest_commit": "68beb4c542f5899fdddf9818f6807fa2c73422b5",
+        "author": "NotDrake100",
+        "adr": "docs/adr/019-long-outage-motion.md",
+        "variant": "integrated_v5",
+        "status": "rejected",
+        "training_started": true,
+        "measured_candidate": false,
+        "locked_confirmation": false,
+        "fresh_holdout_open": false,
+        "android_defaults_changed": false,
+        "confounded": true,
+        "review": "measured_rejection_median_and_p95",
+        "actions_run": 34472740580,
+        "archive": "results/cursor_campaign/v1/integrated_v5",
+        "output": "results/joint_sequence_integrated",
+        "cache_actions_run": 34470745169,
+        "cache_sha256": "89bd4da16dad62a5c6f58e9c0f97f2027888a1b9289a2891194f72bf79de2aa7",
+        "holdout_read": false,
+        "projected_only": true,
+        "window_count": 219,
+        "changes": [
+          "integrated_heading",
+          "sigmoid_speed",
+          "projected_only_zero_raw_gyro",
+          "mlp_and_short_tcn",
+          "epochs_32"
+        ],
+        "architectures": ["mlp", "tcn"],
+        "head_mode": "integrated",
+        "relative_gate": "seed_gyro 10% median improvement, p95 and fail10 no worse, zero fallback",
+        "baseline_seed_gyro": {"median": 0.400650494429274, "p95": 0.5894975874481975, "fail10": 10},
+        "best_median": {"config": "mlp_16", "median": 0.38306945571717316, "p95": 1.007756429967717, "fail10": 11},
+        "selected": null,
+        "notes": "mlp_16 failed the relative median gate and p95. tcn_32 reached fail10 9 and still failed median and p95. Combined head and input change. Do not open holdout.",
+        "owner_archive": {
+          "commit": "c2cdf412d88913842be539cff83d568e1b17ebba",
+          "merged_commit": "60c280d5dd1eaf1b98ae1614a360bbf936f67953",
+          "path": "results/long_motion_20260910",
+          "report": "docs/21_LONG_OUTAGE_EXPERIMENT.md",
+          "estimator_changed": false,
+          "android_defaults_changed": false,
+          "selection_match_verified": true,
+          "draft": false,
+          "measured_candidate": false
+        }
+      }
+    },
+    "D": {
+      "name": "evaluation",
+      "status": "checks_prepared",
+      "branch": "cursor/accuracy-evaluation-d676",
+      "pr": "https://github.com/NotDrake100/driftzero/pull/21",
+      "latest_commit": "c93af69560445312f8f1c97541c0a896cdd9ae4f",
+      "selection_open": false,
+      "locked_confirmation_open": false,
+      "holdout_open": false,
+      "split_pin": {
+        "commit": "c93af69560445312f8f1c97541c0a896cdd9ae4f",
+        "shared_files_match_pr20": true,
+        "ids_match_campaign_freeze": true,
+        "land_once": true
+      },
+      "b_import": {
+        "module": "driftzero_ml.road_adapter",
+        "symbols": ["CONFIGS", "apply_causal_overlay", "development_gate"],
+        "decision": "rejection",
+        "decision_file": "results/road_reliability_20260906/FOR_TASK_D.json"
+      }
+    },
+    "E": {
+      "name": "phone-validation",
+      "status": "logger_merged_placements_pending",
+      "branch": "cursor/phone-validation-d676",
+      "pr": "https://github.com/NotDrake100/driftzero/pull/18",
+      "latest_commit": "a85e4708299343c3b3d8a8db3a495be744599ffb",
+      "merged": true,
+      "model_wiring": "blocked",
+      "field_drives": 0,
+      "physical_placement_validation": "pending"
+    },
+    "F": {
+      "name": "coordinator",
+      "status": "active",
+      "branch": "cursor/accuracy-campaign-d676",
+      "pr": "https://github.com/NotDrake100/driftzero/pull/16"
+    }
+  },
+  "blockers": [
+    "DIAGNOSTIC_ONLY results must not change live defaults.",
+    "B round is closed. Do not merge the overlay. Do not expand map-only tuning without a new hypothesis.",
+    "C trainer and long-outage research are on main as rejections. Exact group-ID pin is on draft PRs 20 and 21. Land that pin once. Do not open the fresh holdout. Do not start another combined C round without an isolated tail hypothesis.",
+    "D selection and locked confirmation stay blocked until an eligible candidate exists.",
+    "E model wiring stays blocked until D selects a candidate. Physical placement validation is pending.",
+    "No field recordings exist. Cloud agents cannot manufacture drives.",
+    "This coordinator workspace has no ANDROID_HOME. Android app unit tests were not run here."
+  ],
+  "last_completed_step": "F v16: reviewed identical frozen-split pins on PR 20 and PR 21. IDs match the campaign freeze. Holdout stays closed. Selection still blocked.",
+  "next_step": "Land the frozen-split pin once. Do not merge both copies independently. Keep holdout closed. Do not start another combined C round. Do not merge PR 19 as a live default.",
+  "failures": [
+    "A and B first appeared as RUNNING with no branch. Git evidence arrived later. Do not treat lifecycle RUNNING as an experiment."
+  ]
+}

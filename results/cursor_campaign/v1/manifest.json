@@ -1,7 +1,7 @@
 {
   "campaign": "cursor-accuracy-below-10pct",
-  "version": 15,
-  "date_utc": "2026-09-10",
+  "version": 16,
+  "date_utc": "2026-09-13",
   "role": "F-coordinator",
   "status": "checkpoint",
   "claim": {
@@ -10,7 +10,7 @@
     "median_target_passed": false,
     "all_interval_target_passed": false,
     "field_placements_tested": false,
-    "notes": "Diagnostics, capture logger, and C research through PR 23 are on main. Rounds 1-5 rejected. That is not a 10% pass. B overlay not merged. D selection blocked. No field drive."
+    "notes": "Diagnostics, capture logger, and C research through PR 23 are on main. Rounds 1-5 rejected. Exact group-ID pin is on draft PRs 20 and 21. That is not a 10% pass. B overlay not merged. D selection blocked. No field drive."
   },
   "pins": {
     "campaign_base_commit": "60c280d5dd1eaf1b98ae1614a360bbf936f67953",
@@ -238,8 +238,14 @@
       "preregistration": {
         "branch": "cursor/learned-motion-d676",
         "pr": "https://github.com/NotDrake100/driftzero/pull/20",
-        "latest_commit": "e209baf27cef4f7ce428f68800431427c3a08917",
-        "training_started": false
+        "latest_commit": "913bc5ba4e20a9519f71fff7bd15ebf4fc7e7e42",
+        "training_started": false,
+        "split_pin": {
+          "commit": "913bc5ba4e20a9519f71fff7bd15ebf4fc7e7e42",
+          "ids_match_campaign_freeze": true,
+          "holdout_open": false,
+          "measured_candidate": false
+        }
       },
       "real_data_run": {
         "branch": "codex/joint-motion-real-data",
@@ -373,10 +379,16 @@
       "status": "checks_prepared",
       "branch": "cursor/accuracy-evaluation-d676",
       "pr": "https://github.com/NotDrake100/driftzero/pull/21",
-      "latest_commit": "f792a99ae0afabb2ea8162109f844bf12ed21c55",
+      "latest_commit": "c93af69560445312f8f1c97541c0a896cdd9ae4f",
       "selection_open": false,
       "locked_confirmation_open": false,
       "holdout_open": false,
+      "split_pin": {
+        "commit": "c93af69560445312f8f1c97541c0a896cdd9ae4f",
+        "shared_files_match_pr20": true,
+        "ids_match_campaign_freeze": true,
+        "land_once": true
+      },
       "b_import": {
         "module": "driftzero_ml.road_adapter",
         "symbols": ["CONFIGS", "apply_causal_overlay", "development_gate"],
@@ -405,14 +417,14 @@
   "blockers": [
     "DIAGNOSTIC_ONLY results must not change live defaults.",
     "B round is closed. Do not merge the overlay. Do not expand map-only tuning without a new hypothesis.",
-    "C trainer and long-outage research are on main as rejections. Rounds 1-5 rejected. Pin exact frozen group IDs. Do not open the fresh holdout. Do not start another combined C round without an isolated tail hypothesis.",
+    "C trainer and long-outage research are on main as rejections. Exact group-ID pin is on draft PRs 20 and 21. Land that pin once. Do not open the fresh holdout. Do not start another combined C round without an isolated tail hypothesis.",
     "D selection and locked confirmation stay blocked until an eligible candidate exists.",
     "E model wiring stays blocked until D selects a candidate. Physical placement validation is pending.",
     "No field recordings exist. Cloud agents cannot manufacture drives.",
     "This coordinator workspace has no ANDROID_HOME. Android app unit tests were not run here."
   ],
-  "last_completed_step": "F v15: owner merged PR 23 as research at 60c280d. Rounds 1-5 remain rejected. Selection still blocked.",
-  "next_step": "Do not start another combined C round. Keep holdout closed. Do not run locked confirmation. Do not merge PR 19 as a live default. Do not enable PR 23 weights on the phone path.",
+  "last_completed_step": "F v16: reviewed identical frozen-split pins on PR 20 and PR 21. IDs match the campaign freeze. Holdout stays closed. Selection still blocked.",
+  "next_step": "Land the frozen-split pin once. Do not merge both copies independently. Keep holdout closed. Do not start another combined C round. Do not merge PR 19 as a live default.",
   "failures": [
     "A and B first appeared as RUNNING with no branch. Git evidence arrived later. Do not treat lifecycle RUNNING as an experiment."
   ]

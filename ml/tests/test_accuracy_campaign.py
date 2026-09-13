@@ -32,7 +32,7 @@ class AccuracyCampaignTest(unittest.TestCase):
             self.assertNotIn("S-Vtb3", hold)
             self.assertTrue(freeze.get("c_may_train"))
             self.assertFalse(freeze.get("holdout_open", False))
-        self.assertGreaterEqual(payload["version"], 15)
+        self.assertGreaterEqual(payload["version"], 16)
         self.assertEqual(
             payload["pins"]["campaign_base_commit"],
             "60c280d5dd1eaf1b98ae1614a360bbf936f67953",
@@ -40,6 +40,12 @@ class AccuracyCampaignTest(unittest.TestCase):
         learned = payload["tasks"]["C"]
         self.assertEqual(learned["status"], "merged_research_rejection")
         self.assertFalse(learned["holdout_open"])
+        self.assertFalse(learned["preregistration"]["split_pin"]["holdout_open"])
+        self.assertTrue(learned["preregistration"]["split_pin"]["ids_match_campaign_freeze"])
+        self.assertFalse(learned["preregistration"]["split_pin"]["measured_candidate"])
+        self.assertTrue(payload["tasks"]["D"]["split_pin"]["ids_match_campaign_freeze"])
+        self.assertTrue(payload["tasks"]["D"]["split_pin"]["shared_files_match_pr20"])
+        self.assertFalse(payload["tasks"]["D"]["selection_open"])
         self.assertFalse(learned["real_data_run"]["measured_candidate"])
         self.assertEqual(
             learned["real_data_run"]["merged_commit"],

@@ -1,6 +1,6 @@
 # Accuracy campaign index
 
-Date: 2026-09-10. Coordinator checkpoint v15. This is a tracking document, not
+Date: 2026-09-13. Coordinator checkpoint v16. This is a tracking document, not
 an accuracy result. Machine-readable copy:
 [results/cursor_campaign/v1/manifest.json](../results/cursor_campaign/v1/manifest.json).
 Plan: [docs/15_CURSOR_ACCURACY_EXECUTION_PLAN.md](15_CURSOR_ACCURACY_EXECUTION_PLAN.md).
@@ -24,8 +24,8 @@ Do not describe the 48.83% locked median as a fresh independent validation.
 |---|---|---|---|---|
 | A diagnostics | Merged | `cursor/accuracy-diagnostics-9aba` | [17](https://github.com/NotDrake100/driftzero/pull/17) | Score-only. Locked 35 reproduced. Split frozen. |
 | B road reliability | Closed rejection | `cursor/road-reliability-8d5b` | [19](https://github.com/NotDrake100/driftzero/pull/19) | Relative gate failed. Overlay not enabled. Not merged. |
-| C learned motion | Merged research rejection | `codex/long-outage-motion` | [23](https://github.com/NotDrake100/driftzero/pull/23) | Merged at `60c280d`. Negative numbers. Not a candidate. Holdout closed. |
-| D evaluation | Checks prepared | `cursor/accuracy-evaluation-d676` | [21](https://github.com/NotDrake100/driftzero/pull/21) | Parity and leakage only. Selection blocked. |
+| C learned motion | Merged research rejection | `codex/long-outage-motion` | [23](https://github.com/NotDrake100/driftzero/pull/23) | Merged at `60c280d`. Split pin now also on draft [20](https://github.com/NotDrake100/driftzero/pull/20). Not a candidate. |
+| D evaluation | Checks prepared | `cursor/accuracy-evaluation-d676` | [21](https://github.com/NotDrake100/driftzero/pull/21) | Same frozen-split pin as PR 20. Selection blocked. |
 | E capture audit | Logger merged | `cursor/phone-validation-d676` | [18](https://github.com/NotDrake100/driftzero/pull/18) | 0 field drives. Placement validation pending. |
 
 ## A measured report, merged
@@ -154,20 +154,33 @@ Development: `S-S4`, `S-Vta5`, `S-Vta6`, `S-Vta8`, `S-Vta11`, `S-Vta13`,
 
 Route and vehicle identities are unavailable. Driver letter is prefix-only.
 
+## Frozen split pin, not merged
+
+Owner commits `913bc5b` on [PR 20](https://github.com/NotDrake100/driftzero/pull/20)
+and `c93af69` on [PR 21](https://github.com/NotDrake100/driftzero/pull/21) pin the
+exact 24/12/10/19/1 group IDs in `io_vnbd/splits.py`. Those sets match this
+campaign freeze. Loaders reject holdout, locked, development, excluded, and
+unregistered groups before parsing. Shared pin files are identical on both
+PRs. Land that pin once. Do not merge both copies independently. Both PRs
+remain draft. This is not a candidate and does not open the holdout.
+
+`joint_sequence.validate_roles` on main still checks cardinality only. The
+new pin is the follow-up for C/D loaders.
+
 ## Next justified work
 
-1. Do not start another combined C round. A later attempt needs an isolated
-   tail hypothesis. Keep the holdout closed.
-2. Keep D selection closed until an eligible C config exists.
-3. Do not merge PR 19 as a live map default. Do not enable PR 23 weights
+1. Land the frozen-split pin once. Keep the holdout closed.
+2. Do not start another combined C round. A later attempt needs an isolated
+   tail hypothesis.
+3. Keep D selection closed until an eligible C config exists.
+4. Do not merge PR 19 as a live map default. Do not enable PR 23 weights
    on the phone path.
-4. Owner field drives remain required for placement validation.
-5. Pin exact frozen group IDs on the trainer remains a follow-up.
+5. Owner field drives remain required for placement validation.
 
 ## Resume
 
 Resume from this file and `results/cursor_campaign/v1/manifest.json`. A, the
 E logger, and C research through PR 23 are on main. B is closed and not
-merged. C rounds 1-5 are rejected. Do not restart A's diagnostic run. Do
-not treat polar `gru_16`, long-horizon `gru_8`, or integrated `mlp_16` as
-a candidate.
+merged. C rounds 1-5 are rejected. The exact group-ID pin is on draft PRs
+20 and 21. Do not restart A's diagnostic run. Do not treat polar `gru_16`,
+long-horizon `gru_8`, or integrated `mlp_16` as a candidate.

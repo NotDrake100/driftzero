@@ -60,9 +60,8 @@ class FrozenSplitTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder, patch(
             "driftzero_ml.datasets.io_vnbd.screening_smartphone_tables",
             return_value=(Path(folder) / "S-Vta4.csv",),
-        ):
-            with self.assertRaisesRegex(ValueError, "fresh_holdout"):
-                load_odometry_trips(Path(folder))
+        ), self.assertRaisesRegex(ValueError, "fresh_holdout"):
+            load_odometry_trips(Path(folder))
 
     def test_unregistered_group_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "unregistered"):

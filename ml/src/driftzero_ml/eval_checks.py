@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 from driftzero_ml.accuracy_gate import diagnostic_only_reasons
-from driftzero_ml.io_vnbd.splits import session_group_id
+from driftzero_ml.io_vnbd.splits import load_frozen_split_manifest, session_group_id
 from driftzero_ml.screening import GATED_INTERVAL_IDS
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -58,7 +58,9 @@ DEVELOPMENT_GATE = {
 
 
 def load_split() -> dict:
-    return json.loads(SPLIT_MANIFEST.read_text())
+    payload = json.loads(SPLIT_MANIFEST.read_text())
+    load_frozen_split_manifest()
+    return payload
 
 
 def locked_ids_unchanged() -> bool:

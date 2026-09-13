@@ -17,6 +17,7 @@ from driftzero_ml.gnss_truth import (
 )
 from driftzero_ml.io_vnbd.discover import inspect_delimited_table, read_table_text
 from driftzero_ml.io_vnbd.locate import PREFERRED_RELATIVE, SOURCE_URL, require_local_root
+from driftzero_ml.io_vnbd.splits import require_frozen_train_group
 from driftzero_ml.metrics import EARTH_MEAN_RADIUS_M
 
 FETCH_HINT = (
@@ -121,6 +122,17 @@ def screening_smartphone_tables(root: Path) -> tuple[Path, ...]:
         for path in real:
             unique.setdefault(path.stem, path)
     return tuple(sorted(unique.values(), key=lambda path: str(path)))
+
+
+def load_frozen_train_smartphone_csv(
+    path: Path,
+    *,
+    speed_unit: str | None = None,
+) -> list[SmartphoneRow]:
+    """Load one table only when its session group is in frozen training."""
+
+    require_frozen_train_group(path.stem)
+    return load_smartphone_csv(path, speed_unit=speed_unit)
 
 
 def load_smartphone_csv(
@@ -360,12 +372,14 @@ def smartphone_to_odometry(rows: list[SmartphoneRow]) -> list[dict]:
 
 
 def load_odometry_trips(root: Path) -> dict[str, list[dict]]:
-    """Load screening smartphone tables that have usable GNSS pose."""
+    """Load only frozen-train smartphone tables with usable GNSS pose."""
 
     trips: dict[str, list[dict]] = {}
     for path in screening_smartphone_tables(root):
+        # Preflight before parsing so forbidden groups are rejected, not skipped.
+        require_frozen_train_group(path.stem)
         try:
-            records = smartphone_to_odometry(load_smartphone_csv(path))
+            records = smartphone_to_odometry(load_frozen_train_smartphone_csv(path))
         except (ValueError, DatasetMissing):
             continue
         if records:

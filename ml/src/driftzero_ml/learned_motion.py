@@ -16,7 +16,7 @@ from pathlib import Path
 from statistics import mean
 
 from driftzero_ml.blackout import GNSS_KEYS
-from driftzero_ml.io_vnbd.splits import session_group_id
+from driftzero_ml.io_vnbd.splits import load_frozen_split_manifest, session_group_id
 from driftzero_ml.learned_imu import (
     LearnedImuPrediction,
     default_synthetic_odometry,
@@ -87,14 +87,14 @@ class JointStep:
 
 
 def load_split_roles(path: Path | None = None) -> SplitRoles:
-    payload = json.loads((path or SPLIT_MANIFEST).read_text())
+    pinned = load_frozen_split_manifest(path)
     return SplitRoles(
-        seed=str(payload["seed"]),
-        train=frozenset(payload["train_session_groups"]),
-        development=frozenset(payload["development_session_groups"]),
-        fresh_holdout=frozenset(payload["fresh_holdout_session_groups"]),
-        locked=frozenset(payload["locked_session_groups"]),
-        excluded=frozenset(payload["excluded_session_groups"]),
+        seed=pinned.seed,
+        train=pinned.train,
+        development=pinned.development,
+        fresh_holdout=pinned.fresh_holdout,
+        locked=pinned.locked,
+        excluded=pinned.excluded,
     )
 
 

@@ -32,6 +32,8 @@ results/*
 !results/pune_v1/README.md
 !results/cursor_diagnostics/
 !results/cursor_diagnostics/**
+!results/cursor_learned_motion/
+!results/cursor_learned_motion/**
 secrets.properties
 .DS_Store
 .cursor/skills/

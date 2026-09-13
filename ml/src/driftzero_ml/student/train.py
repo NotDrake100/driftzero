@@ -10,7 +10,7 @@ from statistics import mean
 
 from driftzero_ml.datasets.errors import DatasetLfsMissing, DatasetMissing
 from driftzero_ml.datasets.io_vnbd import (
-    load_smartphone_csv,
+    load_frozen_train_smartphone_csv,
     screening_smartphone_tables,
     to_imu_records,
 )
@@ -23,7 +23,11 @@ from driftzero_ml.features.causal_imu import (
     records_to_imu_samples,
     trim_causal_window,
 )
-from driftzero_ml.io_vnbd import IOVNBDMissing, assign_grouped_trip_splits
+from driftzero_ml.io_vnbd import (
+    IOVNBDMissing,
+    assign_grouped_trip_splits,
+    require_frozen_train_group,
+)
 from driftzero_ml.learned_imu import train_torch_student
 from driftzero_ml.student.csv_load import load_imu_csv
 from driftzero_ml.student.gru import torch_is_installed
@@ -168,9 +172,12 @@ def maybe_iovnbd_trips() -> tuple[dict[str, list[dict]] | None, str]:
     except (IOVNBDMissing, DatasetLfsMissing, DatasetMissing):
         return None, "synthetic"
     trips: dict[str, list[dict]] = {}
+    # Fail closed before parsing so forbidden groups cannot be silently skipped.
+    for path in tables:
+        require_frozen_train_group(path.stem)
     for path in tables:
         try:
-            trips[path.stem] = to_imu_records(load_smartphone_csv(path))
+            trips[path.stem] = to_imu_records(load_frozen_train_smartphone_csv(path))
         except (ValueError, DatasetMissing):
             continue
     if len(trips) < 4:

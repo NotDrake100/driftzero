@@ -1,0 +1,159 @@
+{
+  "experiment": "learned_motion_joint_v1",
+  "status": "preregistered",
+  "training_started": false,
+  "selected_candidate": null,
+  "seed": "26168",
+  "objective": {
+    "outputs": [
+      "travelled_distance_m",
+      "heading_change_rad"
+    ],
+    "uncertainty": true,
+    "deterministic_fallback": "persist_speed_heading",
+    "primary_score": "blackout endpoint error / truth path length",
+    "insufficient_alone": [
+      "training_loss",
+      "speed_mae_mps"
+    ]
+  },
+  "causal": true,
+  "timesfm": false,
+  "phone_path_changed": false,
+  "train_session_groups": [
+    "S-M",
+    "S-S2",
+    "S-Vfa02",
+    "S-Vta10",
+    "S-Vta16",
+    "S-Vta21",
+    "S-Vta23",
+    "S-Vta26",
+    "S-Vta28",
+    "S-Vta3",
+    "S-Vta7",
+    "S-Vta9",
+    "S-Vtb10",
+    "S-Vtb12",
+    "S-Vw11",
+    "S-Vw13",
+    "S-Vw14",
+    "S-Vw15",
+    "S-Vw2",
+    "S-Vw4",
+    "S-Vw6",
+    "S-Vw7",
+    "S-Vw8",
+    "S-Vw9"
+  ],
+  "development_session_groups": [
+    "S-S4",
+    "S-Vta11",
+    "S-Vta13",
+    "S-Vta29",
+    "S-Vta5",
+    "S-Vta6",
+    "S-Vta8",
+    "S-Vtb2",
+    "S-Vtb7",
+    "S-Vw12",
+    "S-Vw17",
+    "S-Vw3"
+  ],
+  "fresh_holdout_session_groups": [
+    "S-Vta14",
+    "S-Vta19",
+    "S-Vta27",
+    "S-Vta30",
+    "S-Vta4",
+    "S-Vtb11",
+    "S-Vtb4",
+    "S-Vtb5",
+    "S-Vw1",
+    "S-Vw10"
+  ],
+  "excluded_session_groups": [
+    "S-Vtb3"
+  ],
+  "locked_session_groups": [
+    "S-S1",
+    "S-S3",
+    "S-Vfa01",
+    "S-Vta1",
+    "S-Vta12",
+    "S-Vta15",
+    "S-Vta17",
+    "S-Vta2",
+    "S-Vta20",
+    "S-Vta22",
+    "S-Vta24",
+    "S-Vta25",
+    "S-Vtb1",
+    "S-Vtb6",
+    "S-Vtb8",
+    "S-Vtb9",
+    "S-Vw16",
+    "S-Vw5",
+    "S-Y1"
+  ],
+  "holdout_open": false,
+  "locked_tuning": false,
+  "configs": {
+    "speed_hold": {
+      "kind": "deterministic_fallback",
+      "outputs": [
+        "persist_speed_mps",
+        "persist_heading_rad"
+      ],
+      "requires_torch": false
+    },
+    "linear_joint_v1": {
+      "kind": "linear_displacement_student",
+      "outputs": [
+        "delta_length_m",
+        "delta_heading_rad",
+        "log_sigma"
+      ],
+      "requires_torch": false,
+      "objective": "joint_distance_and_heading"
+    },
+    "ronin_tcn_v1": {
+      "kind": "causal_tcn",
+      "outputs": [
+        "delta_length_m",
+        "delta_heading_rad",
+        "log_sigma"
+      ],
+      "requires_torch": true,
+      "parameter_budget": 250000,
+      "status": "preregistered_not_trained"
+    },
+    "gru_v1": {
+      "kind": "causal_gru",
+      "outputs": [
+        "delta_length_m",
+        "delta_heading_rad",
+        "log_sigma"
+      ],
+      "requires_torch": true,
+      "parameter_budget": 250000,
+      "status": "preregistered_not_trained"
+    }
+  },
+  "early_stopping": {
+    "monitor": "development_blackout_drift_p50",
+    "patience_epochs": 8,
+    "min_epochs": 2
+  },
+  "compute": {
+    "assume_gpu": false,
+    "cpu_smoke_required": true,
+    "full_io_vnbd_training": "not_started"
+  },
+  "notes": [
+    "Train only the 24 frozen train groups.",
+    "Validate on development. Do not open the 10 fresh holdout groups.",
+    "S-Vtb3 stays excluded.",
+    "Heading plus distance is the A-diagnosed gap. Speed MAE alone is not enough."
+  ]
+}
